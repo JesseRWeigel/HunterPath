@@ -127,8 +127,8 @@ interface RunningState {
 }
 
 function gatePowerForRank(rankIdx: number) {
-  // Rough scaling
-  return Math.pow(2, rankIdx) * 50 + rankIdx * 25;
+  // More balanced scaling - lower initial difficulty
+  return Math.pow(1.8, rankIdx) * 30 + rankIdx * 15;
 }
 
 function makeGate(rankIdx: number): Gate {
@@ -200,10 +200,11 @@ function initialPlayer(): Player {
 }
 
 function playerPower(p: Player) {
-  const { STR, AGI, INT } = p.stats;
-  const base = STR * 2 + AGI * 1.2 + INT * 0.6;
+  const { STR, AGI, INT, VIT } = p.stats;
+  // More balanced power calculation - each stat matters more
+  const base = STR * 3 + AGI * 2 + INT * 1.5 + VIT * 0.5;
   const shadowBonus = p.shadows.reduce((a, s) => a + s.power, 0);
-  const fatiguePenalty = 1 - Math.min(0.6, p.fatigue / 200); // up to -60%
+  const fatiguePenalty = 1 - Math.min(0.4, p.fatigue / 250); // reduced penalty, up to -40%
   return Math.max(1, (base + shadowBonus) * fatiguePenalty);
 }
 
@@ -392,6 +393,49 @@ export default function HuntersPath() {
 
   const inRun = Boolean(running);
 
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      const gameState = {
+        player,
+        gates,
+        gold,
+        gameTime,
+        daily
+      };
+      localStorage.setItem('hunters-path-autosave', JSON.stringify(gameState));
+    }, 30000);
+
+    return () => clearInterval(autoSaveInterval);
+  }, [player, gates, gold, gameTime, daily]);
+
+  // Load game on startup
+  useEffect(() => {
+    const saved = localStorage.getItem('hunters-path-autosave');
+    if (saved) {
+      try {
+        const gameState = JSON.parse(saved);
+        setPlayer(gameState.player);
+        setGates(gameState.gates || generateGatePool(gameState.player?.level || 1));
+        setGold(gameState.gold || 50);
+        setGameTime(gameState.gameTime || initialGameTime());
+        setDaily(gameState.daily || {
+          active: false,
+          tasks: [
+            { id: "train", name: "Training Reps", need: 30, have: 0 },
+            { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
+            { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
+          ],
+          completed: false,
+          penaltyArmed: false,
+        });
+        setLog(["Game loaded from auto-save. Welcome back, Hunter!"]);
+      } catch (error) {
+        console.error("Failed to load auto-save:", error);
+      }
+    }
+  }, []);
+
   // Game time system - advance time every 30 seconds (1 game hour)
   useEffect(() => {
     if (timeRef.current) clearInterval(timeRef.current);
@@ -444,12 +488,12 @@ export default function HuntersPath() {
       setRunning((prev) => {
         if (!prev) return prev;
         let { boss, hpEnemy, tick } = prev;
-        // Player attack
-        const dmgPlayer = Math.max(1, Math.floor(pPower - boss.def * 0.4 + rand(0, 4)));
+        // Player attack - increased base damage
+        const dmgPlayer = Math.max(1, Math.floor(pPower * 1.2 - boss.def * 0.3 + rand(0, 6)));
         hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
 
-        // Boss attack
-        const dmgBoss = Math.max(0, Math.floor(boss.atk - player.stats.VIT * 0.6 + rand(0, 3)));
+        // Boss attack - slightly reduced boss damage
+        const dmgBoss = Math.max(0, Math.floor(boss.atk * 0.8 - player.stats.VIT * 0.7 + rand(0, 3)));
         const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
 
         // MP upkeep
@@ -716,6 +760,58 @@ export default function HuntersPath() {
     logPush(`Work complete. +${goldGain}₲, +${expGain} EXP (but more fatigue)`);
   }
 
+  // Shop functions
+  function buyPotion() {
+    const cost = 25;
+    if (gold < cost) {
+      logPush(`Not enough gold. Need ${cost}₲ for a potion.`);
+      return;
+    }
+    
+    setGold((g) => g - cost);
+    setPlayer((p) => ({ 
+      ...p, 
+      inv: [...p.inv, { id: uid(), name: "Health Potion", type: "potion" }] 
+    }));
+    logPush(`Purchased a Health Potion for ${cost}₲`);
+  }
+
+  function buyUpgrade(type: 'weapon' | 'armor' | 'accessory') {
+    let cost = 0;
+    let bonus = 0;
+    let statType = '';
+    
+    switch (type) {
+      case 'weapon':
+        cost = 100 + player.level * 25;
+        bonus = 3 + Math.floor(player.level / 3);
+        statType = 'STR';
+        break;
+      case 'armor':
+        cost = 80 + player.level * 20;
+        bonus = 2 + Math.floor(player.level / 4);
+        statType = 'VIT';
+        break;
+      case 'accessory':
+        cost = 120 + player.level * 30;
+        bonus = 2 + Math.floor(player.level / 5);
+        statType = 'LUCK';
+        break;
+    }
+    
+    if (gold < cost) {
+      logPush(`Not enough gold. Need ${cost}₲ for ${type} upgrade.`);
+      return;
+    }
+    
+    setGold((g) => g - cost);
+    setPlayer((p) => ({
+      ...p,
+      stats: { ...p.stats, [statType]: p.stats[statType as keyof Player['stats']] + bonus }
+    }));
+    logPush(`Purchased ${type} upgrade! +${bonus} ${statType} for ${cost}₲`);
+  }
+
   // Refresh gate pool
   function refreshGates() {
     if (inRun) return;
@@ -728,6 +824,60 @@ export default function HuntersPath() {
     setGold((g) => g - cost);
     setGates(generateGatePool(player.level));
     logPush(`Gates refreshed! (-${cost}₲)`);
+  }
+
+  // Save/Load functions
+  function saveGame() {
+    const gameState = {
+      player,
+      gates,
+      gold,
+      gameTime,
+      daily
+    };
+    localStorage.setItem('hunters-path-save', JSON.stringify(gameState));
+    logPush('Game saved successfully!');
+  }
+
+  function loadGame() {
+    try {
+      const saved = localStorage.getItem('hunters-path-save');
+      if (!saved) {
+        logPush('No save file found.');
+        return;
+      }
+      
+      const gameState = JSON.parse(saved);
+      setPlayer(gameState.player);
+      setGates(gameState.gates);
+      setGold(gameState.gold);
+      setGameTime(gameState.gameTime);
+      setDaily(gameState.daily);
+      logPush('Game loaded successfully!');
+    } catch (error) {
+      logPush('Failed to load save file.');
+    }
+  }
+
+  function resetGame() {
+    if (confirm('Are you sure you want to reset your progress? This cannot be undone.')) {
+      setPlayer(initialPlayer());
+      setGates(generateGatePool(1));
+      setGold(50);
+      setGameTime(initialGameTime());
+      setDaily({
+        active: false,
+        tasks: [
+          { id: "train", name: "Training Reps", need: 30, have: 0 },
+          { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
+          { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
+        ],
+        completed: false,
+        penaltyArmed: false,
+      });
+      setLog(["Game reset. Welcome back, Hunter!"]);
+      localStorage.removeItem('hunters-path-save');
+    }
   }
 
   // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
@@ -768,6 +918,10 @@ export default function HuntersPath() {
                     <span className="font-bold">{player.keys}</span>
                     <span className="text-zinc-400 text-sm">Keys</span>
                   </div>
+                  <Btn onClick={resetGame} theme="danger" sm>
+                    <i className="fas fa-trash mr-1"></i>
+                    Reset
+                  </Btn>
                 </div>
               </div>
             </div>
@@ -821,6 +975,14 @@ export default function HuntersPath() {
                 <Btn onClick={refreshGates} disabled={inRun || gold < Math.max(10, player.level * 5)}>
                   <i className="fas fa-sync mr-2"></i>
                   Refresh Gates ({Math.max(10, player.level * 5)}₲)
+                </Btn>
+                <Btn onClick={saveGame} disabled={inRun}>
+                  <i className="fas fa-save mr-2"></i>
+                  Save Game
+                </Btn>
+                <Btn onClick={loadGame} disabled={inRun}>
+                  <i className="fas fa-upload mr-2"></i>
+                  Load Game
                 </Btn>
                 {daily.active && !daily.completed && (
                   <Btn onClick={forfeitDaily} theme="danger">
@@ -882,6 +1044,65 @@ export default function HuntersPath() {
               </div>
             </Card>
 
+            {/* Shop */}
+            <Card>
+              <h3 className="text-lg font-bold mb-4 text-yellow-300">
+                <i className="fas fa-shopping-cart mr-2"></i>
+                Hunter Shop
+              </h3>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <Btn 
+                    onClick={buyPotion} 
+                    disabled={gold < 25}
+                    className="justify-between text-left"
+                  >
+                    <div className="flex items-center">
+                      <i className="fas fa-flask mr-2 text-green-400"></i>
+                      Health Potion
+                    </div>
+                    <span className="text-yellow-400">25₲</span>
+                  </Btn>
+                  <Btn 
+                    onClick={() => buyUpgrade('weapon')} 
+                    disabled={gold < (100 + player.level * 25)}
+                    className="justify-between text-left"
+                  >
+                    <div className="flex items-center">
+                      <i className="fas fa-sword mr-2 text-red-400"></i>
+                      Weapon Upgrade (+STR)
+                    </div>
+                    <span className="text-yellow-400">{100 + player.level * 25}₲</span>
+                  </Btn>
+                  <Btn 
+                    onClick={() => buyUpgrade('armor')} 
+                    disabled={gold < (80 + player.level * 20)}
+                    className="justify-between text-left"
+                  >
+                    <div className="flex items-center">
+                      <i className="fas fa-shield-alt mr-2 text-orange-400"></i>
+                      Armor Upgrade (+VIT)
+                    </div>
+                    <span className="text-yellow-400">{80 + player.level * 20}₲</span>
+                  </Btn>
+                  <Btn 
+                    onClick={() => buyUpgrade('accessory')} 
+                    disabled={gold < (120 + player.level * 30)}
+                    className="justify-between text-left"
+                  >
+                    <div className="flex items-center">
+                      <i className="fas fa-ring mr-2 text-purple-400"></i>
+                      Lucky Charm (+LUCK)
+                    </div>
+                    <span className="text-yellow-400">{120 + player.level * 30}₲</span>
+                  </Btn>
+                </div>
+                <p className="text-xs text-zinc-500 mt-2">
+                  Equipment prices scale with your level. Upgrades permanently increase stats.
+                </p>
+              </div>
+            </Card>
+
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-zinc-100">Stats</h3>
@@ -890,6 +1111,20 @@ export default function HuntersPath() {
                     {player.points} Points
                   </div>
                 )}
+              </div>
+              
+              <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                <h4 className="text-sm font-bold text-blue-300 mb-2">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Stat Effects
+                </h4>
+                <div className="text-xs text-blue-200 space-y-1">
+                  <div><span className="text-red-400 font-bold">STR:</span> Primary damage (+3 power each)</div>
+                  <div><span className="text-green-400 font-bold">AGI:</span> Speed & damage (+2 power each)</div>
+                  <div><span className="text-blue-400 font-bold">INT:</span> Magic damage & shadow extraction (+1.5 power each)</div>
+                  <div><span className="text-orange-400 font-bold">VIT:</span> Health & defense (+0.5 power each)</div>
+                  <div><span className="text-yellow-400 font-bold">LUCK:</span> Critical hits & item drops</div>
+                </div>
               </div>
               
               <div className="space-y-3">
@@ -1056,7 +1291,7 @@ export default function HuntersPath() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {gates.sort((a, b) => a.rankIdx - b.rankIdx).map((g) => {
-                  const tooHard = pPower < g.recommended * 0.7;
+                  const tooHard = pPower < g.recommended * 0.8; // Made slightly easier
                   return (
                     <div 
                       key={g.id} 
