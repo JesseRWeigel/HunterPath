@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <HuntersPath />
+        <PWAInstallPrompt />
       </TooltipProvider>
     </QueryClientProvider>
   );

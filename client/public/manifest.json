@@ -1,0 +1,28 @@
+{
+  "name": "Hunter's Path",
+  "short_name": "HunterPath",
+  "description": "A Solo Leveling-inspired idle/roguelite game with dungeon clearing, stat progression, and shadow extraction mechanics.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en",
+  "prefer_related_applications": false
+}
