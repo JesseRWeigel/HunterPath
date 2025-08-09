@@ -110,6 +110,13 @@ interface Daily {
   tasks: DailyTask[];
   completed: boolean;
   penaltyArmed: boolean;
+  completedDate?: string; // Track when it was completed to allow reset
+}
+
+interface GameTime {
+  day: number;
+  currentDate: string;
+  lastReset: string;
 }
 
 interface RunningState {
@@ -228,6 +235,24 @@ function rollDrop(gate: Gate) {
   return null;
 }
 
+function formatGameTime(gameTime: GameTime): string {
+  return `Day ${gameTime.day} - ${gameTime.currentDate}`;
+}
+
+function getCurrentGameDate(): string {
+  const now = new Date();
+  return `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function initialGameTime(): GameTime {
+  const currentDate = getCurrentGameDate();
+  return {
+    day: 1,
+    currentDate,
+    lastReset: currentDate
+  };
+}
+
 // ---------- React UI Components ----------
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -300,6 +325,7 @@ export default function HuntersPath() {
   const [gates, setGates] = useState<Gate[]>(() => [makeGate(0), makeGate(1), makeGate(2)]);
   const [running, setRunning] = useState<RunningState | null>(null); // { gate, boss, tick, inBoss, hpEnemy }
   const [gold, setGold] = useState(0);
+  const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
   const [daily, setDaily] = useState<Daily>({
     active: false,
     tasks: [
@@ -311,10 +337,55 @@ export default function HuntersPath() {
     penaltyArmed: false,
   });
   const tickRef = useRef<NodeJS.Timeout | null>(null);
+  const timeRef = useRef<NodeJS.Timeout | null>(null);
 
   const pPower = useMemo(() => playerPower(player), [player]);
 
   const inRun = Boolean(running);
+
+  // Game time system - advance time every 30 seconds (1 game hour)
+  useEffect(() => {
+    if (timeRef.current) clearInterval(timeRef.current);
+    timeRef.current = setInterval(() => {
+      setGameTime((prevTime) => {
+        const currentRealDate = getCurrentGameDate();
+        const shouldAdvanceDay = currentRealDate !== prevTime.currentDate || Math.random() < 0.1; // 10% chance per hour or real day change
+        
+        if (shouldAdvanceDay) {
+          const newDay = prevTime.day + 1;
+          setLog((l) => [`Day ${newDay} begins. Daily Quest is available again.`, ...l]);
+          
+          // Reset daily quest for new day
+          setDaily({
+            active: false,
+            tasks: [
+              { id: "train", name: "Training Reps", need: 30, have: 0 },
+              { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
+              { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
+            ],
+            completed: false,
+            penaltyArmed: false,
+          });
+
+          // Passive experience gain for surviving another day
+          const passiveExp = Math.floor(10 + newDay * 2);
+          setPlayer((p) => ({ ...p, exp: p.exp + passiveExp }));
+          setLog((l) => [`+${passiveExp} EXP for surviving another day`, ...l]);
+          
+          return {
+            day: newDay,
+            currentDate: currentRealDate,
+            lastReset: currentRealDate
+          };
+        }
+        return prevTime;
+      });
+    }, 30000); // 30 seconds = 1 game hour
+
+    return () => {
+      if (timeRef.current) clearInterval(timeRef.current);
+    };
+  }, []);
 
   // Dungeon tick loop
   useEffect(() => {
@@ -524,6 +595,61 @@ export default function HuntersPath() {
     startGate({ ...g, name: `Instant Dungeon: ${g.name}` });
   }
 
+  // Additional training activities for more EXP
+  function doTraining(type: 'physical' | 'mental' | 'meditation') {
+    if (inRun) return;
+    
+    let expGain = 0;
+    let fatigueGain = 0;
+    let message = "";
+    
+    switch (type) {
+      case 'physical':
+        expGain = rand(8, 15);
+        fatigueGain = rand(5, 10);
+        message = "Physical training complete. Your body grows stronger.";
+        break;
+      case 'mental':
+        expGain = rand(6, 12);
+        fatigueGain = rand(3, 7);
+        message = "Mental training sharpens your focus.";
+        break;
+      case 'meditation':
+        expGain = rand(4, 8);
+        fatigueGain = -rand(5, 12); // Meditation reduces fatigue
+        message = "Meditation brings clarity and peace.";
+        break;
+    }
+
+    setPlayer((p) => ({
+      ...p,
+      exp: p.exp + expGain,
+      fatigue: clamp(p.fatigue + fatigueGain, 0, 100),
+    }));
+    
+    handleLevelGain(expGain);
+    logPush(`${message} +${expGain} EXP`);
+  }
+
+  // Work for gold and small EXP
+  function doWork() {
+    if (inRun) return;
+    
+    const goldGain = rand(15, 35);
+    const expGain = rand(3, 8);
+    const fatigueGain = rand(8, 15);
+    
+    setGold((g) => g + goldGain);
+    setPlayer((p) => ({
+      ...p,
+      exp: p.exp + expGain,
+      fatigue: clamp(p.fatigue + fatigueGain, 0, 100),
+    }));
+    
+    handleLevelGain(expGain);
+    logPush(`Work complete. +${goldGain}₲, +${expGain} EXP (but more fatigue)`);
+  }
+
   // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
   useEffect(() => {
     if (!inRun && daily.penaltyArmed) {
@@ -548,6 +674,10 @@ export default function HuntersPath() {
               </div>
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 bg-zinc-800 px-4 py-2 rounded-lg">
+                    <i className="fas fa-calendar text-purple-400"></i>
+                    <span className="font-bold">{formatGameTime(gameTime)}</span>
+                  </div>
                   <div className="flex items-center space-x-2 bg-zinc-800 px-4 py-2 rounded-lg">
                     <i className="fas fa-coins text-yellow-400"></i>
                     <span className="font-bold">{fmt(gold)}</span>
@@ -614,6 +744,57 @@ export default function HuntersPath() {
                     Forfeit Daily
                   </Btn>
                 )}
+              </div>
+            </Card>
+
+            {/* Training Activities */}
+            <Card>
+              <h3 className="text-lg font-bold mb-4 text-violet-300">
+                <i className="fas fa-dumbbell mr-2"></i>
+                Training Activities
+              </h3>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <Btn 
+                    onClick={() => doTraining('physical')} 
+                    disabled={inRun}
+                    className="justify-start text-left"
+                  >
+                    <i className="fas fa-fist-raised mr-2 text-red-400"></i>
+                    Physical Training
+                    <span className="ml-auto text-xs text-zinc-400">8-15 EXP</span>
+                  </Btn>
+                  <Btn 
+                    onClick={() => doTraining('mental')} 
+                    disabled={inRun}
+                    className="justify-start text-left"
+                  >
+                    <i className="fas fa-brain mr-2 text-blue-400"></i>
+                    Mental Training  
+                    <span className="ml-auto text-xs text-zinc-400">6-12 EXP</span>
+                  </Btn>
+                  <Btn 
+                    onClick={() => doTraining('meditation')} 
+                    disabled={inRun}
+                    className="justify-start text-left"
+                  >
+                    <i className="fas fa-leaf mr-2 text-green-400"></i>
+                    Meditation
+                    <span className="ml-auto text-xs text-zinc-400">4-8 EXP, -Fatigue</span>
+                  </Btn>
+                  <Btn 
+                    onClick={doWork} 
+                    disabled={inRun}
+                    className="justify-start text-left"
+                  >
+                    <i className="fas fa-hammer mr-2 text-yellow-400"></i>
+                    Work Job
+                    <span className="ml-auto text-xs text-zinc-400">15-35₲, 3-8 EXP</span>
+                  </Btn>
+                </div>
+                <p className="text-xs text-zinc-500 mt-2">
+                  Train to gain experience when stuck, or work for extra gold. Most activities increase fatigue.
+                </p>
               </div>
             </Card>
 
