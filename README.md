@@ -24,8 +24,8 @@ A Solo Leveling-inspired idle/roguelite game built with React, TypeScript, and E
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hunters-path.git
-cd hunters-path
+git clone https://github.com/jesserweigel/HunterPath.git
+cd HunterPath
 
 # Install dependencies
 npm install
@@ -51,29 +51,19 @@ This game is a Progressive Web App (PWA) that provides:
 2. Tap "Install" when the prompt appears, or use "Add to Home Screen"
 3. The game will be available as an app on your device
 
-## 🏗️ Deployment Options
+## 🌐 Live Demo
 
-### Option 1: GitHub Pages (Recommended - Free)
+Play the game online: **[https://jesserweigel.github.io/HunterPath/](https://jesserweigel.github.io/HunterPath/)**
 
-1. Push your code to GitHub
-2. Go to Repository Settings > Pages
-3. Enable GitHub Pages (Source: GitHub Actions)
-4. Every push to `main` branch will automatically deploy
+## 🏗️ Deployment
 
-### Option 2: Vercel (Free Tier)
+This project is automatically deployed to GitHub Pages:
 
-1. Fork this repository to your GitHub account
-2. Connect your repository to [Vercel](https://vercel.com)
-3. Deploy automatically on every push
+1. **Automatic Deployment** - Every push to the `main` branch triggers a new deployment
+2. **GitHub Actions** - Builds and deploys automatically using the included workflow
+3. **HTTPS Enabled** - Secure connection for PWA functionality
 
-### Option 3: Netlify (Free Tier)
-
-1. Fork this repository to your GitHub account
-2. Connect your repository to [Netlify](https://netlify.com)
-3. Set build command: `npm run build`
-4. Set publish directory: `dist/public`
-
-## 🔧 Build
+### Manual Deployment
 
 ```bash
 # Build for production
@@ -108,7 +98,7 @@ npm start
 - **UI**: Tailwind CSS, shadcn/ui components
 - **PWA**: Service Worker, Web App Manifest
 - **Database**: PostgreSQL (Drizzle ORM)
-- **Deployment**: GitHub Actions, Vercel/Netlify
+- **Deployment**: GitHub Actions, GitHub Pages
 
 ## 📄 License
 

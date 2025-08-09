@@ -1,13 +1,14 @@
 const CACHE_NAME = "hunters-path-v1";
+const BASE_PATH = "/HunterPath/";
 const urlsToCache = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/icon-192x192.png",
-  "/icon-512x512.png",
-  "/src/main.tsx",
-  "/src/App.tsx",
-  "/src/index.css",
+  BASE_PATH,
+  BASE_PATH + "index.html",
+  BASE_PATH + "manifest.json",
+  BASE_PATH + "icon-192x192.png",
+  BASE_PATH + "icon-512x512.png",
+  BASE_PATH + "src/main.tsx",
+  BASE_PATH + "src/App.tsx",
+  BASE_PATH + "src/index.css",
 ];
 
 // Install event - cache resources
@@ -57,7 +58,7 @@ self.addEventListener("fetch", (event) => {
       .catch(() => {
         // Return offline page if both cache and network fail
         if (event.request.destination === "document") {
-          return caches.match("/index.html");
+          return caches.match(BASE_PATH + "index.html");
         }
       })
   );

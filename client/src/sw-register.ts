@@ -2,8 +2,10 @@
 export function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
+      const swPath =
+        process.env.NODE_ENV === "production" ? "/HunterPath/sw.js" : "/sw.js";
       navigator.serviceWorker
-        .register("/sw.js")
+        .register(swPath)
         .then((registration) => {
           console.log("SW registered: ", registration);
 
