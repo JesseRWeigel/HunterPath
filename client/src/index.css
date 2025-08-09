@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,7 +24,7 @@
   --input: hsl(240, 3.7%, 15.9%);
   --ring: hsl(262.1, 83.3%, 57.8%);
   --radius: 0.75rem;
-  
+
   /* Game-specific colors */
   --game-bg: hsl(240, 10%, 4%);
   --game-card: hsl(240, 6%, 10%);
@@ -33,26 +33,26 @@
   --game-success: hsl(142, 76%, 36%);
   --game-warning: hsl(43, 96%, 56%);
   --game-danger: hsl(0, 84%, 60%);
-  
+
   /* Stat colors */
   --stat-str: hsl(0, 84%, 60%);
   --stat-agi: hsl(142, 76%, 36%);
   --stat-int: hsl(217, 91%, 60%);
   --stat-vit: hsl(25, 95%, 53%);
   --stat-luck: hsl(45, 93%, 47%);
-  
+
   /* Progress bar colors */
   --hp-color: hsl(0, 84%, 60%);
   --mp-color: hsl(217, 91%, 60%);
   --exp-color: hsl(262, 83%, 58%);
   --fatigue-color: hsl(25, 95%, 53%);
-  
+
   /* Shadow and extraction colors */
   --shadow-color: hsl(262, 83%, 58%);
   --extraction-color: hsl(280, 100%, 70%);
-  
+
   /* Font family */
-  --font-game: 'Inter', system-ui, sans-serif;
+  --font-game: "Inter", system-ui, sans-serif;
 }
 
 .dark {
@@ -81,7 +81,7 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: var(--font-game);
@@ -92,31 +92,54 @@
   .game-bg {
     background: var(--game-bg);
   }
-  
+
   .game-card {
     background: var(--game-card);
     border-color: var(--game-border);
   }
-  
+
   .game-gradient {
-    background: linear-gradient(135deg, hsl(240, 10%, 3.9%) 0%, hsl(240, 6%, 10%) 35%, hsl(262, 83%, 8%) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(240, 10%, 3.9%) 0%,
+      hsl(240, 6%, 10%) 35%,
+      hsl(262, 83%, 8%) 100%
+    );
   }
-  
-  .stat-str { color: var(--stat-str); }
-  .stat-agi { color: var(--stat-agi); }
-  .stat-int { color: var(--stat-int); }
-  .stat-vit { color: var(--stat-vit); }
-  .stat-luck { color: var(--stat-luck); }
-  
-  .progress-hp { background: linear-gradient(90deg, var(--hp-color), hsl(0, 84%, 50%)); }
-  .progress-mp { background: linear-gradient(90deg, var(--mp-color), hsl(217, 91%, 50%)); }
-  .progress-exp { background: linear-gradient(90deg, var(--exp-color), hsl(262, 83%, 48%)); }
-  .progress-fatigue { background: linear-gradient(90deg, var(--fatigue-color), hsl(0, 84%, 60%)); }
-  
+
+  .stat-str {
+    color: var(--stat-str);
+  }
+  .stat-agi {
+    color: var(--stat-agi);
+  }
+  .stat-int {
+    color: var(--stat-int);
+  }
+  .stat-vit {
+    color: var(--stat-vit);
+  }
+  .stat-luck {
+    color: var(--stat-luck);
+  }
+
+  .progress-hp {
+    background: linear-gradient(90deg, var(--hp-color), hsl(0, 84%, 50%));
+  }
+  .progress-mp {
+    background: linear-gradient(90deg, var(--mp-color), hsl(217, 91%, 50%));
+  }
+  .progress-exp {
+    background: linear-gradient(90deg, var(--exp-color), hsl(262, 83%, 48%));
+  }
+  .progress-fatigue {
+    background: linear-gradient(90deg, var(--fatigue-color), hsl(0, 84%, 60%));
+  }
+
   .glow-purple {
     box-shadow: 0 0 20px hsl(262, 83%, 58% / 0.3);
   }
-  
+
   .glow-green {
     box-shadow: 0 0 20px hsl(142, 76%, 36% / 0.3);
   }
@@ -124,13 +147,22 @@
 
 /* Custom animations */
 @keyframes pulse-slow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 @keyframes glow {
-  0% { box-shadow: 0 0 5px var(--game-accent), 0 0 10px var(--game-accent); }
-  100% { box-shadow: 0 0 10px var(--game-accent), 0 0 20px var(--game-accent); }
+  0% {
+    box-shadow: 0 0 5px var(--game-accent), 0 0 10px var(--game-accent);
+  }
+  100% {
+    box-shadow: 0 0 10px var(--game-accent), 0 0 20px var(--game-accent);
+  }
 }
 
 .animate-pulse-slow {
@@ -139,6 +171,283 @@
 
 .animate-glow {
   animation: glow 2s ease-in-out infinite alternate;
+}
+
+/* Combat Effects */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes screen-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes damage-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes heal-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(34, 197, 94, 0.3);
+  }
+}
+
+@keyframes critical-hit {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes floating-particle {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-10px) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes gate-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-screen-shake {
+  animation: screen-shake 0.5s ease-in-out;
+}
+
+.animate-damage-flash {
+  animation: damage-flash 0.3s ease-in-out;
+}
+
+.animate-heal-flash {
+  animation: heal-flash 0.3s ease-in-out;
+}
+
+.animate-critical-hit {
+  animation: critical-hit 0.2s ease-in-out;
+}
+
+.animate-floating-particle {
+  animation: floating-particle 3s ease-in-out infinite;
+}
+
+.animate-gate-pulse {
+  animation: gate-pulse 2s ease-in-out infinite;
+}
+
+/* Enhanced particle effects */
+.combat-particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.combat-particle:nth-child(1) {
+  animation-delay: 0s;
+}
+.combat-particle:nth-child(2) {
+  animation-delay: 0.5s;
+}
+.combat-particle:nth-child(3) {
+  animation-delay: 1s;
+}
+.combat-particle:nth-child(4) {
+  animation-delay: 1.5s;
+}
+.combat-particle:nth-child(5) {
+  animation-delay: 2s;
+}
+.combat-particle:nth-child(6) {
+  animation-delay: 2.5s;
+}
+
+/* Gate Environment Effects */
+.gate-environment-E {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.1),
+    rgba(22, 163, 74, 0.05)
+  );
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.gate-environment-D {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1),
+    rgba(37, 99, 235, 0.05)
+  );
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.gate-environment-C {
+  background: linear-gradient(
+    135deg,
+    rgba(147, 51, 234, 0.1),
+    rgba(126, 34, 206, 0.05)
+  );
+  border-color: rgba(147, 51, 234, 0.3);
+}
+
+.gate-environment-B {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.1),
+    rgba(220, 38, 38, 0.05)
+  );
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.gate-environment-A {
+  background: linear-gradient(
+    135deg,
+    rgba(249, 115, 22, 0.1),
+    rgba(234, 88, 12, 0.05)
+  );
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.gate-environment-S {
+  background: linear-gradient(
+    135deg,
+    rgba(234, 179, 8, 0.1),
+    rgba(202, 138, 4, 0.05)
+  );
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+/* Monster-specific animations */
+.monster-idle {
+  animation: monster-idle 2s ease-in-out infinite;
+}
+
+@keyframes monster-idle {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.monster-attack {
+  animation: monster-attack 0.3s ease-in-out;
+}
+
+@keyframes monster-attack {
+  0% {
+    transform: translateX(0px) scale(1);
+  }
+  50% {
+    transform: translateX(-5px) scale(1.05);
+  }
+  100% {
+    transform: translateX(0px) scale(1);
+  }
+}
+
+.monster-damage {
+  animation: monster-damage 0.2s ease-in-out;
+}
+
+@keyframes monster-damage {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Environment particles */
+.environment-particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+.environment-particle-E {
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.3), transparent);
+}
+
+.environment-particle-D {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3), transparent);
+}
+
+.environment-particle-C {
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.3), transparent);
+}
+
+.environment-particle-B {
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.3), transparent);
+}
+
+.environment-particle-A {
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.3), transparent);
+}
+
+.environment-particle-S {
+  background: radial-gradient(circle, rgba(234, 179, 8, 0.3), transparent);
 }
 
 /* Scrollbar styling */

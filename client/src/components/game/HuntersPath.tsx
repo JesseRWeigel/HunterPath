@@ -162,8 +162,11 @@ function makeGate(rankIdx: number): Gate {
 
 function makeBoss(rankIdx: number): Boss {
   const base = gatePowerForRank(rankIdx);
+  const rank = RANKS[rankIdx];
+  const monsterData = MONSTER_DATA[rank as keyof typeof MONSTER_DATA];
+
   return {
-    name: `${RANKS[rankIdx]}-Rank Boss`,
+    name: monsterData.name,
     maxHp: Math.floor(base * 8 + rand(-25, 25)),
     hp: Math.floor(base * 8 + rand(-25, 25)),
     atk: Math.floor(base * 0.8 + rand(-5, 5)),
@@ -427,6 +430,79 @@ function generateGatePool(playerLevel: number): Gate[] {
   return gates;
 }
 
+// Monster data for immersive experience
+const MONSTER_DATA = {
+  E: {
+    name: "Goblin Warrior",
+    description:
+      "A small but fierce goblin with crude weapons. Though weak individually, they fight with surprising ferocity.",
+    icon: "fas fa-user-ninja",
+    color: "text-green-400",
+    bgColor: "bg-green-900/30",
+    borderColor: "border-green-500/30",
+    environment:
+      "A dimly lit cave with moss-covered walls and scattered bones.",
+    sound: "High-pitched screeches echo through the cavern...",
+  },
+  D: {
+    name: "Orc Berserker",
+    description:
+      "A muscular orc warrior with blood-red eyes. Their rage makes them unpredictable and dangerous.",
+    icon: "fas fa-user-shield",
+    color: "text-blue-400",
+    bgColor: "bg-blue-900/30",
+    borderColor: "border-blue-500/30",
+    environment: "A torch-lit dungeon with iron bars and the stench of battle.",
+    sound: "Deep roars shake the dungeon walls...",
+  },
+  C: {
+    name: "Dark Elf Assassin",
+    description:
+      "A shadowy figure with deadly precision. Their movements are like liquid darkness.",
+    icon: "fas fa-user-secret",
+    color: "text-purple-400",
+    bgColor: "bg-purple-900/30",
+    borderColor: "border-purple-500/30",
+    environment:
+      "A moonlit forest clearing with twisted trees and mysterious shadows.",
+    sound: "Whispers of ancient magic fill the air...",
+  },
+  B: {
+    name: "Troll Chieftain",
+    description:
+      "A massive troll with stone-like skin. Their club can crush bones with a single swing.",
+    icon: "fas fa-user-graduate",
+    color: "text-red-400",
+    bgColor: "bg-red-900/30",
+    borderColor: "border-red-500/30",
+    environment: "A rocky mountain pass with jagged peaks and howling winds.",
+    sound: "Thunderous footsteps echo across the mountains...",
+  },
+  A: {
+    name: "Dragon Knight",
+    description:
+      "A legendary warrior clad in dragon-scale armor. Their sword burns with ancient fire.",
+    icon: "fas fa-user-crown",
+    color: "text-orange-400",
+    bgColor: "bg-orange-900/30",
+    borderColor: "border-orange-500/30",
+    environment: "A grand hall with towering pillars and dragon banners.",
+    sound: "The clash of steel and roar of dragons fills the hall...",
+  },
+  S: {
+    name: "Shadow Lord",
+    description:
+      "A being of pure darkness and malice. Their very presence corrupts the air around them.",
+    icon: "fas fa-user-tie",
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-900/30",
+    borderColor: "border-yellow-500/30",
+    environment:
+      "A void of absolute darkness where reality itself seems to bend.",
+    sound: "The fabric of space itself seems to tear...",
+  },
+};
+
 export default function HuntersPath() {
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [log, setLog] = useState<string[]>([
@@ -436,6 +512,17 @@ export default function HuntersPath() {
   const [gates, setGates] = useState<Gate[]>(() => generateGatePool(1));
   const [running, setRunning] = useState<RunningState | null>(null); // { gate, boss, tick, inBoss, hpEnemy }
   const [combatResult, setCombatResult] = useState<CombatResult | null>(null);
+  const [visualEffects, setVisualEffects] = useState<{
+    damageFlash: boolean;
+    healFlash: boolean;
+    criticalHit: boolean;
+    screenShake: boolean;
+  }>({
+    damageFlash: false,
+    healFlash: false,
+    criticalHit: false,
+    screenShake: false,
+  });
   const [gold, setGold] = useState(50); // Start with some gold for gate refreshes
   const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
   const [daily, setDaily] = useState<Daily>({
@@ -574,6 +661,17 @@ export default function HuntersPath() {
         );
         const oldHp = player.hp;
         const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
+
+        // Trigger visual effects
+        if (dmgPlayer > 0) {
+          triggerVisualEffect("screenShake");
+          if (dmgPlayer > pPower * 1.5) {
+            triggerVisualEffect("criticalHit");
+          }
+        }
+        if (dmgBoss > 0) {
+          triggerVisualEffect("damageFlash");
+        }
 
         // MP upkeep
         const upkeep = shadowUpkeep(player);
@@ -881,13 +979,16 @@ export default function HuntersPath() {
       inv: p.inv.filter((i) => i.id !== itemId),
     }));
 
+    // Trigger heal visual effect
+    triggerVisualEffect("healFlash");
+
     // Add combat log entry if in combat
     if (inRun && running) {
       const hpGain = Math.floor(player.maxHp * 0.5);
       const mpGain = Math.floor(player.maxMp * 0.3);
       setCombatLog((log) => [
         ...log.slice(-7),
-        `Hunter uses a potion! +${hpGain} HP, +${mpGain} MP 💚`,
+        `Hunter uses a potion! +${hpGain} HP, +${mpGain} MP ��`,
       ]);
     }
 
@@ -974,6 +1075,13 @@ export default function HuntersPath() {
     setCombatResult(null);
     setRunning(null); // Clear the combat state
     setCombatLog([]); // Clear the combat log
+  }
+
+  function triggerVisualEffect(effect: keyof typeof visualEffects) {
+    setVisualEffects((prev) => ({ ...prev, [effect]: true }));
+    setTimeout(() => {
+      setVisualEffects((prev) => ({ ...prev, [effect]: false }));
+    }, 300);
   }
 
   // Additional training activities for more EXP
@@ -1687,32 +1795,87 @@ export default function HuntersPath() {
               )}
 
               {(inRun && running) || combatResult ? (
-                <div className="bg-gradient-to-r from-red-900/30 to-purple-900/30 border border-red-500/30 rounded-lg p-6 mb-6">
-                  {/* Gate Header */}
-                  <div className="text-center mb-6">
-                    <h4 className="text-xl font-bold text-red-300 mb-2">
+                <div
+                  className={`bg-gradient-to-r from-red-900/30 to-purple-900/30 border border-red-500/30 rounded-lg p-6 mb-6 relative overflow-hidden transition-all duration-300 ${
+                    visualEffects.screenShake ? "animate-screen-shake" : ""
+                  } ${
+                    visualEffects.damageFlash ? "animate-damage-flash" : ""
+                  } ${visualEffects.healFlash ? "animate-heal-flash" : ""} ${
+                    running ? `gate-environment-${running.gate.rank}` : ""
+                  }`}
+                >
+                  {/* Animated Background Particles */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="combat-particle absolute top-4 left-4 w-2 h-2 bg-purple-400 rounded-full animate-floating-particle opacity-60"></div>
+                    <div className="combat-particle absolute top-8 right-8 w-1 h-1 bg-red-400 rounded-full animate-floating-particle opacity-40"></div>
+                    <div className="combat-particle absolute bottom-6 left-12 w-1.5 h-1.5 bg-blue-400 rounded-full animate-floating-particle opacity-50"></div>
+                    <div className="combat-particle absolute bottom-12 right-4 w-1 h-1 bg-green-400 rounded-full animate-floating-particle opacity-30"></div>
+                    <div className="combat-particle absolute top-1/2 left-1/4 w-1 h-1 bg-yellow-400 rounded-full animate-floating-particle opacity-40"></div>
+                    <div className="combat-particle absolute top-1/3 right-1/3 w-1.5 h-1.5 bg-purple-400 rounded-full animate-floating-particle opacity-50"></div>
+
+                    {/* Environment-specific particles */}
+                    {running && (
+                      <>
+                        <div
+                          className={`environment-particle environment-particle-${running.gate.rank} absolute top-1/4 left-1/4 w-8 h-8 rounded-full animate-floating-particle`}
+                        ></div>
+                        <div
+                          className={`environment-particle environment-particle-${running.gate.rank} absolute bottom-1/4 right-1/4 w-6 h-6 rounded-full animate-floating-particle`}
+                        ></div>
+                        <div
+                          className={`environment-particle environment-particle-${running.gate.rank} absolute top-3/4 right-1/3 w-4 h-4 rounded-full animate-floating-particle`}
+                        ></div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Gate Header with Enhanced Styling */}
+                  <div className="text-center mb-6 relative z-10">
+                    <h4 className="text-xl font-bold text-red-300 mb-2 animate-pulse">
                       {running?.gate.name || combatResult?.gate.name}
                     </h4>
+
+                    {/* Environment Description */}
+                    {running && (
+                      <div className="mb-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-600/30">
+                        <p className="text-sm text-zinc-300 italic">
+                          {
+                            MONSTER_DATA[
+                              running.gate.rank as keyof typeof MONSTER_DATA
+                            ]?.environment
+                          }
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {
+                            MONSTER_DATA[
+                              running.gate.rank as keyof typeof MONSTER_DATA
+                            ]?.sound
+                          }
+                        </p>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-center space-x-4 text-sm text-zinc-400">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-skull text-red-400"></i>
+                      <div className="flex items-center space-x-2 bg-red-900/50 px-3 py-1 rounded-full border border-red-500/30">
+                        <i className="fas fa-skull text-red-400 animate-pulse"></i>
                         <span>
                           Rank {running?.gate.rank || combatResult?.gate.rank}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 bg-blue-900/50 px-3 py-1 rounded-full border border-blue-500/30">
                         <i className="fas fa-clock text-blue-400"></i>
-                        <span>Tick {running?.tick || "Complete"}</span>
+                        <span>{running?.tick || "Complete"}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Combat Arena */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {/* Hunter Side */}
-                    <div className="bg-zinc-800/50 border border-purple-500/30 rounded-lg p-4">
-                      <div className="text-center mb-4">
-                        <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  {/* Combat Arena with Enhanced Visuals */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative z-10">
+                    {/* Hunter Side with Glow Effects */}
+                    <div className="bg-zinc-800/50 border border-purple-500/30 rounded-lg p-4 relative group hover:border-purple-400/50 transition-all duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="text-center mb-4 relative z-10">
+                        <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg shadow-purple-500/30 animate-pulse">
                           <i className="fas fa-user-shield text-white text-xl"></i>
                         </div>
                         <h5 className="font-bold text-purple-300">Hunter</h5>
@@ -1721,7 +1884,7 @@ export default function HuntersPath() {
                         </p>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-3 relative z-10">
                         <div>
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-green-400">HP</span>
@@ -1729,9 +1892,9 @@ export default function HuntersPath() {
                               {fmt(player.hp)}/{fmt(player.maxHp)}
                             </span>
                           </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-3">
+                          <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
                             <div
-                              className="bg-gradient-to-r from-green-600 to-green-500 h-3 rounded-full transition-all duration-500"
+                              className="bg-gradient-to-r from-green-600 to-green-500 h-3 rounded-full transition-all duration-500 shadow-sm"
                               style={{
                                 width: `${Math.round(
                                   (player.hp / player.maxHp) * 100
@@ -1748,9 +1911,9 @@ export default function HuntersPath() {
                               {fmt(player.mp)}/{fmt(player.maxMp)}
                             </span>
                           </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-3">
+                          <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
                             <div
-                              className="bg-gradient-to-r from-blue-600 to-blue-500 h-3 rounded-full transition-all duration-500"
+                              className="bg-gradient-to-r from-blue-600 to-blue-500 h-3 rounded-full transition-all duration-500 shadow-sm"
                               style={{
                                 width: `${Math.round(
                                   (player.mp / player.maxMp) * 100
@@ -1762,22 +1925,51 @@ export default function HuntersPath() {
                       </div>
                     </div>
 
-                    {/* Enemy Side */}
-                    <div className="bg-zinc-800/50 border border-red-500/30 rounded-lg p-4">
-                      <div className="text-center mb-4">
-                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                          <i className="fas fa-dragon text-white text-xl"></i>
+                    {/* Enemy Side with Threatening Effects */}
+                    <div className="bg-zinc-800/50 border border-red-500/30 rounded-lg p-4 relative group hover:border-red-400/50 transition-all duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="text-center mb-4 relative z-10">
+                        <div
+                          className={`w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg shadow-red-500/30 ${
+                            running ? "monster-idle" : ""
+                          } ${
+                            visualEffects.criticalHit ? "monster-damage" : ""
+                          }`}
+                        >
+                          <i
+                            className={`fas ${
+                              running
+                                ? MONSTER_DATA[
+                                    running.gate
+                                      .rank as keyof typeof MONSTER_DATA
+                                  ]?.icon
+                                : "fa-dragon"
+                            } text-white text-xl`}
+                          ></i>
                         </div>
                         <h5 className="font-bold text-red-300">
                           {running?.boss.name || combatResult?.boss.name}
                         </h5>
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs text-zinc-400 mb-2">
                           {running?.gate.rank || combatResult?.gate.rank}-Rank
                           Boss
                         </p>
+
+                        {/* Monster Description */}
+                        {running && (
+                          <div className="text-xs text-zinc-400 bg-red-900/20 p-2 rounded border border-red-500/20">
+                            <p className="italic">
+                              {
+                                MONSTER_DATA[
+                                  running.gate.rank as keyof typeof MONSTER_DATA
+                                ]?.description
+                              }
+                            </p>
+                          </div>
+                        )}
                       </div>
 
-                      <div>
+                      <div className="relative z-10">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-red-400">HP</span>
                           <span className="text-zinc-300">
@@ -1788,9 +1980,13 @@ export default function HuntersPath() {
                               : "0/0"}
                           </span>
                         </div>
-                        <div className="w-full bg-zinc-700 rounded-full h-3">
+                        <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-red-600 to-red-500 h-3 rounded-full transition-all duration-500 animate-pulse"
+                            className={`bg-gradient-to-r from-red-600 to-red-500 h-3 rounded-full transition-all duration-500 animate-pulse shadow-sm ${
+                              visualEffects.criticalHit
+                                ? "animate-critical-hit"
+                                : ""
+                            }`}
                             style={{
                               width: running
                                 ? `${Math.round(
@@ -1804,9 +2000,9 @@ export default function HuntersPath() {
                     </div>
                   </div>
 
-                  {/* Turn Indicator */}
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center space-x-2 bg-zinc-800/50 border border-yellow-500/30 rounded-full px-4 py-2">
+                  {/* Enhanced Turn Indicator */}
+                  <div className="text-center mb-4 relative z-10">
+                    <div className="inline-flex items-center space-x-2 bg-zinc-800/50 border border-yellow-500/30 rounded-full px-4 py-2 shadow-lg">
                       <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
                       <span className="text-yellow-300 font-medium">
                         {running ? "Combat in Progress..." : "Combat Complete"}
@@ -1814,8 +2010,8 @@ export default function HuntersPath() {
                     </div>
                   </div>
 
-                  {/* Combat Log */}
-                  <div className="bg-zinc-900/50 rounded-lg p-4 mb-4 max-h-32 overflow-y-auto">
+                  {/* Enhanced Combat Log */}
+                  <div className="bg-zinc-900/50 rounded-lg p-4 mb-4 max-h-32 overflow-y-auto relative z-10 border border-zinc-700/50">
                     <div className="text-sm text-zinc-300 space-y-1">
                       {(running ? combatLog : combatResult?.combatLog || [])
                         .length > 0 ? (
@@ -1825,7 +2021,7 @@ export default function HuntersPath() {
                         ).map((entry, index) => (
                           <div
                             key={index}
-                            className="flex items-start space-x-2"
+                            className="flex items-start space-x-2 animate-fade-in"
                           >
                             <span className="text-zinc-500 text-xs">•</span>
                             <span
@@ -1883,16 +2079,16 @@ export default function HuntersPath() {
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-zinc-400">
+                  {/* Enhanced Quick Actions */}
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="text-xs text-zinc-400 bg-zinc-800/30 px-3 py-2 rounded-lg">
                       <div>
                         Shadow Upkeep: {fmt(shadowUpkeep(player))} MP/tick
                       </div>
                       <div>Fatigue: {player.fatigue}%</div>
                     </div>
 
-                    {/* Integrated Potion Button */}
+                    {/* Integrated Potion Button with Enhanced Styling */}
                     {player.inv.some((item) => item.type === "potion") &&
                       running && (
                         <div className="flex items-center space-x-2">
@@ -1906,7 +2102,7 @@ export default function HuntersPath() {
                               );
                               if (potion) usePotion(potion.id);
                             }}
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-green-500/30 hover:scale-105"
                           >
                             <i className="fas fa-flask text-sm"></i>
                             <span className="text-sm font-medium">
@@ -1916,10 +2112,13 @@ export default function HuntersPath() {
                         </div>
                       )}
 
-                    {/* Dismiss Button for Combat Result */}
+                    {/* Enhanced Dismiss Button for Combat Result */}
                     {combatResult && (
                       <div className="flex items-center space-x-2">
-                        <Btn onClick={dismissCombatResult}>
+                        <Btn
+                          onClick={dismissCombatResult}
+                          className="shadow-lg hover:shadow-purple-500/30 hover:scale-105 transition-all duration-200"
+                        >
                           {combatResult.victory ? "Continue" : "Accept Defeat"}
                         </Btn>
                       </div>
