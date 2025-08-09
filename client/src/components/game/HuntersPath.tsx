@@ -319,12 +319,61 @@ function BarMini({ value, max, color = "bg-emerald-500" }: { value: number; max:
   );
 }
 
+function generateGatePool(playerLevel: number): Gate[] {
+  const gates: Gate[] = [];
+  
+  // Always have multiple E-rank gates available (3-5)
+  const eGateCount = rand(3, 5);
+  for (let i = 0; i < eGateCount; i++) {
+    gates.push(makeGate(0));
+  }
+  
+  // Add D-rank gates if player level >= 3
+  if (playerLevel >= 3) {
+    const dGateCount = rand(2, 4);
+    for (let i = 0; i < dGateCount; i++) {
+      gates.push(makeGate(1));
+    }
+  }
+  
+  // Add C-rank gates if player level >= 6
+  if (playerLevel >= 6) {
+    const cGateCount = rand(2, 3);
+    for (let i = 0; i < cGateCount; i++) {
+      gates.push(makeGate(2));
+    }
+  }
+  
+  // Add B-rank gates if player level >= 10
+  if (playerLevel >= 10) {
+    const bGateCount = rand(1, 3);
+    for (let i = 0; i < bGateCount; i++) {
+      gates.push(makeGate(3));
+    }
+  }
+  
+  // Add A-rank gates if player level >= 15
+  if (playerLevel >= 15) {
+    const aGateCount = rand(1, 2);
+    for (let i = 0; i < aGateCount; i++) {
+      gates.push(makeGate(4));
+    }
+  }
+  
+  // Add S-rank gates if player level >= 20
+  if (playerLevel >= 20) {
+    gates.push(makeGate(5));
+  }
+  
+  return gates;
+}
+
 export default function HuntersPath() {
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [log, setLog] = useState<string[]>(["Welcome, Hunter. Complete your Daily Quest, then clear a Gate."]);
-  const [gates, setGates] = useState<Gate[]>(() => [makeGate(0), makeGate(1), makeGate(2)]);
+  const [gates, setGates] = useState<Gate[]>(() => generateGatePool(1));
   const [running, setRunning] = useState<RunningState | null>(null); // { gate, boss, tick, inBoss, hpEnemy }
-  const [gold, setGold] = useState(0);
+  const [gold, setGold] = useState(50); // Start with some gold for gate refreshes
   const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
   const [daily, setDaily] = useState<Daily>({
     active: false,
@@ -434,13 +483,16 @@ export default function HuntersPath() {
             tryExtraction(prev.gate.rankIdx);
           }, 200);
           setRunning(null);
-          // Replace gate
+          // Remove cleared gate and potentially refresh pool
           setGates((gs) => {
-            const idx = gs.findIndex((g) => g.id === prev.gate.id);
-            if (idx === -1) return gs;
-            const next = [...gs];
-            next[idx] = makeGate(clamp(prev.gate.rankIdx + (Math.random() < 0.4 ? 1 : 0), 0, RANKS.length - 1));
-            return next;
+            const filtered = gs.filter((g) => g.id !== prev.gate.id);
+            
+            // If we have fewer than 3 gates total, generate a new pool
+            if (filtered.length < 3) {
+              return generateGatePool(player.level);
+            }
+            
+            return filtered;
           });
           return null;
         }
@@ -475,14 +527,28 @@ export default function HuntersPath() {
       let points = p.points;
       let maxHp = p.maxHp;
       let maxMp = p.maxMp;
+      let leveledUp = false;
+      
       while (exp >= expNext) {
         exp -= expNext;
         level += 1;
+        leveledUp = true;
         expNext = Math.floor(expNext * 1.35);
         points += 5;
         maxHp += 10;
         maxMp += 5;
+        
+        logPush(`Level Up! Welcome to level ${level}. +5 stat points!`);
       }
+
+      // If player leveled up, refresh gates to unlock new tiers
+      if (leveledUp) {
+        setTimeout(() => {
+          setGates(generateGatePool(level));
+          logPush(`New gates appeared! Higher tier dungeons are now available.`);
+        }, 1000);
+      }
+      
       return { ...p, exp, level, expNext, points, maxHp, maxMp, hp: Math.max(p.hp, Math.floor(maxHp * 0.6)), mp: Math.max(p.mp, Math.floor(maxMp * 0.5)) };
     });
   }
@@ -650,6 +716,20 @@ export default function HuntersPath() {
     logPush(`Work complete. +${goldGain}₲, +${expGain} EXP (but more fatigue)`);
   }
 
+  // Refresh gate pool
+  function refreshGates() {
+    if (inRun) return;
+    const cost = Math.max(10, player.level * 5);
+    if (gold < cost) {
+      logPush(`Not enough gold. Need ${cost}₲ to refresh gates.`);
+      return;
+    }
+    
+    setGold((g) => g - cost);
+    setGates(generateGatePool(player.level));
+    logPush(`Gates refreshed! (-${cost}₲)`);
+  }
+
   // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
   useEffect(() => {
     if (!inRun && daily.penaltyArmed) {
@@ -737,6 +817,10 @@ export default function HuntersPath() {
                 </Btn>
                 <Btn onClick={startDaily} disabled={daily.active || daily.completed || inRun}>
                   Start Daily
+                </Btn>
+                <Btn onClick={refreshGates} disabled={inRun || gold < Math.max(10, player.level * 5)}>
+                  <i className="fas fa-sync mr-2"></i>
+                  Refresh Gates ({Math.max(10, player.level * 5)}₲)
                 </Btn>
                 {daily.active && !daily.completed && (
                   <Btn onClick={forfeitDaily} theme="danger">
@@ -963,9 +1047,15 @@ export default function HuntersPath() {
                 </div>
               )}
 
-              <h4 className="text-lg font-bold mb-4 text-zinc-100">Available Gates</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {gates.map((g) => {
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-zinc-100">Available Gates ({gates.length})</h4>
+                <div className="text-sm text-zinc-400">
+                  Your Power: {fmt(pPower)}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {gates.sort((a, b) => a.rankIdx - b.rankIdx).map((g) => {
                   const tooHard = pPower < g.recommended * 0.7;
                   return (
                     <div 
