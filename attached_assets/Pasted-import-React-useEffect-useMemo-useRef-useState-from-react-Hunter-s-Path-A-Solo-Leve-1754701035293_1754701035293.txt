@@ -1,0 +1,568 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+// Hunter's Path — A Solo Leveling–inspired idle/roguelite built for Canvas preview
+// Notes:
+// - Uses the *logic* of Solo Leveling: Gates/Dungeons, Daily Quests with penalties,
+//   stat allocation on level-up, fatigue, shadow extraction (post-boss), instant dungeons.
+// - Avoids copyrighted characters/story specifics; it's an homage to the mechanics.
+//
+// Play tips:
+// 1) Complete Daily Quest before running a dungeon to avoid penalties.
+// 2) Allocate stat points after leveling up (top-right panel).
+// 3) Beat a dungeon boss to attempt Shadow Extraction — your INT and LUCK matter.
+// 4) Fatigue rises with runs; high fatigue reduces damage and raises failure risk.
+// 5) Instant Dungeon Keys drop sometimes; use them for a bonus run.
+
+// ---------- Utility ----------
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const uid = () => Math.random().toString(36).slice(2, 9);
+const fmt = (n) => new Intl.NumberFormat().format(Math.floor(n));
+
+const RANKS = ["E", "D", "C", "B", "A", "S"];
+
+function gatePowerForRank(rankIdx) {
+  // Rough scaling
+  return Math.pow(2, rankIdx) * 50 + rankIdx * 25;
+}
+
+function makeGate(rankIdx) {
+  const id = uid();
+  const rank = RANKS[rankIdx];
+  const rec = gatePowerForRank(rankIdx);
+  const variance = rand(-20, 20);
+  const power = Math.max(10, rec + variance);
+  return {
+    id,
+    name: `${rank}-Rank Gate ${id.slice(0, 3).toUpperCase()}`,
+    rank,
+    rankIdx,
+    recommended: rec,
+    power,
+    boss: makeBoss(rankIdx),
+  };
+}
+
+function makeBoss(rankIdx) {
+  const base = gatePowerForRank(rankIdx);
+  return {
+    name: `${RANKS[rankIdx]}-Rank Boss`,
+    maxHp: Math.floor(base * 8 + rand(-25, 25)),
+    hp: Math.floor(base * 8 + rand(-25, 25)),
+    atk: Math.floor(base * 0.8 + rand(-5, 5)),
+    def: Math.floor(base * 0.3 + rand(-3, 3)),
+  };
+}
+
+function shadowName() {
+  const names = [
+    "Umbra",
+    "Noctis",
+    "Tenebris",
+    "Kage",
+    "Silens",
+    "Vorago",
+    "Ater",
+    "Nox",
+    "Moria",
+    "Caecus",
+  ];
+  return names[rand(0, names.length - 1)] + "-" + rand(1, 999);
+}
+
+function initialPlayer() {
+  return {
+    level: 1,
+    exp: 0,
+    expNext: 100,
+    hp: 100,
+    mp: 50,
+    maxHp: 100,
+    maxMp: 50,
+    fatigue: 0, // 0–100
+    points: 5,
+    stats: {
+      STR: 5,
+      AGI: 5,
+      INT: 5,
+      VIT: 5,
+      LUCK: 5,
+    },
+    shadows: [], // {id, name, power, upkeep}
+    inv: [], // {id, name, type}
+    keys: 0, // Instant Dungeon Keys
+  };
+}
+
+function playerPower(p) {
+  const { STR, AGI, INT } = p.stats;
+  const base = STR * 2 + AGI * 1.2 + INT * 0.6;
+  const shadowBonus = p.shadows.reduce((a, s) => a + s.power, 0);
+  const fatiguePenalty = 1 - Math.min(0.6, p.fatigue / 200); // up to -60%
+  return Math.max(1, (base + shadowBonus) * fatiguePenalty);
+}
+
+function shadowUpkeep(p) {
+  // MP upkeep per tick when in dungeon
+  return Math.floor(p.shadows.length * 1 + p.shadows.reduce((a, s) => a + s.power * 0.02, 0));
+}
+
+function calcExtractionChance(p, bossRankIdx) {
+  // Inspired by the series: INT & LUCK raise success, higher ranks are harder
+  const { INT, LUCK } = p.stats;
+  const base = 0.12 + INT * 0.004 + LUCK * 0.005; // 12% base + stats influence
+  const rankPenalty = 0.05 * bossRankIdx; // tougher bosses penalize
+  return clamp(base - rankPenalty, 0.02, 0.65); // 2%–65%
+}
+
+function gainExpGoldFromGate(gate) {
+  const base = gate.recommended;
+  const exp = Math.floor(base * 1.1 + rand(10, 40));
+  const gold = Math.floor(base * 0.8 + rand(5, 25));
+  return { exp, gold };
+}
+
+function rollDrop(gate) {
+  const r = Math.random();
+  if (r < 0.08) return { id: uid(), name: "Instant Dungeon Key", type: "key" };
+  if (r < 0.28) return { id: uid(), name: `${gate.rank}-grade Rune`, type: "rune" };
+  if (r < 0.55) return { id: uid(), name: `${gate.rank}-grade Potion`, type: "potion" };
+  return null;
+}
+
+// ---------- React UI ----------
+export default function App() {
+  const [player, setPlayer] = useState(initialPlayer);
+  const [log, setLog] = useState(["Welcome, Hunter. Complete your Daily Quest, then clear a Gate."]);
+  const [gates, setGates] = useState(() => [makeGate(0), makeGate(1), makeGate(2)]);
+  const [running, setRunning] = useState(null); // { gate, boss, tick, inBoss, hpEnemy }
+  const [gold, setGold] = useState(0);
+  const [daily, setDaily] = useState({
+    active: false,
+    tasks: [
+      { id: "train", name: "Training Reps", need: 30, have: 0 },
+      { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
+      { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
+    ],
+    completed: false,
+    penaltyArmed: false,
+  });
+  const tickRef = useRef(null);
+
+  const pPower = useMemo(() => playerPower(player), [player]);
+
+  const inRun = Boolean(running);
+
+  // Dungeon tick loop
+  useEffect(() => {
+    if (!inRun) return;
+    if (tickRef.current) clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => {
+      setRunning((prev) => {
+        if (!prev) return prev;
+        let { boss, hpEnemy, tick } = prev;
+        // Player attack
+        const dmgPlayer = Math.max(1, Math.floor(pPower - boss.def * 0.4 + rand(0, 4)));
+        hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
+
+        // Boss attack
+        const dmgBoss = Math.max(0, Math.floor(boss.atk - player.stats.VIT * 0.6 + rand(0, 3)));
+        const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
+
+        // MP upkeep
+        const upkeep = shadowUpkeep(player);
+        const newMp = clamp(player.mp - upkeep, 0, player.maxMp);
+
+        // Fatigue gain
+        const newFatigue = clamp(player.fatigue + 0.5, 0, 100);
+
+        setPlayer((pp) => ({ ...pp, hp: newHp, mp: newMp, fatigue: newFatigue }));
+
+        if (hpEnemy <= 0) {
+          // Victory
+          clearInterval(tickRef.current);
+          const { exp, gold } = gainExpGoldFromGate(prev.gate);
+          setGold((g) => g + gold);
+          setLog((l) => [
+            `Cleared ${prev.gate.name}! +${fmt(exp)} EXP, +${fmt(gold)}₲`,
+            ...l,
+          ]);
+          handleLevelGain(exp);
+          // Drops
+          const drop = rollDrop(prev.gate);
+          if (drop) {
+            if (drop.type === "key") setPlayer((pp) => ({ ...pp, keys: pp.keys + 1 }));
+            else setPlayer((pp) => ({ ...pp, inv: [...pp.inv, drop] }));
+            setLog((l) => [`Found: ${drop.name}`, ...l]);
+          }
+          // Extraction option
+          setTimeout(() => {
+            tryExtraction(prev.gate.rankIdx);
+          }, 200);
+          setRunning(null);
+          // Replace gate
+          setGates((gs) => {
+            const idx = gs.findIndex((g) => g.id === prev.gate.id);
+            if (idx === -1) return gs;
+            const next = [...gs];
+            next[idx] = makeGate(clamp(prev.gate.rankIdx + (Math.random() < 0.4 ? 1 : 0), 0, RANKS.length - 1));
+            return next;
+          });
+          return null;
+        }
+        if (newHp <= 0) {
+          // Defeat
+          clearInterval(tickRef.current);
+          setLog((l) => [
+            `You were defeated in ${prev.gate.name}. Rest and try again.`,
+            ...l,
+          ]);
+          // defeat penalty: lose some gold and gain fatigue
+          setGold((g) => Math.max(0, g - 10));
+          setPlayer((pp) => ({ ...pp, hp: Math.max(5, Math.floor(pp.maxHp * 0.2)) }));
+          setRunning(null);
+          return null;
+        }
+
+        // Continue ticking
+        return { ...prev, hpEnemy, tick: tick + 1 };
+      });
+    }, 800);
+    return () => clearInterval(tickRef.current);
+  }, [inRun, pPower, player.stats.VIT, player.maxHp, player.mp, player.hp]);
+
+  function handleLevelGain(addExp) {
+    setPlayer((p) => {
+      let exp = p.exp + addExp;
+      let level = p.level;
+      let expNext = p.expNext;
+      let points = p.points;
+      let maxHp = p.maxHp;
+      let maxMp = p.maxMp;
+      while (exp >= expNext) {
+        exp -= expNext;
+        level += 1;
+        expNext = Math.floor(expNext * 1.35);
+        points += 5;
+        maxHp += 10;
+        maxMp += 5;
+      }
+      return { ...p, exp, level, expNext, points, maxHp, maxMp, hp: Math.max(p.hp, Math.floor(maxHp * 0.6)), mp: Math.max(p.mp, Math.floor(maxMp * 0.5)) };
+    });
+  }
+
+  function logPush(msg) {
+    setLog((l) => [msg, ...l].slice(0, 120));
+  }
+
+  function startGate(g) {
+    if (inRun) return;
+    if (daily.active && !daily.completed) {
+      // entering while daily in progress arms penalty
+      setDaily((d) => ({ ...d, penaltyArmed: true }));
+    }
+    const boss = makeBoss(g.rankIdx);
+    setRunning({ gate: g, boss, hpEnemy: boss.hp, tick: 0 });
+    logPush(`Entered ${g.name}. The air is heavy...`);
+  }
+
+  function rest() {
+    if (inRun) return;
+    const heal = Math.floor(player.maxHp * 0.4);
+    const mp = Math.floor(player.maxMp * 0.5);
+    setPlayer((p) => ({
+      ...p,
+      hp: clamp(p.hp + heal, 0, p.maxHp),
+      mp: clamp(p.mp + mp, 0, p.maxMp),
+      fatigue: clamp(p.fatigue - 20, 0, 100),
+    }));
+    logPush("You took a rest. Deus reficit — you feel renewed.");
+  }
+
+  function allocate(stat) {
+    if (player.points <= 0) return;
+    setPlayer((p) => ({
+      ...p,
+      points: p.points - 1,
+      stats: { ...p.stats, [stat]: p.stats[stat] + 1 },
+    }));
+  }
+
+  function startDaily() {
+    if (daily.active || daily.completed) return;
+    setDaily((d) => ({ ...d, active: true }));
+    logPush("Daily Quest accepted: Train, Run, Meditate. Finish it today or face the penalty.");
+  }
+
+  function progressDaily(id) {
+    if (!daily.active || daily.completed) return;
+    setDaily((d) => {
+      const tasks = d.tasks.map((t) => (t.id === id ? { ...t, have: clamp(t.have + 1, 0, t.need) } : t));
+      const done = tasks.every((t) => t.have >= t.need);
+      if (done) logPush("Daily Quest completed! +25 EXP, -10 Fatigue, +1 potion.");
+      if (done) {
+        setPlayer((p) => ({ ...p, exp: p.exp + 25, fatigue: clamp(p.fatigue - 10, 0, 100), inv: [...p.inv, { id: uid(), name: "Daily Potion", type: "potion" }] }));
+      }
+      return { ...d, tasks, completed: done };
+    });
+  }
+
+  function forfeitDaily() {
+    if (!daily.active || daily.completed) return;
+    setDaily((d) => ({ ...d, active: false }));
+    applyPenaltyZone();
+  }
+
+  function applyPenaltyZone() {
+    // In the source logic, failure triggers a Penalty Zone. We'll simulate a harsh debuff.
+    setPlayer((p) => ({ ...p, hp: Math.max(1, Math.floor(p.maxHp * 0.1))), fatigue: clamp(p.fatigue + 25, 0, 100) }));
+    logPush("Penalty Zone: You pushed boulders for hours. HP to a sliver; Fatigue up.");
+  }
+
+  function tryExtraction(bossRankIdx) {
+    const chance = calcExtractionChance(player, bossRankIdx);
+    const cost = 10;
+    if (player.mp < cost) {
+      logPush("Not enough MP to attempt extraction.");
+      return;
+    }
+    setPlayer((p) => ({ ...p, mp: Math.max(0, p.mp - cost) }));
+    if (Math.random() < chance) {
+      const pow = Math.floor(5 + player.stats.INT * 0.8 + bossRankIdx * 6 + rand(0, 8));
+      const s = { id: uid(), name: shadowName(), power: pow };
+      setPlayer((p) => ({ ...p, shadows: [...p.shadows, s] }));
+      logPush(`Shadow Extraction succeeded! ${s.name} joins you (+${pow} power).`);
+    } else {
+      logPush("Extraction failed. The shade crumbles to dust.");
+    }
+  }
+
+  function usePotion(itemId) {
+    const idx = player.inv.findIndex((i) => i.id === itemId);
+    if (idx === -1) return;
+    const item = player.inv[idx];
+    if (item.type !== "potion") return;
+    setPlayer((p) => ({
+      ...p,
+      hp: clamp(p.hp + Math.floor(p.maxHp * 0.5), 0, p.maxHp),
+      mp: clamp(p.mp + Math.floor(p.maxMp * 0.3), 0, p.maxMp),
+      inv: p.inv.filter((i) => i.id !== itemId),
+    }));
+    logPush("You used a potion. 体力回復 (tairyoku kaifuku): vitality restored.");
+  }
+
+  function useKey() {
+    if (player.keys <= 0 || inRun) return;
+    const rankIdx = clamp(rand(1, 3), 0, RANKS.length - 1);
+    const g = makeGate(rankIdx);
+    setPlayer((p) => ({ ...p, keys: p.keys - 1 }));
+    startGate({ ...g, name: `Instant Dungeon: ${g.name}` });
+  }
+
+  // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
+  useEffect(() => {
+    if (!inRun && daily.penaltyArmed) {
+      setDaily((d) => ({ ...d, penaltyArmed: false }));
+      applyPenaltyZone();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inRun]);
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-3">
+        {/* Left: Player & Actions */}
+        <section className="lg:col-span-1 space-y-3">
+          <Card>
+            <h2 className="text-xl font-bold">Hunter</h2>
+            <div className="text-sm opacity-80">Lv {player.level} — EXP {fmt(player.exp)}/{fmt(player.expNext)}</div>
+            <Bar label="HP" value={player.hp} max={player.maxHp} />
+            <Bar label="MP" value={player.mp} max={player.maxMp} />
+            <Bar label="Fatigue" value={player.fatigue} max={100} />
+            <div className="mt-2 text-sm">Power: <span className="font-semibold">{fmt(pPower)}</span> • Gold: {fmt(gold)}₲ • Keys: {player.keys}</div>
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <Btn onClick={rest} disabled={inRun}>Rest</Btn>
+              <Btn onClick={useKey} disabled={player.keys <= 0 || inRun}>Use Key</Btn>
+              <Btn onClick={startDaily} disabled={daily.active || daily.completed || inRun}>Start Daily</Btn>
+              {daily.active && !daily.completed && (
+                <Btn onClick={forfeitDaily} theme="danger">Forfeit Daily</Btn>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <h3 className="font-semibold mb-2">Stats {player.points > 0 && <span className="text-emerald-400">(+{player.points})</span>}</h3>
+            {Object.entries(player.stats).map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between py-0.5">
+                <div>{k}</div>
+                <div className="flex items-center gap-2">
+                  <div className="opacity-80">{v}</div>
+                  <Btn sm onClick={() => allocate(k)} disabled={player.points <= 0}>+</Btn>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          <Card>
+            <h3 className="font-semibold mb-2">Inventory</h3>
+            {player.inv.length === 0 && <div className="opacity-70 text-sm">Empty</div>}
+            <ul className="space-y-1">
+              {player.inv.map((it) => (
+                <li key={it.id} className="flex items-center justify-between text-sm">
+                  <span>{it.name}</span>
+                  {it.type === "potion" && (
+                    <Btn sm onClick={() => usePotion(it.id)}>Use</Btn>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card>
+            <h3 className="font-semibold mb-1">Shadows</h3>
+            {player.shadows.length === 0 && <div className="opacity-70 text-sm">None</div>}
+            <ul className="space-y-1 text-sm">
+              {player.shadows.map((s) => (
+                <li key={s.id} className="flex justify-between"><span>{s.name}</span><span>+{s.power}</span></li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+
+        {/* Middle: Dungeons & Daily */}
+        <section className="lg:col-span-2 space-y-3">
+          <Card>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Gates</h2>
+              <div className="text-sm opacity-80">Recommended power is a guideline — 冒険 (bouken): adventure!</div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+              {gates.map((g) => (
+                <div key={g.id} className="p-3 bg-zinc-900 rounded-2xl border border-zinc-800">
+                  <div className="font-semibold">{g.name}</div>
+                  <div className="text-xs opacity-80">Rank {g.rank} • Enemy Power ~ {fmt(g.power)}</div>
+                  <div className="mt-2 text-sm">Your Power: {fmt(pPower)}</div>
+                  <Btn className="mt-2 w-full" onClick={() => startGate(g)} disabled={inRun}>Enter</Btn>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-xl font-bold mb-1">Daily Quest</h2>
+            {!daily.active && !daily.completed && <div className="text-sm opacity-80">Start your Daily Quest to earn bonuses. Fail or quit and you face the Penalty Zone.</div>}
+            {daily.active && (
+              <div className="space-y-2">
+                {daily.tasks.map((t) => (
+                  <div key={t.id} className="bg-zinc-900 rounded-2xl p-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-sm">{t.name}</div>
+                      <div className="text-xs opacity-80">{t.have}/{t.need}</div>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Btn sm onClick={() => progressDaily(t.id)}>+1</Btn>
+                      <BarMini value={t.have} max={t.need} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {daily.completed && <div className="text-emerald-400 text-sm">Daily complete. よくやった (yoku yatta): well done!</div>}
+          </Card>
+
+          <Card>
+            <h2 className="text-xl font-bold">Battlefield</h2>
+            {!inRun && <div className="text-sm opacity-80">Enter a Gate to begin combat. Allocate stats and complete Daily Quests first for best odds.</div>}
+            {inRun && (
+              <div className="space-y-2">
+                <div className="font-semibold">{running.gate.name}</div>
+                <div className="text-sm opacity-80">Boss: {running.boss.name}</div>
+                <Bar label="Boss HP" value={running.hpEnemy} max={running.boss.maxHp} />
+                <div className="text-sm">Your upkeep: {fmt(shadowUpkeep(player))} MP/tick</div>
+                <div className="text-xs opacity-70">Tip: Use potions from Inventory mid-fight.</div>
+              </div>
+            )}
+          </Card>
+        </section>
+
+        {/* Right: Log */}
+        <section className="lg:col-span-1">
+          <Card>
+            <h2 className="text-xl font-bold mb-2">Log</h2>
+            <ul className="space-y-1 text-sm max-h-[60vh] overflow-auto pr-1">
+              {log.map((m, i) => (
+                <li key={i} className="opacity-90">• {m}</li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card>
+            <h3 className="font-semibold mb-1">Lore (Mechanics)</h3>
+            <ul className="text-xs opacity-80 list-disc pl-5 space-y-1">
+              <li>Gates lead to Dungeons. Clear them to gain EXP/loot.</li>
+              <li>Daily Quest must be completed or the Penalty Zone triggers.</li>
+              <li>Level up to gain Stat Points. STR/AGI raise damage; INT/ LUCK aid extraction.</li>
+              <li>Shadow Extraction after boss defeat may recruit a Shadow ally.</li>
+              <li>Fatigue reduces your total power; Rest lowers it.</li>
+              <li>Instant Dungeon Keys open bonus runs with better rewards.</li>
+            </ul>
+          </Card>
+        </section>
+      </div>
+
+      <footer className="mt-4 text-center text-xs opacity-60">“Virtus in arduis” — strength through trials.</footer>
+    </div>
+  );
+}
+
+// ---------- UI bits ----------
+function Card({ children }) {
+  return (
+    <div className="rounded-2xl bg-zinc-950/60 border border-zinc-800 p-3 shadow-xl">
+      {children}
+    </div>
+  );
+}
+
+function Btn({ children, onClick, disabled, sm, theme = "default", className = "" }) {
+  const base = "rounded-2xl px-3 py-2 text-sm font-semibold transition active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed";
+  const size = sm ? "px-2 py-1 text-xs" : "";
+  const themeCls =
+    theme === "danger"
+      ? "bg-red-600 hover:bg-red-500"
+      : "bg-emerald-600 hover:bg-emerald-500";
+  return (
+    <button className={`${base} ${size} ${themeCls} ${className}`} onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  );
+}
+
+function Bar({ label, value, max }) {
+  const pct = Math.round((value / max) * 100);
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between text-xs opacity-80">
+        <span>{label}</span>
+        <span>
+          {fmt(value)} / {fmt(max)} ({pct}%)
+        </span>
+      </div>
+      <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+        <div
+          className="h-3 bg-emerald-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function BarMini({ value, max }) {
+  const pct = Math.round((value / max) * 100);
+  return (
+    <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-emerald-500" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
