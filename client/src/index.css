@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --primary: hsl(262.1, 83.3%, 57.8%);
+  --primary-foreground: hsl(210, 20%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --ring: hsl(262.1, 83.3%, 57.8%);
+  --radius: 0.75rem;
+  
+  /* Game-specific colors */
+  --game-bg: hsl(240, 10%, 4%);
+  --game-card: hsl(240, 6%, 10%);
+  --game-border: hsl(240, 4%, 16%);
+  --game-accent: hsl(262, 83%, 58%);
+  --game-success: hsl(142, 76%, 36%);
+  --game-warning: hsl(43, 96%, 56%);
+  --game-danger: hsl(0, 84%, 60%);
+  
+  /* Stat colors */
+  --stat-str: hsl(0, 84%, 60%);
+  --stat-agi: hsl(142, 76%, 36%);
+  --stat-int: hsl(217, 91%, 60%);
+  --stat-vit: hsl(25, 95%, 53%);
+  --stat-luck: hsl(45, 93%, 47%);
+  
+  /* Progress bar colors */
+  --hp-color: hsl(0, 84%, 60%);
+  --mp-color: hsl(217, 91%, 60%);
+  --exp-color: hsl(262, 83%, 58%);
+  --fatigue-color: hsl(25, 95%, 53%);
+  
+  /* Shadow and extraction colors */
+  --shadow-color: hsl(262, 83%, 58%);
+  --extraction-color: hsl(280, 100%, 70%);
+  
+  /* Font family */
+  --font-game: 'Inter', system-ui, sans-serif;
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --primary: hsl(262.1, 83.3%, 57.8%);
+  --primary-foreground: hsl(210, 20%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --ring: hsl(262.1, 83.3%, 57.8%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-game);
+  }
+}
+
+@layer utilities {
+  .game-bg {
+    background: var(--game-bg);
+  }
+  
+  .game-card {
+    background: var(--game-card);
+    border-color: var(--game-border);
+  }
+  
+  .game-gradient {
+    background: linear-gradient(135deg, hsl(240, 10%, 3.9%) 0%, hsl(240, 6%, 10%) 35%, hsl(262, 83%, 8%) 100%);
+  }
+  
+  .stat-str { color: var(--stat-str); }
+  .stat-agi { color: var(--stat-agi); }
+  .stat-int { color: var(--stat-int); }
+  .stat-vit { color: var(--stat-vit); }
+  .stat-luck { color: var(--stat-luck); }
+  
+  .progress-hp { background: linear-gradient(90deg, var(--hp-color), hsl(0, 84%, 50%)); }
+  .progress-mp { background: linear-gradient(90deg, var(--mp-color), hsl(217, 91%, 50%)); }
+  .progress-exp { background: linear-gradient(90deg, var(--exp-color), hsl(262, 83%, 48%)); }
+  .progress-fatigue { background: linear-gradient(90deg, var(--fatigue-color), hsl(0, 84%, 60%)); }
+  
+  .glow-purple {
+    box-shadow: 0 0 20px hsl(262, 83%, 58% / 0.3);
+  }
+  
+  .glow-green {
+    box-shadow: 0 0 20px hsl(142, 76%, 36% / 0.3);
+  }
+}
+
+/* Custom animations */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px var(--game-accent), 0 0 10px var(--game-accent); }
+  100% { box-shadow: 0 0 10px var(--game-accent), 0 0 20px var(--game-accent); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(240, 3.7%, 15.9%);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(240, 5%, 64.9%);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(262, 83%, 58%);
+}
