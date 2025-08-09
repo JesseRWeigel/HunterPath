@@ -245,8 +245,16 @@ function gainExpGoldFromGate(gate: Gate) {
 function rollDrop(gate: Gate) {
   const r = Math.random();
   if (r < 0.08) return { id: uid(), name: "Instant Dungeon Key", type: "key" };
-  if (r < 0.28)
-    return { id: uid(), name: `${gate.rank}-grade Rune`, type: "rune" };
+  if (r < 0.28) {
+    // Generate specific stat runes
+    const statTypes = ["STR", "AGI", "INT", "VIT", "LUCK"];
+    const statType = statTypes[rand(0, statTypes.length - 1)];
+    return {
+      id: uid(),
+      name: `${gate.rank}-grade ${statType} Rune`,
+      type: "rune",
+    };
+  }
   if (r < 0.55)
     return { id: uid(), name: `${gate.rank}-grade Potion`, type: "potion" };
   return null;
@@ -885,6 +893,68 @@ export default function HuntersPath() {
 
     logPush(
       "You used a potion. 体力回復 (tairyoku kaifuku): vitality restored."
+    );
+  }
+
+  function useRune(itemId: string) {
+    const idx = player.inv.findIndex((i) => i.id === itemId);
+    if (idx === -1) return;
+    const item = player.inv[idx];
+    if (item.type !== "rune") return;
+
+    // Parse rune name to get rank and type
+    const runeName = item.name;
+    const rankMatch = runeName.match(/([A-Z])-grade/);
+    const typeMatch = runeName.match(/([A-Z]+)-grade/);
+
+    if (!rankMatch || !typeMatch) {
+      logPush("Invalid rune format. Cannot use this rune.");
+      return;
+    }
+
+    const rank = rankMatch[1];
+    const rankIdx = RANKS.indexOf(rank);
+    if (rankIdx === -1) {
+      logPush("Unknown rune rank. Cannot use this rune.");
+      return;
+    }
+
+    // Determine stat type from rune name
+    let statType: keyof Player["stats"] | null = null;
+    if (runeName.includes("STR")) statType = "STR";
+    else if (runeName.includes("AGI")) statType = "AGI";
+    else if (runeName.includes("INT")) statType = "INT";
+    else if (runeName.includes("VIT")) statType = "VIT";
+    else if (runeName.includes("LUCK")) statType = "LUCK";
+    else {
+      // Random stat if not specified
+      const statKeys: (keyof Player["stats"])[] = [
+        "STR",
+        "AGI",
+        "INT",
+        "VIT",
+        "LUCK",
+      ];
+      statType = statKeys[rand(0, statKeys.length - 1)];
+    }
+
+    // Calculate stat boost based on rank
+    const baseBoost = rankIdx + 1; // E=1, D=2, C=3, B=4, A=5, S=6
+    const variance = rand(-1, 1); // Small variance
+    const statBoost = Math.max(1, baseBoost + variance);
+
+    // Apply stat boost
+    setPlayer((p) => ({
+      ...p,
+      stats: {
+        ...p.stats,
+        [statType!]: p.stats[statType!] + statBoost,
+      },
+      inv: p.inv.filter((i) => i.id !== itemId),
+    }));
+
+    logPush(
+      `Used ${item.name}! +${statBoost} ${statType} permanently. 魔力強化 (maryoku kyōka): magical enhancement.`
     );
   }
 
@@ -1550,16 +1620,55 @@ export default function HuntersPath() {
                           }`}
                         ></i>
                       </div>
-                      <span className="text-zinc-300">{it.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-zinc-300">{it.name}</span>
+                        {it.type === "rune" && (
+                          <span className="text-xs text-zinc-500">
+                            {it.name.includes("STR") && "Boosts Strength"}
+                            {it.name.includes("AGI") && "Boosts Agility"}
+                            {it.name.includes("INT") && "Boosts Intelligence"}
+                            {it.name.includes("VIT") && "Boosts Vitality"}
+                            {it.name.includes("LUCK") && "Boosts Luck"}
+                            {!it.name.includes("STR") &&
+                              !it.name.includes("AGI") &&
+                              !it.name.includes("INT") &&
+                              !it.name.includes("VIT") &&
+                              !it.name.includes("LUCK") &&
+                              "Random Stat Boost"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {it.type === "potion" && (
                       <Btn sm onClick={() => usePotion(it.id)}>
                         Use
                       </Btn>
                     )}
+                    {it.type === "rune" && (
+                      <Btn sm onClick={() => useRune(it.id)}>
+                        Use
+                      </Btn>
+                    )}
                   </div>
                 ))}
               </div>
+
+              {player.inv.some((item) => item.type === "rune") && (
+                <div className="mt-4 p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg">
+                  <h4 className="text-sm font-bold text-purple-300 mb-2">
+                    <i className="fas fa-info-circle mr-1"></i>
+                    Rune Information
+                  </h4>
+                  <div className="text-xs text-purple-200 space-y-1">
+                    <div>• Runes provide permanent stat boosts when used</div>
+                    <div>• Higher rank runes (A, S) provide larger bonuses</div>
+                    <div>• Runes are consumed when used</div>
+                    <div>
+                      • STR/AGI boost damage, INT helps shadow extraction
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
           </section>
 
