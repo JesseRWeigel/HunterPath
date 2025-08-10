@@ -826,7 +826,7 @@ export default function HuntersPath() {
           const drop = rollDrop(prev.gate);
           const drops = drop ? [drop] : [];
 
-          // Show combat result screen
+          // Show combat result screen first
           setCombatResult({
             victory: true,
             gate: prev.gate,
@@ -856,6 +856,20 @@ export default function HuntersPath() {
           // Update statistics
           updateStats(true, exp, goldGain, prev.gate.rank);
           checkAchievements();
+
+          // Automatically attempt shadow extraction with visual sequence
+          const extractionChance = calcExtractionChance(
+            player,
+            prev.gate.rankIdx
+          );
+          if (Math.random() < extractionChance) {
+            // Start the visual extraction sequence
+            startShadowExtractionSequence(
+              boss.name,
+              prev.gate.rank,
+              prev.gate.power
+            );
+          }
 
           // Keep the combat UI visible - don't set running to null yet
           // Remove cleared gate and potentially refresh pool
@@ -1060,7 +1074,11 @@ export default function HuntersPath() {
   }
 
   // Shadow extraction sequence functions
-  function startShadowExtractionSequence(bossName: string, bossRank: string) {
+  function startShadowExtractionSequence(
+    bossName: string,
+    bossRank: string,
+    gatePower: number
+  ) {
     setShadowExtractionState({
       isActive: true,
       phase: "preparing",
@@ -1108,6 +1126,31 @@ export default function HuntersPath() {
         // Play success/failure sound
         if (success) {
           playSound("extraction_success");
+
+          // Create the shadow and update player state
+          const shadowExtracted = {
+            id: uid(),
+            name: shadowName(),
+            power: Math.floor(gatePower * 0.8),
+          };
+
+          setPlayer((pp) => ({
+            ...pp,
+            shadows: [...pp.shadows, shadowExtracted],
+          }));
+
+          recordShadowExtraction();
+          setLog((l) => [`Shadow extracted: ${shadowExtracted.name}!`, ...l]);
+
+          // Update combat result with the extracted shadow
+          setCombatResult((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  shadowExtracted,
+                }
+              : prev
+          );
         } else {
           playSound("extraction_failure");
         }
@@ -1274,7 +1317,11 @@ export default function HuntersPath() {
     const bossName = running?.boss.name || "Unknown Boss";
 
     // Start the visual extraction sequence
-    startShadowExtractionSequence(bossName, bossRank);
+    startShadowExtractionSequence(
+      bossName,
+      bossRank,
+      running?.gate.power || 100
+    );
 
     // Consume MP immediately
     setPlayer((p) => ({ ...p, mp: Math.max(0, p.mp - cost) }));
@@ -1413,10 +1460,6 @@ export default function HuntersPath() {
   }
 
   function dismissCombatResult() {
-    if (combatResult?.victory) {
-      // Try shadow extraction on victory
-      tryExtraction(combatResult.gate.rankIdx);
-    }
     setCombatResult(null);
     setRunning(null); // Clear the combat state
     setCombatLog([]); // Clear the combat log
@@ -2778,6 +2821,106 @@ export default function HuntersPath() {
                       )}
                     </div>
                   </div>
+
+                  {/* Combat Results Display */}
+                  {combatResult && (
+                    <div className="bg-zinc-800/50 rounded-lg p-4 mb-4 border border-zinc-600/50">
+                      <div className="text-center mb-3">
+                        <h3
+                          className={`text-lg font-bold ${
+                            combatResult.victory
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {combatResult.victory ? "🎉 Victory!" : "💀 Defeat"}
+                        </h3>
+                      </div>
+
+                      {combatResult.victory && (
+                        <div className="space-y-3">
+                          {/* Rewards */}
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="bg-green-900/30 rounded-lg p-3 border border-green-500/30">
+                              <div className="text-green-400 font-bold">
+                                +{fmt(combatResult.expGained)} EXP
+                              </div>
+                              <div className="text-green-300 text-xs">
+                                Experience Gained
+                              </div>
+                            </div>
+                            <div className="bg-yellow-900/30 rounded-lg p-3 border border-yellow-500/30">
+                              <div className="text-yellow-400 font-bold">
+                                +{fmt(combatResult.goldGained)}₲
+                              </div>
+                              <div className="text-yellow-300 text-xs">
+                                Gold Earned
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Shadow Extraction */}
+                          {combatResult.shadowExtracted ? (
+                            <div className="bg-purple-900/30 rounded-lg p-3 border border-purple-500/30">
+                              <div className="flex items-center space-x-2">
+                                <i className="fas fa-ghost text-purple-400"></i>
+                                <div>
+                                  <div className="text-purple-400 font-bold">
+                                    Shadow Extracted:{" "}
+                                    {combatResult.shadowExtracted.name}
+                                  </div>
+                                  <div className="text-purple-300 text-xs">
+                                    Power:{" "}
+                                    {fmt(combatResult.shadowExtracted.power)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-zinc-700/30 rounded-lg p-3 border border-zinc-600/30">
+                              <div className="text-zinc-400 text-sm text-center">
+                                <i className="fas fa-times mr-2"></i>
+                                No shadow extracted
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Drops */}
+                          {combatResult.drops.length > 0 && (
+                            <div className="bg-blue-900/30 rounded-lg p-3 border border-blue-500/30">
+                              <div className="text-blue-400 font-bold mb-2">
+                                Loot Found:
+                              </div>
+                              <div className="space-y-1">
+                                {combatResult.drops.map((drop, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center space-x-2 text-sm"
+                                  >
+                                    <i className="fas fa-gem text-blue-300"></i>
+                                    <span className="text-blue-300">
+                                      {drop.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {!combatResult.victory && (
+                        <div className="text-center">
+                          <div className="text-red-400 font-bold mb-2">
+                            -10₲ Penalty
+                          </div>
+                          <div className="text-zinc-400 text-sm">
+                            Rest and recover to try again
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Enhanced Quick Actions */}
                   <div className="flex items-center justify-between relative z-10">
