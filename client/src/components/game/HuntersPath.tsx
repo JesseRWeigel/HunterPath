@@ -408,8 +408,8 @@ function BarMini({
 function generateGatePool(playerLevel: number): Gate[] {
   const gates: Gate[] = [];
 
-  // Always have multiple E-rank gates available (3-5)
-  const eGateCount = rand(3, 5);
+  // Always have multiple E-rank gates available (2-4)
+  const eGateCount = rand(2, 4);
   for (let i = 0; i < eGateCount; i++) {
     gates.push(makeGate(0));
   }
@@ -424,7 +424,7 @@ function generateGatePool(playerLevel: number): Gate[] {
 
   // Add C-rank gates if player level >= 6
   if (playerLevel >= 6) {
-    const cGateCount = rand(2, 3);
+    const cGateCount = rand(2, 4);
     for (let i = 0; i < cGateCount; i++) {
       gates.push(makeGate(2));
     }
@@ -432,23 +432,41 @@ function generateGatePool(playerLevel: number): Gate[] {
 
   // Add B-rank gates if player level >= 10
   if (playerLevel >= 10) {
-    const bGateCount = rand(1, 3);
+    const bGateCount = rand(2, 4);
     for (let i = 0; i < bGateCount; i++) {
       gates.push(makeGate(3));
     }
   }
 
-  // Add A-rank gates if player level >= 15
+  // Add A-rank gates if player level >= 15 (increased count)
   if (playerLevel >= 15) {
-    const aGateCount = rand(1, 2);
+    const aGateCount = rand(2, 4); // Increased from 1-2 to 2-4
     for (let i = 0; i < aGateCount; i++) {
       gates.push(makeGate(4));
     }
   }
 
-  // Add S-rank gates if player level >= 20
-  if (playerLevel >= 20) {
-    gates.push(makeGate(5));
+  // Add S-rank gates if player level >= 18 (lowered from 20)
+  if (playerLevel >= 18) {
+    const sGateCount = rand(1, 2); // Allow 1-2 S-rank gates
+    for (let i = 0; i < sGateCount; i++) {
+      gates.push(makeGate(5));
+    }
+  }
+
+  // For very high levels, add even more high-rank gates
+  if (playerLevel >= 25) {
+    // Add extra A-rank gates
+    const extraAGateCount = rand(1, 2);
+    for (let i = 0; i < extraAGateCount; i++) {
+      gates.push(makeGate(4));
+    }
+
+    // Add extra S-rank gates
+    const extraSGateCount = rand(1, 2);
+    for (let i = 0; i < extraSGateCount; i++) {
+      gates.push(makeGate(5));
+    }
   }
 
   return gates;
@@ -541,11 +559,15 @@ export default function HuntersPath() {
     healFlash: boolean;
     criticalHit: boolean;
     screenShake: boolean;
+    levelUp: boolean;
+    statAllocation: boolean;
   }>({
     damageFlash: false,
     healFlash: false,
     criticalHit: false,
     screenShake: false,
+    levelUp: false,
+    statAllocation: false,
   });
   const [gold, setGold] = useState(50); // Start with some gold for gate refreshes
   const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
@@ -609,6 +631,24 @@ export default function HuntersPath() {
     bossRank: "",
   });
 
+  // Level-up celebration state
+  const [levelUpState, setLevelUpState] = useState({
+    isActive: false,
+    newLevel: 0,
+    statPointsGained: 0,
+    showStatAllocation: false,
+  });
+
+  // Stat progression tracking
+  const [statHistory, setStatHistory] = useState<
+    {
+      level: number;
+      stats: Player["stats"];
+      power: number;
+      timestamp: string;
+    }[]
+  >([]);
+
   // Auto-save every 30 seconds
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
@@ -632,6 +672,16 @@ export default function HuntersPath() {
 
     return () => clearInterval(autoSaveInterval);
   }, [player, gates, gold, gameTime, daily, playerStats, achievements]);
+
+  // Auto-trigger stat allocation after level-up celebration
+  useEffect(() => {
+    if (levelUpState.isActive && !levelUpState.showStatAllocation) {
+      const timer = setTimeout(() => {
+        setLevelUpState((prev) => ({ ...prev, showStatAllocation: true }));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [levelUpState.isActive, levelUpState.showStatAllocation]);
 
   // Load statistics on component mount
   useEffect(() => {
@@ -938,11 +988,13 @@ export default function HuntersPath() {
       let maxHp = p.maxHp;
       let maxMp = p.maxMp;
       let leveledUp = false;
+      let levelsGained = 0;
 
       while (exp >= expNext) {
         exp -= expNext;
         level += 1;
         leveledUp = true;
+        levelsGained += 1;
         expNext = Math.floor(expNext * 1.35);
         points += 5;
         maxHp += 10;
@@ -954,6 +1006,28 @@ export default function HuntersPath() {
 
       // If player leveled up, refresh gates to unlock new tiers
       if (leveledUp) {
+        // Record stat history before level up
+        setStatHistory((prev) => [
+          ...prev,
+          {
+            level: p.level,
+            stats: p.stats,
+            power: playerPower(p),
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+
+        // Trigger level-up celebration
+        setLevelUpState({
+          isActive: true,
+          newLevel: level,
+          statPointsGained: levelsGained * 5,
+          showStatAllocation: false,
+        });
+
+        // Trigger visual effects
+        triggerVisualEffect("levelUp");
+
         setTimeout(() => {
           setGates(generateGatePool(level));
           logPush(
@@ -1972,6 +2046,98 @@ export default function HuntersPath() {
     } as any;
   }
 
+  // Stat progression visualization component
+  function StatProgressionChart() {
+    if (statHistory.length < 2) return null;
+
+    const maxStats = {
+      STR: Math.max(...statHistory.map((h) => h.stats.STR)),
+      AGI: Math.max(...statHistory.map((h) => h.stats.AGI)),
+      INT: Math.max(...statHistory.map((h) => h.stats.INT)),
+      VIT: Math.max(...statHistory.map((h) => h.stats.VIT)),
+      LUCK: Math.max(...statHistory.map((h) => h.stats.LUCK)),
+    };
+
+    const totalMax = Math.max(...Object.values(maxStats));
+
+    return (
+      <div className="bg-zinc-800/30 rounded-lg p-4 border border-zinc-600/30">
+        <h4 className="text-lg font-bold text-zinc-100 mb-4">
+          <i className="fas fa-chart-line mr-2 text-blue-400"></i>
+          Stat Progression
+        </h4>
+
+        <div className="space-y-3">
+          {Object.entries(maxStats).map(([stat, maxValue]) => {
+            const currentValue = player.stats[stat as keyof Player["stats"]];
+            const percentage =
+              totalMax > 0 ? (currentValue / totalMax) * 100 : 0;
+
+            return (
+              <div key={stat} className="flex items-center space-x-3">
+                <div className="w-12 text-sm text-zinc-400 font-bold">
+                  {stat}
+                </div>
+                <div className="flex-1 bg-zinc-700 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                    style={{ width: `${percentage}%` }}
+                  ></div>
+                </div>
+                <div className="w-12 text-sm text-zinc-300 font-bold text-right">
+                  {currentValue}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 text-xs text-zinc-500 text-center">
+          Showing progression over {statHistory.length} recorded points
+        </div>
+      </div>
+    );
+  }
+
+  function completeLevelUp() {
+    setLevelUpState({
+      isActive: false,
+      newLevel: 0,
+      statPointsGained: 0,
+      showStatAllocation: false,
+    });
+  }
+
+  function allocateStatWithFeedback(stat: keyof Player["stats"]) {
+    if (player.points <= 0) return;
+
+    // Trigger visual feedback
+    triggerVisualEffect("statAllocation");
+
+    setPlayer((p) => ({
+      ...p,
+      points: p.points - 1,
+      stats: { ...p.stats, [stat]: p.stats[stat] + 1 },
+    }));
+
+    // Play stat allocation sound
+    playSound("rune_use"); // Reuse rune sound for stat allocation
+
+    // Record stat change
+    setStatHistory((prev) => [
+      ...prev,
+      {
+        level: player.level,
+        stats: { ...player.stats, [stat]: player.stats[stat] + 1 },
+        power: playerPower({
+          ...player,
+          stats: { ...player.stats, [stat]: player.stats[stat] + 1 },
+        }),
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  }
+
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -2351,7 +2517,9 @@ export default function HuntersPath() {
                       <span className="font-bold text-xl">{v}</span>
                       <button
                         className="w-8 h-8 bg-violet-600 hover:bg-violet-500 text-white rounded-full transition-colors disabled:opacity-40"
-                        onClick={() => allocate(k as keyof Player["stats"])}
+                        onClick={() =>
+                          allocateStatWithFeedback(k as keyof Player["stats"])
+                        }
                         disabled={player.points <= 0}
                       >
                         <i className="fas fa-plus text-xs"></i>
@@ -2361,6 +2529,9 @@ export default function HuntersPath() {
                 ))}
               </div>
             </Card>
+
+            {/* Stat Progression Chart */}
+            <StatProgressionChart />
 
             <Card>
               <div className="flex items-center space-x-2 mb-4">
@@ -3493,6 +3664,124 @@ export default function HuntersPath() {
                   Last updated:{" "}
                   {new Date(playerStats.lastUpdated).toLocaleString()}
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Level-Up Celebration Modal */}
+        {levelUpState.isActive && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* Background Effects */}
+              <div className="absolute inset-0">
+                {/* Animated particles */}
+                <div className="absolute top-1/4 left-1/4 w-3 h-3 bg-yellow-400 rounded-full animate-bounce opacity-80"></div>
+                <div
+                  className="absolute top-1/3 right-1/3 w-2 h-2 bg-orange-400 rounded-full animate-bounce opacity-60"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
+                <div
+                  className="absolute bottom-1/4 left-1/3 w-2.5 h-2.5 bg-red-400 rounded-full animate-bounce opacity-70"
+                  style={{ animationDelay: "0.4s" }}
+                ></div>
+                <div
+                  className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce opacity-50"
+                  style={{ animationDelay: "0.6s" }}
+                ></div>
+                <div
+                  className="absolute top-1/2 left-1/2 w-4 h-4 bg-purple-400 rounded-full animate-bounce opacity-90"
+                  style={{ animationDelay: "0.8s" }}
+                ></div>
+
+                {/* Ripple effects */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 border-4 border-yellow-500/40 rounded-full animate-pulse"></div>
+                <div
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-2 border-orange-400/30 rounded-full animate-pulse"
+                  style={{ animationDelay: "0.5s" }}
+                ></div>
+              </div>
+
+              {/* Main Content */}
+              <div className="relative z-10 text-center max-w-2xl mx-4">
+                {/* Celebration Background */}
+                <div className="mb-8 p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
+                  {/* Level Icon */}
+                  <div className="w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-2xl">
+                    <i className="fas fa-star text-6xl text-white animate-spin"></i>
+                  </div>
+
+                  {/* Level Up Text */}
+                  <h2 className="text-5xl font-bold mb-4 text-yellow-300 animate-celebration-bounce">
+                    LEVEL UP!
+                  </h2>
+
+                  <div className="text-3xl font-bold text-orange-300 mb-4">
+                    Level {levelUpState.newLevel}
+                  </div>
+
+                  <div className="text-xl text-yellow-200 mb-6">
+                    +{levelUpState.statPointsGained} Stat Points Available!
+                  </div>
+
+                  {/* Stat Allocation Section */}
+                  {levelUpState.showStatAllocation && (
+                    <div className="mt-8 p-6 bg-zinc-800/50 rounded-lg border border-yellow-500/30">
+                      <h3 className="text-xl font-bold text-yellow-300 mb-4">
+                        Allocate Your Stat Points
+                      </h3>
+
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                        {Object.entries(player.stats).map(([stat, value]) => (
+                          <div key={stat} className="text-center">
+                            <div className="text-sm text-zinc-400 mb-1">
+                              {stat}
+                            </div>
+                            <div className="text-lg font-bold text-white mb-2">
+                              {value}
+                            </div>
+                            <button
+                              onClick={() =>
+                                allocateStatWithFeedback(
+                                  stat as keyof Player["stats"]
+                                )
+                              }
+                              disabled={player.points <= 0}
+                              className="w-8 h-8 bg-yellow-600 hover:bg-yellow-500 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-full transition-colors font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="text-center">
+                        <div className="text-sm text-zinc-400 mb-2">
+                          Points Remaining:{" "}
+                          <span className="text-yellow-400 font-bold">
+                            {player.points}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={completeLevelUp}
+                          className="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg font-bold transition-colors"
+                        >
+                          Continue Adventure
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Auto-progress to stat allocation */}
+                  {!levelUpState.showStatAllocation && (
+                    <div className="text-center">
+                      <div className="text-yellow-200 text-lg animate-pulse">
+                        Preparing stat allocation...
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
