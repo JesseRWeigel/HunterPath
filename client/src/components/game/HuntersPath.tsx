@@ -138,6 +138,24 @@ interface CombatResult {
   combatLog: string[];
 }
 
+// Simple statistics interfaces for Phase 1
+interface PlayerStatistics {
+  totalGatesCompleted: number;
+  totalGatesFailed: number;
+  totalExpGained: number;
+  totalGoldGained: number;
+  totalShadowsExtracted: number;
+  highestGateRank: string;
+  lastUpdated: string;
+}
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  unlockedAt: string;
+}
+
 function gatePowerForRank(rankIdx: number) {
   // More balanced scaling - lower initial difficulty
   return Math.pow(1.8, rankIdx) * 30 + rankIdx * 15;
@@ -535,6 +553,20 @@ export default function HuntersPath() {
     completed: false,
     penaltyArmed: false,
   });
+
+  // Simple statistics state for Phase 1
+  const [playerStats, setPlayerStats] = useState<PlayerStatistics>({
+    totalGatesCompleted: 0,
+    totalGatesFailed: 0,
+    totalExpGained: 0,
+    totalGoldGained: 0,
+    totalShadowsExtracted: 0,
+    highestGateRank: "E",
+    lastUpdated: new Date().toISOString(),
+  });
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [showStats, setShowStats] = useState(false);
+
   const tickRef = useRef<NodeJS.Timeout | null>(null);
   const timeRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -553,10 +585,36 @@ export default function HuntersPath() {
         daily,
       };
       localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
+
+      // Also save statistics
+      const statsData = {
+        playerStats,
+        achievements,
+        lastSaved: new Date().toISOString(),
+      };
+      localStorage.setItem("hunters-path-stats", JSON.stringify(statsData));
     }, 30000);
 
     return () => clearInterval(autoSaveInterval);
-  }, [player, gates, gold, gameTime, daily]);
+  }, [player, gates, gold, gameTime, daily, playerStats, achievements]);
+
+  // Load statistics on component mount
+  useEffect(() => {
+    try {
+      const savedStats = localStorage.getItem("hunters-path-stats");
+      if (savedStats) {
+        const stats = JSON.parse(savedStats);
+        if (stats.playerStats) {
+          setPlayerStats(stats.playerStats);
+        }
+        if (stats.achievements) {
+          setAchievements(stats.achievements);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load statistics:", error);
+    }
+  }, []);
 
   // Load game on startup
   useEffect(() => {
@@ -746,6 +804,10 @@ export default function HuntersPath() {
             setLog((l) => [`Found: ${drop.name}`, ...l]);
           }
 
+          // Update statistics
+          updateStats(true, exp, goldGain, prev.gate.rank);
+          checkAchievements();
+
           // Keep the combat UI visible - don't set running to null yet
           // Remove cleared gate and potentially refresh pool
           setGates((gs) => {
@@ -785,6 +847,10 @@ export default function HuntersPath() {
             ...pp,
             hp: Math.max(5, Math.floor(pp.maxHp * 0.2)),
           }));
+
+          // Update statistics
+          updateStats(false, 0, -10, prev.gate.rank);
+
           // Keep the combat UI visible - don't set running to null yet
           return null;
         }
@@ -846,6 +912,99 @@ export default function HuntersPath() {
 
   function logPush(msg: string) {
     setLog((l) => [msg, ...l].slice(0, 120));
+  }
+
+  // Simple statistics tracking functions
+  function updateStats(
+    victory: boolean,
+    expGained: number,
+    goldGained: number,
+    gateRank: string
+  ) {
+    setPlayerStats((stats) => {
+      const newStats = { ...stats };
+
+      if (victory) {
+        newStats.totalGatesCompleted += 1;
+      } else {
+        newStats.totalGatesFailed += 1;
+      }
+
+      newStats.totalExpGained += expGained;
+      newStats.totalGoldGained += goldGained;
+
+      // Update highest gate rank
+      const rankOrder = ["E", "D", "C", "B", "A", "S"];
+      const currentRankIdx = rankOrder.indexOf(stats.highestGateRank);
+      const newRankIdx = rankOrder.indexOf(gateRank);
+      if (newRankIdx > currentRankIdx) {
+        newStats.highestGateRank = gateRank;
+      }
+
+      newStats.lastUpdated = new Date().toISOString();
+      return newStats;
+    });
+  }
+
+  function recordShadowExtraction() {
+    setPlayerStats((stats) => ({
+      ...stats,
+      totalShadowsExtracted: stats.totalShadowsExtracted + 1,
+      lastUpdated: new Date().toISOString(),
+    }));
+  }
+
+  function checkAchievements() {
+    const newAchievements: Achievement[] = [];
+
+    // First victory achievement
+    if (
+      playerStats.totalGatesCompleted === 1 &&
+      !achievements.some((a) => a.name === "First Blood")
+    ) {
+      newAchievements.push({
+        id: uid(),
+        name: "First Blood",
+        description: "Win your first gate battle",
+        unlockedAt: new Date().toISOString(),
+      });
+    }
+
+    // Gate master achievement
+    if (
+      playerStats.totalGatesCompleted === 10 &&
+      !achievements.some((a) => a.name === "Gate Master")
+    ) {
+      newAchievements.push({
+        id: uid(),
+        name: "Gate Master",
+        description: "Complete 10 gates",
+        unlockedAt: new Date().toISOString(),
+      });
+    }
+
+    // Shadow caller achievement
+    if (
+      playerStats.totalShadowsExtracted === 1 &&
+      !achievements.some((a) => a.name === "Shadow Caller")
+    ) {
+      newAchievements.push({
+        id: uid(),
+        name: "Shadow Caller",
+        description: "Extract your first shadow",
+        unlockedAt: new Date().toISOString(),
+      });
+    }
+
+    // Add new achievements
+    if (newAchievements.length > 0) {
+      setAchievements((current) => [...current, ...newAchievements]);
+
+      // Show achievement notifications
+      newAchievements.forEach((achievement) => {
+        logPush(`🏆 Achievement Unlocked: ${achievement.name}!`);
+      });
+    }
   }
 
   function startGate(g: Gate) {
@@ -958,6 +1117,10 @@ export default function HuntersPath() {
       logPush(
         `Shadow Extraction succeeded! ${s.name} joins you (+${pow} power).`
       );
+
+      // Update statistics
+      recordShadowExtraction();
+      checkAchievements();
     } else {
       logPush("Extraction failed. The shade crumbles to dust.");
     }
@@ -1308,6 +1471,14 @@ export default function HuntersPath() {
                     <span className="font-bold">{player.keys}</span>
                     <span className="text-zinc-400 text-sm">Keys</span>
                   </div>
+                  <Btn
+                    onClick={() => setShowStats(!showStats)}
+                    theme="default"
+                    sm
+                  >
+                    <i className="fas fa-chart-bar mr-1"></i>
+                    Stats
+                  </Btn>
                   <Btn onClick={resetGame} theme="danger" sm>
                     <i className="fas fa-trash mr-1"></i>
                     Reset
@@ -2358,6 +2529,147 @@ export default function HuntersPath() {
             </Card>
           </section>
         </div>
+
+        {/* Statistics Modal */}
+        {showStats && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-zinc-100">
+                  <i className="fas fa-chart-bar mr-2 text-purple-400"></i>
+                  Hunter Statistics
+                </h2>
+                <button
+                  onClick={() => setShowStats(false)}
+                  className="text-zinc-400 hover:text-white"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Combat Statistics */}
+                <Card>
+                  <h3 className="text-lg font-bold text-zinc-100 mb-4">
+                    <i className="fas fa-sword mr-2 text-red-400"></i>
+                    Combat Stats
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Gates Completed:</span>
+                      <span className="text-green-400 font-bold">
+                        {playerStats.totalGatesCompleted}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Gates Failed:</span>
+                      <span className="text-red-400 font-bold">
+                        {playerStats.totalGatesFailed}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Success Rate:</span>
+                      <span className="text-blue-400 font-bold">
+                        {playerStats.totalGatesCompleted +
+                          playerStats.totalGatesFailed >
+                        0
+                          ? Math.round(
+                              (playerStats.totalGatesCompleted /
+                                (playerStats.totalGatesCompleted +
+                                  playerStats.totalGatesFailed)) *
+                                100
+                            )
+                          : 0}
+                        %
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Highest Rank:</span>
+                      <span className="text-yellow-400 font-bold">
+                        {playerStats.highestGateRank}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Progress Statistics */}
+                <Card>
+                  <h3 className="text-lg font-bold text-zinc-100 mb-4">
+                    <i className="fas fa-trophy mr-2 text-yellow-400"></i>
+                    Progress Stats
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Total EXP Gained:</span>
+                      <span className="text-green-400 font-bold">
+                        {fmt(playerStats.totalExpGained)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Total Gold Gained:</span>
+                      <span className="text-yellow-400 font-bold">
+                        {fmt(playerStats.totalGoldGained)}₲
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Shadows Extracted:</span>
+                      <span className="text-purple-400 font-bold">
+                        {playerStats.totalShadowsExtracted}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">Current Level:</span>
+                      <span className="text-blue-400 font-bold">
+                        {player.level}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Achievements */}
+              {achievements.length > 0 && (
+                <Card className="mt-6">
+                  <h3 className="text-lg font-bold text-zinc-100 mb-4">
+                    <i className="fas fa-medal mr-2 text-yellow-400"></i>
+                    Achievements ({achievements.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {achievements.map((achievement) => (
+                      <div
+                        key={achievement.id}
+                        className="bg-zinc-800/50 border border-yellow-500/30 rounded-lg p-3"
+                      >
+                        <div className="flex items-center space-x-2 mb-1">
+                          <i className="fas fa-trophy text-yellow-400"></i>
+                          <span className="font-bold text-yellow-300">
+                            {achievement.name}
+                          </span>
+                        </div>
+                        <p className="text-sm text-zinc-400">
+                          {achievement.description}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Unlocked:{" "}
+                          {new Date(
+                            achievement.unlockedAt
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              <div className="mt-6 text-center">
+                <p className="text-xs text-zinc-500">
+                  Last updated:{" "}
+                  {new Date(playerStats.lastUpdated).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <footer className="mt-8">
           <Card>
