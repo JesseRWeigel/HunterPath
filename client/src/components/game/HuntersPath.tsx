@@ -560,6 +560,20 @@ export default function HuntersPath() {
     penaltyArmed: false,
   });
 
+  // Sound management state
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [volume, setVolume] = useState(0.7);
+  const [currentMusic, setCurrentMusic] = useState<string | null>(null);
+
+  // Audio refs for sound management
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const musicRef = useRef<HTMLAudioElement | null>(null);
+
+  // Web Audio API for fallback sounds
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioInitializedRef = useRef(false);
+
   // Simple statistics state for Phase 1
   const [playerStats, setPlayerStats] = useState<PlayerStatistics>({
     totalGatesCompleted: 0,
@@ -636,6 +650,12 @@ export default function HuntersPath() {
       console.error("Failed to load statistics:", error);
     }
   }, []);
+
+  // Start ambient music on mount
+  useEffect(() => {
+    // Don't auto-start music due to autoplay policies
+    // Music will start on first user interaction
+  }, [musicEnabled]);
 
   // Load game on startup
   useEffect(() => {
@@ -741,15 +761,20 @@ export default function HuntersPath() {
         const oldHp = player.hp;
         const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
 
-        // Trigger visual effects
+        // Trigger visual effects and sounds
         if (dmgPlayer > 0) {
           triggerVisualEffect("screenShake");
+          playSound("attack");
           if (dmgPlayer > pPower * 1.5) {
             triggerVisualEffect("criticalHit");
+            playSound("critical");
           }
         }
         if (dmgBoss > 0) {
           triggerVisualEffect("damageFlash");
+          playSound("damage");
+        } else {
+          playSound("block");
         }
 
         // MP upkeep
@@ -794,6 +819,9 @@ export default function HuntersPath() {
         if (hpEnemy <= 0) {
           // Victory
           clearInterval(tickRef.current!);
+          playSound("victory");
+          playMusic("victory_music", false);
+
           const { exp, gold: goldGain } = gainExpGoldFromGate(prev.gate);
           const drop = rollDrop(prev.gate);
           const drops = drop ? [drop] : [];
@@ -846,6 +874,8 @@ export default function HuntersPath() {
         if (newHp <= 0) {
           // Defeat
           clearInterval(tickRef.current!);
+          playSound("defeat");
+          playMusic("defeat_music", false);
 
           // Show combat result screen
           setCombatResult({
@@ -905,6 +935,7 @@ export default function HuntersPath() {
         maxMp += 5;
 
         logPush(`Level Up! Welcome to level ${level}. +5 stat points!`);
+        playSound("level_up");
       }
 
       // If player leveled up, refresh gates to unlock new tiers
@@ -1038,6 +1069,9 @@ export default function HuntersPath() {
       bossRank,
     });
 
+    // Play extraction start sound
+    playSound("extraction_start");
+
     // Phase 1: Preparing (2 seconds)
     setTimeout(() => {
       setShadowExtractionState((prev) => ({
@@ -1045,6 +1079,9 @@ export default function HuntersPath() {
         phase: "extracting",
         progress: 0,
       }));
+
+      // Play extraction loop sound
+      playSound("extraction_loop");
 
       // Phase 2: Extracting (3 seconds with progress animation)
       const extractionInterval = setInterval(() => {
@@ -1067,6 +1104,13 @@ export default function HuntersPath() {
           phase: success ? "success" : "failure",
           progress: 100,
         }));
+
+        // Play success/failure sound
+        if (success) {
+          playSound("extraction_success");
+        } else {
+          playSound("extraction_failure");
+        }
 
         // End sequence after 2 seconds
         setTimeout(() => {
@@ -1122,6 +1166,11 @@ export default function HuntersPath() {
       setDaily((d) => ({ ...d, penaltyArmed: true }));
     }
 
+    // Initialize audio on first gate entry
+    if (!audioInitializedRef.current) {
+      initializeAudio();
+    }
+
     // Clear any existing combat result
     setCombatResult(null);
 
@@ -1137,6 +1186,8 @@ export default function HuntersPath() {
     ]);
 
     logPush(`Entered ${g.name}. The air is heavy...`);
+    playSound("gate_enter");
+    playMusic("combat_music");
   }
 
   function rest() {
@@ -1150,6 +1201,8 @@ export default function HuntersPath() {
       fatigue: clamp(p.fatigue - 20, 0, 100),
     }));
     logPush("You took a rest. Deus reficit — you feel renewed.");
+    playSound("rest");
+    playMusic("ambient_music");
   }
 
   function allocate(stat: keyof Player["stats"]) {
@@ -1271,6 +1324,7 @@ export default function HuntersPath() {
 
     // Trigger heal visual effect
     triggerVisualEffect("healFlash");
+    playSound("heal");
 
     // Add combat log entry if in combat
     if (inRun && running) {
@@ -1278,7 +1332,7 @@ export default function HuntersPath() {
       const mpGain = Math.floor(player.maxMp * 0.3);
       setCombatLog((log) => [
         ...log.slice(-7),
-        `Hunter uses a potion! +${hpGain} HP, +${mpGain} MP ��`,
+        `Hunter uses a potion! +${hpGain} HP, +${mpGain} MP`,
       ]);
     }
 
@@ -1347,6 +1401,7 @@ export default function HuntersPath() {
     logPush(
       `Used ${item.name}! +${statBoost} ${statType} permanently. 魔力強化 (maryoku kyōka): magical enhancement.`
     );
+    playSound("rune_use");
   }
 
   function useKey() {
@@ -1565,6 +1620,315 @@ export default function HuntersPath() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inRun]);
 
+  // Sound management functions
+  function playSound(soundName: string, volumeOverride?: number) {
+    if (!soundEnabled) return;
+
+    try {
+      const audio = audioRefs.current[soundName];
+      if (audio) {
+        audio.volume = volumeOverride !== undefined ? volumeOverride : volume;
+        audio.currentTime = 0;
+
+        // Check if the audio file is valid by testing its duration
+        if (audio.duration && audio.duration > 0) {
+          audio.play().catch(() => {
+            // Fallback to generated sounds if audio file fails
+            playFallbackSound(soundName);
+          });
+        } else {
+          // Audio file is invalid (like our placeholder), use fallback
+          playFallbackSound(soundName);
+        }
+      } else {
+        // No audio file available, use fallback
+        playFallbackSound(soundName);
+      }
+    } catch (error) {
+      // Fallback to generated sounds on any error
+      playFallbackSound(soundName);
+    }
+  }
+
+  function playMusic(musicName: string, loop: boolean = true) {
+    if (!musicEnabled || currentMusic === musicName) return;
+
+    try {
+      // Stop current music
+      if (musicRef.current) {
+        musicRef.current.pause();
+        musicRef.current.currentTime = 0;
+      }
+
+      // Start new music
+      const audio = audioRefs.current[musicName];
+      if (audio) {
+        audio.volume = volume * 0.5; // Music at half volume
+        audio.loop = loop;
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          // Fallback to generated music if audio file fails
+          if (musicName === "ambient_music") {
+            startAmbientMusic();
+          }
+        });
+        musicRef.current = audio;
+        setCurrentMusic(musicName);
+      } else {
+        // No music file available, use fallback
+        if (musicName === "ambient_music") {
+          startAmbientMusic();
+          setCurrentMusic(musicName);
+        }
+      }
+    } catch (error) {
+      // Fallback to generated music on any error
+      if (musicName === "ambient_music") {
+        startAmbientMusic();
+        setCurrentMusic(musicName);
+      }
+    }
+  }
+
+  function stopMusic() {
+    if (musicRef.current) {
+      musicRef.current.pause();
+      musicRef.current.currentTime = 0;
+      musicRef.current = null;
+      setCurrentMusic(null);
+    }
+  }
+
+  function updateVolume(newVolume: number) {
+    setVolume(newVolume);
+
+    // Update all audio elements
+    Object.values(audioRefs.current).forEach((audio) => {
+      if (audio === musicRef.current) {
+        audio.volume = newVolume * 0.5; // Music at half volume
+      } else {
+        audio.volume = newVolume;
+      }
+    });
+  }
+
+  function toggleSound() {
+    setSoundEnabled(!soundEnabled);
+    // Initialize audio on first sound toggle
+    if (!audioInitializedRef.current) {
+      initializeAudio();
+    }
+  }
+
+  function toggleMusic() {
+    setMusicEnabled((prevMusicEnabled) => {
+      const newMusicEnabled = !prevMusicEnabled;
+
+      // Initialize audio on first music toggle
+      if (!audioInitializedRef.current) {
+        initializeAudio();
+      }
+
+      if (newMusicEnabled) {
+        // Music is being enabled
+        if (currentMusic) {
+          playMusic(currentMusic);
+        } else {
+          // Start ambient music if no current music
+          playMusic("ambient_music");
+        }
+      } else {
+        // Music is being disabled
+        stopMusic();
+      }
+
+      return newMusicEnabled;
+    });
+  }
+
+  // Web Audio API sound generation functions
+  function createAudioContext() {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+    }
+
+    // Resume audio context if it's suspended (required for autoplay policy)
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume();
+    }
+
+    return audioContextRef.current;
+  }
+
+  function initializeAudio() {
+    if (audioInitializedRef.current) return;
+
+    try {
+      const audioContext = createAudioContext();
+      // Resume the context to enable audio
+      if (audioContext.state === "suspended") {
+        audioContext.resume().then(() => {
+          audioInitializedRef.current = true;
+          console.log("Audio context initialized successfully");
+        });
+      } else {
+        audioInitializedRef.current = true;
+      }
+    } catch (error) {
+      console.error("Failed to initialize audio context:", error);
+    }
+  }
+
+  function generateSound(
+    frequency: number,
+    duration: number,
+    type: OscillatorType = "sine",
+    volume: number = 0.3
+  ) {
+    if (!soundEnabled) return;
+
+    // Initialize audio context on first sound
+    if (!audioInitializedRef.current) {
+      initializeAudio();
+    }
+
+    try {
+      const audioContext = createAudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      oscillator.type = type;
+
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(
+        volume,
+        audioContext.currentTime + 0.01
+      );
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + duration
+      );
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (error) {
+      // Silently handle audio errors
+    }
+  }
+
+  function playFallbackSound(soundName: string) {
+    if (!soundEnabled) return;
+
+    switch (soundName) {
+      case "attack":
+        generateSound(800, 0.1, "square", 0.2);
+        break;
+      case "damage":
+        generateSound(200, 0.3, "sawtooth", 0.3);
+        break;
+      case "critical":
+        generateSound(1200, 0.2, "square", 0.4);
+        setTimeout(() => generateSound(800, 0.2, "square", 0.3), 100);
+        break;
+      case "block":
+        generateSound(400, 0.15, "sine", 0.2);
+        break;
+      case "victory":
+        generateSound(523, 0.2, "sine", 0.3); // C
+        setTimeout(() => generateSound(659, 0.2, "sine", 0.3), 200); // E
+        setTimeout(() => generateSound(784, 0.3, "sine", 0.3), 400); // G
+        break;
+      case "defeat":
+        generateSound(200, 0.5, "sawtooth", 0.4);
+        setTimeout(() => generateSound(150, 0.5, "sawtooth", 0.4), 500);
+        break;
+      case "heal":
+        generateSound(600, 0.2, "sine", 0.2);
+        setTimeout(() => generateSound(800, 0.2, "sine", 0.2), 200);
+        break;
+      case "rune_use":
+        generateSound(1000, 0.3, "sine", 0.3);
+        setTimeout(() => generateSound(1200, 0.2, "sine", 0.2), 300);
+        break;
+      case "level_up":
+        generateSound(523, 0.15, "sine", 0.3); // C
+        setTimeout(() => generateSound(659, 0.15, "sine", 0.3), 150); // E
+        setTimeout(() => generateSound(784, 0.15, "sine", 0.3), 300); // G
+        setTimeout(() => generateSound(1047, 0.3, "sine", 0.3), 450); // C high
+        break;
+      case "rest":
+        generateSound(300, 0.4, "sine", 0.2);
+        setTimeout(() => generateSound(400, 0.3, "sine", 0.2), 400);
+        break;
+      case "gate_enter":
+        generateSound(150, 0.3, "sawtooth", 0.3);
+        setTimeout(() => generateSound(200, 0.3, "sawtooth", 0.3), 300);
+        break;
+      case "extraction_start":
+        generateSound(400, 0.2, "sine", 0.2);
+        setTimeout(() => generateSound(600, 0.2, "sine", 0.2), 200);
+        break;
+      case "extraction_loop":
+        generateSound(800, 0.1, "sine", 0.1);
+        break;
+      case "extraction_success":
+        generateSound(523, 0.2, "sine", 0.3); // C
+        setTimeout(() => generateSound(659, 0.2, "sine", 0.3), 200); // E
+        setTimeout(() => generateSound(784, 0.2, "sine", 0.3), 400); // G
+        setTimeout(() => generateSound(1047, 0.4, "sine", 0.3), 600); // C high
+        break;
+      case "extraction_failure":
+        generateSound(200, 0.4, "sawtooth", 0.3);
+        setTimeout(() => generateSound(150, 0.4, "sawtooth", 0.3), 400);
+        break;
+      default:
+        generateSound(500, 0.1, "sine", 0.2);
+    }
+  }
+
+  // Simple ambient music generator
+  function startAmbientMusic() {
+    if (!musicEnabled) return;
+
+    // Initialize audio context on first music
+    if (!audioInitializedRef.current) {
+      initializeAudio();
+    }
+
+    const audioContext = createAudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Create a gentle ambient drone
+    oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
+    oscillator.type = "sine";
+
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(
+      volume * 0.1,
+      audioContext.currentTime + 2
+    ); // Very quiet
+
+    oscillator.start(audioContext.currentTime);
+
+    // Store reference to stop later
+    musicRef.current = {
+      pause: () => {
+        oscillator.stop();
+        gainNode.disconnect();
+      },
+      currentTime: 0,
+    } as any;
+  }
+
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -1610,6 +1974,44 @@ export default function HuntersPath() {
                     <i className="fas fa-trash mr-1"></i>
                     Reset
                   </Btn>
+                  <div className="flex items-center space-x-2 bg-zinc-800 px-3 py-1 rounded-lg">
+                    <button
+                      onClick={toggleSound}
+                      className={`text-sm ${
+                        soundEnabled ? "text-green-400" : "text-red-400"
+                      }`}
+                      title={soundEnabled ? "Sound On" : "Sound Off"}
+                    >
+                      <i
+                        className={`fas ${
+                          soundEnabled ? "fa-volume-up" : "fa-volume-mute"
+                        }`}
+                      ></i>
+                    </button>
+                    <button
+                      onClick={toggleMusic}
+                      className={`text-sm ${
+                        musicEnabled ? "text-blue-400" : "text-red-400"
+                      }`}
+                      title={musicEnabled ? "Music On" : "Music Off"}
+                    >
+                      <i
+                        className={`fas ${
+                          musicEnabled ? "fa-music" : "fa-music-slash"
+                        }`}
+                      ></i>
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={volume}
+                      onChange={(e) => updateVolume(parseFloat(e.target.value))}
+                      className="w-16 h-1 bg-zinc-600 rounded-lg appearance-none cursor-pointer"
+                      title={`Volume: ${Math.round(volume * 100)}%`}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -2973,6 +3375,169 @@ export default function HuntersPath() {
             </div>
           </Card>
         </footer>
+      </div>
+
+      {/* Audio Elements */}
+      <div style={{ display: "none" }}>
+        {/* Combat Sounds */}
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.attack = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/attack.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.damage = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/damage.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.critical = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/critical.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.block = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/block.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.victory = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/victory.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.defeat = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/defeat.mp3" type="audio/mpeg" />
+        </audio>
+
+        {/* UI Sounds */}
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.heal = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/heal.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.rune_use = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/rune_use.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.level_up = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/level_up.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.rest = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/rest.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.gate_enter = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/gate_enter.mp3" type="audio/mpeg" />
+        </audio>
+
+        {/* Shadow Extraction Sounds */}
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.extraction_start = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/extraction_start.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.extraction_loop = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/extraction_loop.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.extraction_success = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/extraction_success.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.extraction_failure = el;
+          }}
+          preload="auto"
+        >
+          <source src="/sounds/extraction_failure.mp3" type="audio/mpeg" />
+        </audio>
+
+        {/* Music Tracks */}
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.ambient_music = el;
+          }}
+          preload="auto"
+        >
+          <source src="/music/ambient.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.combat_music = el;
+          }}
+          preload="auto"
+        >
+          <source src="/music/combat.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.victory_music = el;
+          }}
+          preload="auto"
+        >
+          <source src="/music/victory.mp3" type="audio/mpeg" />
+        </audio>
+        <audio
+          ref={(el) => {
+            if (el) audioRefs.current.defeat_music = el;
+          }}
+          preload="auto"
+        >
+          <source src="/music/defeat.mp3" type="audio/mpeg" />
+        </audio>
       </div>
     </div>
   );
