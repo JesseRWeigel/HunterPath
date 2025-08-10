@@ -249,11 +249,17 @@ function shadowUpkeep(p: Player) {
 }
 
 function calcExtractionChance(p: Player, bossRankIdx: number) {
-  // Inspired by the series: INT & LUCK raise success, higher ranks are harder
+  // Improved extraction chance - more accessible and fun
   const { INT, LUCK } = p.stats;
-  const base = 0.12 + INT * 0.004 + LUCK * 0.005; // 12% base + stats influence
-  const rankPenalty = 0.05 * bossRankIdx; // tougher bosses penalize
-  return clamp(base - rankPenalty, 0.02, 0.65); // 2%–65%
+
+  // Higher base chance for better gameplay
+  const base = 0.25 + INT * 0.008 + LUCK * 0.01; // 25% base + better stat scaling
+
+  // Reduced rank penalty - higher ranks are still harder but not impossible
+  const rankPenalty = 0.03 * bossRankIdx; // 3% per rank instead of 5%
+
+  // Higher minimum chance for better player experience
+  return clamp(base - rankPenalty, 0.08, 0.85); // 8%–85% instead of 2%–65%
 }
 
 function gainExpGoldFromGate(gate: Gate) {
@@ -573,6 +579,21 @@ export default function HuntersPath() {
   const pPower = useMemo(() => playerPower(player), [player]);
 
   const inRun = Boolean(running);
+
+  // Shadow extraction sequence state
+  const [shadowExtractionState, setShadowExtractionState] = useState<{
+    isActive: boolean;
+    phase: "preparing" | "extracting" | "success" | "failure" | null;
+    progress: number;
+    bossName: string;
+    bossRank: string;
+  }>({
+    isActive: false,
+    phase: null,
+    progress: 0,
+    bossName: "",
+    bossRank: "",
+  });
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -1007,6 +1028,93 @@ export default function HuntersPath() {
     }
   }
 
+  // Shadow extraction sequence functions
+  function startShadowExtractionSequence(bossName: string, bossRank: string) {
+    setShadowExtractionState({
+      isActive: true,
+      phase: "preparing",
+      progress: 0,
+      bossName,
+      bossRank,
+    });
+
+    // Phase 1: Preparing (2 seconds)
+    setTimeout(() => {
+      setShadowExtractionState((prev) => ({
+        ...prev,
+        phase: "extracting",
+        progress: 0,
+      }));
+
+      // Phase 2: Extracting (3 seconds with progress animation)
+      const extractionInterval = setInterval(() => {
+        setShadowExtractionState((prev) => {
+          if (prev.progress >= 100) {
+            clearInterval(extractionInterval);
+            return prev;
+          }
+          return { ...prev, progress: prev.progress + 2 };
+        });
+      }, 60); // Update every 60ms for smooth animation
+
+      // After 3 seconds, determine success/failure
+      setTimeout(() => {
+        const chance = calcExtractionChance(player, RANKS.indexOf(bossRank));
+        const success = Math.random() < chance;
+
+        setShadowExtractionState((prev) => ({
+          ...prev,
+          phase: success ? "success" : "failure",
+          progress: 100,
+        }));
+
+        // End sequence after 2 seconds
+        setTimeout(() => {
+          setShadowExtractionState({
+            isActive: false,
+            phase: null,
+            progress: 0,
+            bossName: "",
+            bossRank: "",
+          });
+        }, 2000);
+      }, 3000);
+    }, 2000);
+  }
+
+  function getExtractionSequenceText() {
+    const { phase, bossName, progress } = shadowExtractionState;
+
+    switch (phase) {
+      case "preparing":
+        return {
+          title: "Shadow Extraction Initiated",
+          subtitle: `Preparing to extract shadow from ${bossName}...`,
+          description: "Gathering magical energy and focusing your will...",
+        };
+      case "extracting":
+        return {
+          title: "Extracting Shadow",
+          subtitle: `${progress}% Complete`,
+          description: "The shadow essence is being drawn forth...",
+        };
+      case "success":
+        return {
+          title: "Extraction Successful!",
+          subtitle: `${bossName}'s shadow joins you!`,
+          description: "A new shadow ally has been bound to your will.",
+        };
+      case "failure":
+        return {
+          title: "Extraction Failed",
+          subtitle: "The shadow crumbles to dust...",
+          description: "The essence was too weak or your focus wavered.",
+        };
+      default:
+        return { title: "", subtitle: "", description: "" };
+    }
+  }
+
   function startGate(g: Gate) {
     if (inRun) return;
     if (daily.active && !daily.completed) {
@@ -1107,23 +1215,42 @@ export default function HuntersPath() {
       logPush("Not enough MP to attempt extraction.");
       return;
     }
-    setPlayer((p) => ({ ...p, mp: Math.max(0, p.mp - cost) }));
-    if (Math.random() < chance) {
-      const pow = Math.floor(
-        5 + player.stats.INT * 0.8 + bossRankIdx * 6 + rand(0, 8)
-      );
-      const s = { id: uid(), name: shadowName(), power: pow };
-      setPlayer((p) => ({ ...p, shadows: [...p.shadows, s] }));
-      logPush(
-        `Shadow Extraction succeeded! ${s.name} joins you (+${pow} power).`
-      );
 
-      // Update statistics
-      recordShadowExtraction();
-      checkAchievements();
-    } else {
-      logPush("Extraction failed. The shade crumbles to dust.");
-    }
+    // Get boss info for the sequence
+    const bossRank = RANKS[bossRankIdx];
+    const bossName = running?.boss.name || "Unknown Boss";
+
+    // Start the visual extraction sequence
+    startShadowExtractionSequence(bossName, bossRank);
+
+    // Consume MP immediately
+    setPlayer((p) => ({ ...p, mp: Math.max(0, p.mp - cost) }));
+
+    // The actual extraction logic will be handled in the sequence
+    // We'll update the player and stats when the sequence completes
+    setTimeout(() => {
+      if (Math.random() < chance) {
+        const pow = Math.floor(
+          5 + player.stats.INT * 0.8 + bossRankIdx * 6 + rand(0, 8)
+        );
+        const s = { id: uid(), name: shadowName(), power: pow };
+        setPlayer((p) => ({ ...p, shadows: [...p.shadows, s] }));
+        logPush(
+          `Shadow Extraction succeeded! ${s.name} joins you (+${pow} power).`
+        );
+
+        // Update statistics
+        recordShadowExtraction();
+        checkAchievements();
+      } else {
+        logPush("Extraction failed. The shade crumbles to dust.");
+      }
+    }, 7000); // Wait for the full sequence to complete
+  }
+
+  // Test function for shadow extraction (for easier testing)
+  function testShadowExtraction() {
+    // Function removed for production
   }
 
   function usePotion(itemId: string) {
@@ -2519,7 +2646,8 @@ export default function HuntersPath() {
                   aid extraction.
                 </li>
                 <li>
-                  Shadow Extraction after boss defeat may recruit a Shadow ally.
+                  Shadow Extraction after boss defeat may recruit a Shadow ally
+                  (25% base chance).
                 </li>
                 <li>Fatigue reduces your total power; Rest lowers it.</li>
                 <li>
@@ -2529,6 +2657,160 @@ export default function HuntersPath() {
             </Card>
           </section>
         </div>
+
+        {/* Shadow Extraction Sequence Modal */}
+        {shadowExtractionState.isActive && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* Background Effects */}
+              <div className="absolute inset-0">
+                {/* Animated particles */}
+                <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-pulse opacity-60"></div>
+                <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-blue-400 rounded-full animate-pulse opacity-40"></div>
+                <div className="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse opacity-50"></div>
+                <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
+                <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-red-400 rounded-full animate-pulse opacity-70"></div>
+
+                {/* Ripple effects */}
+                <div
+                  className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-purple-500/30 rounded-full animate-shadow-ripple ${
+                    shadowExtractionState.phase === "extracting"
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                ></div>
+                <div
+                  className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-purple-400/20 rounded-full animate-pulse ${
+                    shadowExtractionState.phase === "extracting"
+                      ? "opacity-100"
+                      : "opacity-0"
+                  }`}
+                ></div>
+              </div>
+
+              {/* Main Content */}
+              <div className="relative z-10 text-center max-w-2xl mx-4">
+                {/* Phase-specific background */}
+                <div
+                  className={`mb-8 p-8 rounded-lg border-2 transition-all duration-500 ${
+                    shadowExtractionState.phase === "preparing"
+                      ? "bg-blue-900/30 border-blue-500/50"
+                      : shadowExtractionState.phase === "extracting"
+                      ? "bg-purple-900/30 border-purple-500/50"
+                      : shadowExtractionState.phase === "success"
+                      ? "bg-green-900/30 border-green-500/50"
+                      : shadowExtractionState.phase === "failure"
+                      ? "bg-red-900/30 border-red-500/50"
+                      : "bg-zinc-900/30 border-zinc-500/50"
+                  }`}
+                >
+                  {/* Icon */}
+                  <div
+                    className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-500 ${
+                      shadowExtractionState.phase === "preparing"
+                        ? "bg-blue-600 animate-shadow-pulse"
+                        : shadowExtractionState.phase === "extracting"
+                        ? "bg-purple-600 animate-shadow-spin animate-shadow-glow"
+                        : shadowExtractionState.phase === "success"
+                        ? "bg-green-600 animate-shadow-bounce"
+                        : shadowExtractionState.phase === "failure"
+                        ? "bg-red-600 animate-shadow-pulse"
+                        : "bg-zinc-600"
+                    }`}
+                  >
+                    <i
+                      className={`text-3xl text-white ${
+                        shadowExtractionState.phase === "preparing"
+                          ? "fas fa-magic"
+                          : shadowExtractionState.phase === "extracting"
+                          ? "fas fa-ghost"
+                          : shadowExtractionState.phase === "success"
+                          ? "fas fa-check"
+                          : shadowExtractionState.phase === "failure"
+                          ? "fas fa-times"
+                          : "fas fa-question"
+                      }`}
+                    ></i>
+                  </div>
+
+                  {/* Text Content */}
+                  {(() => {
+                    const text = getExtractionSequenceText();
+                    return (
+                      <>
+                        <h2
+                          className={`text-3xl font-bold mb-4 transition-all duration-500 ${
+                            shadowExtractionState.phase === "preparing"
+                              ? "text-blue-300"
+                              : shadowExtractionState.phase === "extracting"
+                              ? "text-purple-300"
+                              : shadowExtractionState.phase === "success"
+                              ? "text-green-300"
+                              : shadowExtractionState.phase === "failure"
+                              ? "text-red-300"
+                              : "text-zinc-300"
+                          }`}
+                        >
+                          {text.title}
+                        </h2>
+
+                        <p className="text-xl text-zinc-200 mb-3">
+                          {text.subtitle}
+                        </p>
+
+                        <p className="text-zinc-400 mb-6">{text.description}</p>
+
+                        {/* Progress Bar for extracting phase */}
+                        {shadowExtractionState.phase === "extracting" && (
+                          <div className="w-full bg-zinc-700 rounded-full h-4 mb-4 overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-purple-500 to-purple-400 h-4 rounded-full transition-all duration-300 ease-out"
+                              style={{
+                                width: `${shadowExtractionState.progress}%`,
+                              }}
+                            ></div>
+                          </div>
+                        )}
+
+                        {/* Boss Info */}
+                        <div className="text-sm text-zinc-500">
+                          Target: {shadowExtractionState.bossName} (
+                          {shadowExtractionState.bossRank}-Rank)
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Additional Effects */}
+                {shadowExtractionState.phase === "extracting" && (
+                  <div className="text-center">
+                    <div className="text-purple-400 text-sm animate-pulse">
+                      <i className="fas fa-magic mr-2"></i>
+                      Channeling magical energy...
+                    </div>
+                  </div>
+                )}
+
+                {shadowExtractionState.phase === "success" && (
+                  <div className="text-center">
+                    <div className="text-green-400 text-lg font-bold animate-bounce">
+                      🎉 Shadow Extraction Complete! 🎉
+                    </div>
+                  </div>
+                )}
+
+                {shadowExtractionState.phase === "failure" && (
+                  <div className="text-center">
+                    <div className="text-red-400 text-lg font-bold animate-pulse">
+                      💀 Extraction Failed 💀
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Statistics Modal */}
         {showStats && (
