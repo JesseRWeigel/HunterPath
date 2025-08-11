@@ -75,6 +75,26 @@ interface Item {
   id: string;
   name: string;
   type: string;
+  rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  quality: number; // 1-100, affects effectiveness
+  description?: string;
+  stats?: {
+    STR?: number;
+    AGI?: number;
+    INT?: number;
+    VIT?: number;
+    LUCK?: number;
+    HP?: number;
+    MP?: number;
+  };
+  equipmentSlot?: "weapon" | "armor" | "accessory" | null;
+  sellValue?: number;
+}
+
+interface Equipment {
+  weapon?: Item;
+  armor?: Item;
+  accessory?: Item;
 }
 
 interface Player {
@@ -97,6 +117,7 @@ interface Player {
   shadows: Shadow[];
   inv: Item[];
   keys: number;
+  equipment: Equipment;
 }
 
 interface DailyTask {
@@ -229,6 +250,7 @@ function initialPlayer(): Player {
     shadows: [], // {id, name, power, upkeep}
     inv: [], // {id, name, type}
     keys: 0, // Instant Dungeon Keys
+    equipment: {},
   };
 }
 
@@ -270,20 +292,116 @@ function gainExpGoldFromGate(gate: Gate) {
 }
 
 function rollDrop(gate: Gate) {
+  const getRarity = (
+    rankIdx: number
+  ): "common" | "uncommon" | "rare" | "epic" | "legendary" => {
+    const r = Math.random();
+    if (rankIdx >= 4 && r < 0.05) return "legendary";
+    if (rankIdx >= 3 && r < 0.15) return "epic";
+    if (rankIdx >= 2 && r < 0.35) return "rare";
+    if (rankIdx >= 1 && r < 0.65) return "uncommon";
+    return "common";
+  };
+
+  const getQuality = (rarity: string): number => {
+    const baseQuality = {
+      common: 30,
+      uncommon: 50,
+      rare: 70,
+      epic: 85,
+      legendary: 95,
+    };
+    const base = baseQuality[rarity as keyof typeof baseQuality] || 50;
+    return Math.max(1, Math.min(100, base + rand(-10, 10)));
+  };
+
   const r = Math.random();
-  if (r < 0.08) return { id: uid(), name: "Instant Dungeon Key", type: "key" };
+  if (r < 0.08) {
+    const rarity = getRarity(gate.rankIdx);
+    const quality = getQuality(rarity);
+    return {
+      id: uid(),
+      name: "Instant Dungeon Key",
+      type: "key",
+      rarity,
+      quality,
+      description: "Opens a special dungeon with enhanced rewards",
+      sellValue: Math.floor(quality * 2),
+    };
+  }
   if (r < 0.28) {
     // Generate specific stat runes
     const statTypes = ["STR", "AGI", "INT", "VIT", "LUCK"];
     const statType = statTypes[rand(0, statTypes.length - 1)];
+    const rarity = getRarity(gate.rankIdx);
+    const quality = getQuality(rarity);
+    const statBonus = Math.floor((quality / 100) * (gate.rankIdx + 1) * 2);
+
     return {
       id: uid(),
       name: `${gate.rank}-grade ${statType} Rune`,
       type: "rune",
+      rarity,
+      quality,
+      description: `Temporarily boosts ${statType} by ${statBonus}`,
+      stats: { [statType]: statBonus },
+      sellValue: Math.floor(quality * 1.5),
     };
   }
-  if (r < 0.55)
-    return { id: uid(), name: `${gate.rank}-grade Potion`, type: "potion" };
+  if (r < 0.55) {
+    const rarity = getRarity(gate.rankIdx);
+    const quality = getQuality(rarity);
+    const healAmount = Math.floor((quality / 100) * 50 + 25);
+
+    return {
+      id: uid(),
+      name: `${gate.rank}-grade Potion`,
+      type: "potion",
+      rarity,
+      quality,
+      description: `Restores ${healAmount} HP`,
+      stats: { HP: healAmount },
+      sellValue: Math.floor(quality * 1.2),
+    };
+  }
+
+  // Equipment drops (rare)
+  if (r < 0.65) {
+    const rarity = getRarity(gate.rankIdx);
+    const quality = getQuality(rarity);
+    const equipmentTypes = ["weapon", "armor", "accessory"];
+    const equipmentType = equipmentTypes[rand(0, equipmentTypes.length - 1)];
+    const statBonus = Math.floor((quality / 100) * (gate.rankIdx + 1) * 3);
+
+    const equipmentNames = {
+      weapon: `${gate.rank}-Rank Blade`,
+      armor: `${gate.rank}-Rank Armor`,
+      accessory: `${gate.rank}-Rank Charm`,
+    };
+
+    const statTypes = {
+      weapon: "STR",
+      armor: "VIT",
+      accessory: "LUCK",
+    };
+
+    return {
+      id: uid(),
+      name: equipmentNames[equipmentType as keyof typeof equipmentNames],
+      type: "equipment",
+      rarity,
+      quality,
+      description: `Provides ${statBonus} ${
+        statTypes[equipmentType as keyof typeof statTypes]
+      }`,
+      stats: {
+        [statTypes[equipmentType as keyof typeof statTypes]]: statBonus,
+      },
+      equipmentSlot: equipmentType as "weapon" | "armor" | "accessory",
+      sellValue: Math.floor(quality * 3),
+    };
+  }
+
   return null;
 }
 
@@ -1353,7 +1471,18 @@ export default function HuntersPath() {
           ...p,
           exp: p.exp + 25,
           fatigue: clamp(p.fatigue - 10, 0, 100),
-          inv: [...p.inv, { id: uid(), name: "Daily Potion", type: "potion" }],
+          inv: [
+            ...p.inv,
+            {
+              id: uid(),
+              name: "Daily Potion",
+              type: "potion",
+              rarity: "common",
+              quality: 50,
+              description: "A basic healing potion from daily quest completion",
+              sellValue: 10,
+            },
+          ],
         }));
       }
       return { ...d, tasks, completed: done };
@@ -1440,7 +1569,7 @@ export default function HuntersPath() {
       ...p,
       hp: clamp(p.hp + Math.floor(p.maxHp * 0.5), 0, p.maxHp),
       mp: clamp(p.mp + Math.floor(p.maxMp * 0.3), 0, p.maxMp),
-      inv: p.inv.filter((i) => i.id !== itemId),
+      inv: p.inv.filter((i: Item) => i.id !== itemId),
     }));
 
     // Trigger heal visual effect
@@ -1516,7 +1645,7 @@ export default function HuntersPath() {
         ...p.stats,
         [statType!]: p.stats[statType!] + statBoost,
       },
-      inv: p.inv.filter((i) => i.id !== itemId),
+      inv: p.inv.filter((i: Item) => i.id !== itemId),
     }));
 
     logPush(
@@ -1609,10 +1738,25 @@ export default function HuntersPath() {
       return;
     }
 
+    const quality = rand(40, 60);
+    const healAmount = Math.floor((quality / 100) * 50 + 25);
+
     setGold((g) => g - cost);
     setPlayer((p) => ({
       ...p,
-      inv: [...p.inv, { id: uid(), name: "Health Potion", type: "potion" }],
+      inv: [
+        ...p.inv,
+        {
+          id: uid(),
+          name: "Health Potion",
+          type: "potion",
+          rarity: "common",
+          quality,
+          description: `Restores ${healAmount} HP`,
+          stats: { HP: healAmount },
+          sellValue: Math.floor(quality * 1.2),
+        },
+      ],
     }));
     logPush(`Purchased a Health Potion for ${cost}₲`);
   }
@@ -1692,6 +1836,12 @@ export default function HuntersPath() {
       }
 
       const gameState = JSON.parse(saved);
+
+      // Ensure equipment property exists for old save data
+      if (!gameState.player.equipment) {
+        gameState.player.equipment = {};
+      }
+
       setPlayer(gameState.player);
       setGates(gameState.gates);
       setGold(gameState.gold);
@@ -1699,7 +1849,7 @@ export default function HuntersPath() {
       setDaily(gameState.daily);
       logPush("Game loaded successfully!");
     } catch (error) {
-      logPush("Failed to load save file.");
+      logPush("Failed to load game. Save file may be corrupted.");
     }
   }
 
@@ -2138,39 +2288,402 @@ export default function HuntersPath() {
     ]);
   }
 
+  // Enhanced Inventory System State
+  const [inventoryFilter, setInventoryFilter] = useState<
+    "all" | "potion" | "rune" | "key" | "equipment"
+  >("all");
+  const [inventorySort, setInventorySort] = useState<
+    "name" | "rarity" | "quality" | "type"
+  >("type");
+  const [showItemDetails, setShowItemDetails] = useState<string | null>(null);
+
+  // Collapsible Sections State for Mobile
+  const [collapsedSections, setCollapsedSections] = useState<{
+    player: boolean;
+    inventory: boolean;
+    training: boolean;
+    shop: boolean;
+    shadows: boolean;
+  }>({
+    player: false,
+    inventory: false,
+    training: false,
+    shop: false,
+    shadows: false,
+  });
+
+  // Mobile menu state
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Enhanced Inventory Utility Functions
+  function equipItem(itemId: string) {
+    const item = player.inv.find((i) => i.id === itemId);
+    if (!item || item.type !== "equipment" || !item.equipmentSlot) return;
+
+    setPlayer((p) => {
+      const newInv = p.inv.filter((i) => i.id !== itemId);
+      const oldItem = item.equipmentSlot
+        ? p.equipment[item.equipmentSlot]
+        : undefined;
+
+      // Add old item back to inventory if it exists
+      if (oldItem) {
+        newInv.push(oldItem);
+      }
+
+      return {
+        ...p,
+        inv: newInv,
+        equipment: {
+          ...p.equipment,
+          ...(item.equipmentSlot && { [item.equipmentSlot]: item }),
+        },
+      };
+    });
+
+    logPush(`Equipped ${item.name}!`);
+  }
+
+  function unequipItem(slot: keyof Equipment) {
+    const item = player.equipment[slot];
+    if (!item) return;
+
+    setPlayer((p) => ({
+      ...p,
+      inv: [...p.inv, item],
+      equipment: {
+        ...p.equipment,
+        [slot]: undefined,
+      },
+    }));
+
+    logPush(`Unequipped ${item.name}!`);
+  }
+
+  function getRarityColor(rarity: string): string {
+    switch (rarity) {
+      case "common":
+        return "text-gray-400";
+      case "uncommon":
+        return "text-green-400";
+      case "rare":
+        return "text-blue-400";
+      case "epic":
+        return "text-purple-400";
+      case "legendary":
+        return "text-yellow-400";
+      default:
+        return "text-gray-400";
+    }
+  }
+
+  function getRarityBgColor(rarity: string): string {
+    switch (rarity) {
+      case "common":
+        return "bg-gray-600";
+      case "uncommon":
+        return "bg-green-600";
+      case "rare":
+        return "bg-blue-600";
+      case "epic":
+        return "bg-purple-600";
+      case "legendary":
+        return "bg-yellow-600";
+      default:
+        return "bg-gray-600";
+    }
+  }
+
+  function getFilteredAndSortedItems() {
+    let filtered = player.inv;
+
+    // Apply filter
+    if (inventoryFilter !== "all") {
+      filtered = filtered.filter((item) => {
+        if (inventoryFilter === "equipment") {
+          return item.type === "equipment";
+        }
+        return item.type === inventoryFilter;
+      });
+    }
+
+    // Apply sort
+    filtered.sort((a, b) => {
+      switch (inventorySort) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "rarity":
+          const rarityOrder = {
+            common: 0,
+            uncommon: 1,
+            rare: 2,
+            epic: 3,
+            legendary: 4,
+          };
+          return (
+            (rarityOrder[a.rarity || "common"] || 0) -
+            (rarityOrder[b.rarity || "common"] || 0)
+          );
+        case "quality":
+          return (b.quality || 50) - (a.quality || 50);
+        case "type":
+          return a.type.localeCompare(b.type);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }
+
+  // Enhanced Inventory Component
+  function EnhancedInventory() {
+    const filteredItems = getFilteredAndSortedItems();
+    const equipmentSlots = [
+      { key: "weapon", name: "Weapon", icon: "fas fa-sword" },
+      { key: "armor", name: "Armor", icon: "fas fa-shield-alt" },
+      { key: "accessory", name: "Accessory", icon: "fas fa-ring" },
+    ];
+
+    // Safety check for equipment
+    const equipment = player.equipment || {};
+
+    return (
+      <div>
+        {/* Filter and Sort Controls */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
+          <select
+            value={inventoryFilter}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setInventoryFilter(e.target.value as any)
+            }
+            className="bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded border border-zinc-600 flex-1"
+          >
+            <option value="all">All Items</option>
+            <option value="potion">Potions</option>
+            <option value="rune">Runes</option>
+            <option value="key">Keys</option>
+            <option value="equipment">Equipment</option>
+          </select>
+
+          <select
+            value={inventorySort}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setInventorySort(e.target.value as any)
+            }
+            className="bg-zinc-800 text-zinc-300 text-xs px-2 py-1 rounded border border-zinc-600 flex-1"
+          >
+            <option value="type">Sort by Type</option>
+            <option value="rarity">Sort by Rarity</option>
+            <option value="quality">Sort by Quality</option>
+            <option value="name">Sort by Name</option>
+          </select>
+        </div>
+
+        {/* Equipment Slots */}
+        <div className="mb-4 p-2 bg-zinc-800/30 rounded border border-zinc-600/30">
+          <h4 className="text-sm font-bold text-zinc-300 mb-2 flex items-center">
+            <i className="fas fa-user-shield mr-2"></i>
+            Equipment
+          </h4>
+          <div className="grid grid-cols-3 gap-1">
+            {equipmentSlots.map((slot) => (
+              <div key={slot.key} className="text-center">
+                <div className="text-xs text-zinc-400 mb-1">{slot.name}</div>
+                <div className="w-8 h-8 mx-auto border-2 border-dashed border-zinc-600 rounded flex items-center justify-center">
+                  {equipment[slot.key as keyof Equipment] ? (
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center bg-purple-600">
+                      <i className="fas fa-check text-white text-xs"></i>
+                    </div>
+                  ) : (
+                    <i className={`${slot.icon} text-zinc-500 text-xs`}></i>
+                  )}
+                </div>
+                {equipment[slot.key as keyof Equipment] && (
+                  <button
+                    onClick={() => unequipItem(slot.key as keyof Equipment)}
+                    className="text-xs text-red-400 hover:text-red-300 mt-1"
+                  >
+                    Unequip
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Inventory Items */}
+        {player.inv.length === 0 ? (
+          <div className="opacity-70 text-sm text-center py-6">
+            <i className="fas fa-box-open text-2xl text-zinc-600 mb-2"></i>
+            <div>Empty inventory</div>
+          </div>
+        ) : (
+          <div className="space-y-1 max-h-80 overflow-y-auto custom-scrollbar">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id}
+                className={`relative bg-zinc-800/30 rounded p-2 border transition-all hover:bg-zinc-700/40 ${
+                  showItemDetails === item.id
+                    ? "border-zinc-500"
+                    : "border-zinc-600/30"
+                }`}
+                onClick={() =>
+                  setShowItemDetails(
+                    showItemDetails === item.id ? null : item.id
+                  )
+                }
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 min-w-0 flex-1">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${getRarityBgColor(
+                        item.rarity || "common"
+                      )}`}
+                    >
+                      <i
+                        className={`text-white text-xs ${
+                          item.type === "potion"
+                            ? "fas fa-flask"
+                            : item.type === "rune"
+                            ? "fas fa-gem"
+                            : item.type === "key"
+                            ? "fas fa-key"
+                            : item.type === "equipment"
+                            ? "fas fa-sword"
+                            : "fas fa-question"
+                        }`}
+                      ></i>
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <div className="flex items-center space-x-1">
+                        <span
+                          className={`text-zinc-300 font-medium text-sm truncate ${getRarityColor(
+                            item.rarity || "common"
+                          )}`}
+                        >
+                          {item.name}
+                        </span>
+                        <span className="text-xs text-zinc-500 flex-shrink-0">
+                          Q{item.quality || 50}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <span className="text-xs text-zinc-500 truncate">
+                          {item.description}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-1 flex-shrink-0">
+                    {item.type === "potion" && (
+                      <Btn sm onClick={() => usePotion(item.id)}>
+                        Use
+                      </Btn>
+                    )}
+                    {item.type === "rune" && (
+                      <Btn sm onClick={() => useRune(item.id)}>
+                        Use
+                      </Btn>
+                    )}
+                    {item.type === "equipment" && (
+                      <Btn sm onClick={() => equipItem(item.id)}>
+                        Equip
+                      </Btn>
+                    )}
+                    <button
+                      onClick={() => {}}
+                      className="text-zinc-400 hover:text-zinc-300 text-xs"
+                    >
+                      <i className="fas fa-info-circle"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Item Details */}
+                {showItemDetails === item.id && (
+                  <div className="mt-2 pt-2 border-t border-zinc-600/30">
+                    <div className="text-xs text-zinc-400 space-y-1">
+                      {item.description && (
+                        <div>
+                          <strong>Description:</strong> {item.description}
+                        </div>
+                      )}
+                      {item.stats && Object.keys(item.stats).length > 0 && (
+                        <div>
+                          <strong>Stats:</strong>
+                          {Object.entries(item.stats).map(([stat, value]) => (
+                            <span key={stat} className="ml-2 text-blue-400">
+                              +{value} {stat}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {item.sellValue && (
+                        <div>
+                          <strong>Sell Value:</strong> {item.sellValue}₲
+                        </div>
+                      )}
+                      <div>
+                        <strong>Rarity:</strong>{" "}
+                        <span
+                          className={getRarityColor(item.rarity || "common")}
+                        >
+                          {item.rarity || "common"}
+                        </span>
+                      </div>
+                      <div>
+                        <strong>Quality:</strong> {item.quality || 50}/100
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-6">
           <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-purple-400">
-                  Hunter's Path
-                </h1>
-                <p className="text-zinc-400 mt-1">
-                  A Solo Leveling-inspired idle roguelite
-                </p>
-              </div>
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2 bg-zinc-800 px-4 py-2 rounded-lg">
-                    <i className="fas fa-calendar text-purple-400"></i>
-                    <span className="font-bold">
-                      {formatGameTime(gameTime)}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 bg-zinc-800 px-4 py-2 rounded-lg">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+              {/* Game Title and Time */}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-zinc-100">
+                    Hunter's Path
+                  </h1>
+                  <p className="text-zinc-400 text-sm">
+                    {formatGameTime(gameTime)}
+                  </p>
+                </div>
+
+                {/* Resources - Stack on small screens */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center space-x-2 bg-zinc-800 px-3 py-2 rounded-lg">
                     <i className="fas fa-coins text-yellow-400"></i>
                     <span className="font-bold">{fmt(gold)}</span>
                     <span className="text-zinc-400 text-sm">₲</span>
                   </div>
-                  <div className="flex items-center space-x-2 bg-zinc-800 px-4 py-2 rounded-lg">
+                  <div className="flex items-center space-x-2 bg-zinc-800 px-3 py-2 rounded-lg">
                     <i className="fas fa-key text-violet-400"></i>
                     <span className="font-bold">{player.keys}</span>
                     <span className="text-zinc-400 text-sm">Keys</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Controls - Responsive Layout */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                {/* Primary Actions */}
+                <div className="flex items-center space-x-2">
                   <Btn
                     onClick={() => setShowStats(!showStats)}
                     theme="default"
@@ -2183,49 +2696,129 @@ export default function HuntersPath() {
                     <i className="fas fa-trash mr-1"></i>
                     Reset
                   </Btn>
-                  <div className="flex items-center space-x-2 bg-zinc-800 px-3 py-1 rounded-lg">
-                    <button
-                      onClick={toggleSound}
-                      className={`text-sm ${
-                        soundEnabled ? "text-green-400" : "text-red-400"
-                      }`}
-                      title={soundEnabled ? "Sound On" : "Sound Off"}
-                    >
-                      <i
-                        className={`fas ${
-                          soundEnabled ? "fa-volume-up" : "fa-volume-mute"
-                        }`}
-                      ></i>
-                    </button>
-                    <button
-                      onClick={toggleMusic}
-                      className={`text-sm ${
-                        musicEnabled ? "text-blue-400" : "text-red-400"
-                      }`}
-                      title={musicEnabled ? "Music On" : "Music Off"}
-                    >
-                      <i
-                        className={`fas ${
-                          musicEnabled ? "fa-music" : "fa-music-slash"
-                        }`}
-                      ></i>
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={volume}
-                      onChange={(e) => updateVolume(parseFloat(e.target.value))}
-                      className="w-16 h-1 bg-zinc-600 rounded-lg appearance-none cursor-pointer"
-                      title={`Volume: ${Math.round(volume * 100)}%`}
-                    />
-                  </div>
                 </div>
+
+                {/* Audio Controls */}
+                <div className="flex items-center space-x-2 bg-zinc-800 px-3 py-1 rounded-lg">
+                  <button
+                    onClick={toggleSound}
+                    className={`text-sm ${
+                      soundEnabled ? "text-green-400" : "text-red-400"
+                    }`}
+                    title={soundEnabled ? "Sound On" : "Sound Off"}
+                  >
+                    <i
+                      className={`fas ${
+                        soundEnabled ? "fa-volume-up" : "fa-volume-mute"
+                      }`}
+                    ></i>
+                  </button>
+                  <button
+                    onClick={toggleMusic}
+                    className={`text-sm ${
+                      musicEnabled ? "text-blue-400" : "text-red-400"
+                    }`}
+                    title={musicEnabled ? "Music On" : "Music Off"}
+                  >
+                    <i
+                      className={`fas ${
+                        musicEnabled ? "fa-music" : "fa-music-slash"
+                      }`}
+                    ></i>
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={volume}
+                    onChange={(e) => updateVolume(parseFloat(e.target.value))}
+                    className="w-12 sm:w-16 h-1 bg-zinc-600 rounded-lg appearance-none cursor-pointer"
+                    title={`Volume: ${Math.round(volume * 100)}%`}
+                  />
+                </div>
+
+                {/* Mobile Menu Toggle */}
+                <button
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  className="lg:hidden bg-zinc-800 p-2 rounded-lg text-zinc-400 hover:text-zinc-300"
+                  title="Toggle Mobile Menu"
+                >
+                  <i
+                    className={`fas ${showMobileMenu ? "fa-times" : "fa-bars"}`}
+                  ></i>
+                </button>
               </div>
             </div>
           </Card>
         </header>
+
+        {/* Mobile Menu Overlay */}
+        {showMobileMenu && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <div
+              className="absolute right-4 top-20 bg-zinc-900 border border-zinc-700 rounded-lg p-4 w-80 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-zinc-100">
+                  Quick Actions
+                </h3>
+                <button
+                  onClick={() => setShowMobileMenu(false)}
+                  className="text-zinc-400 hover:text-zinc-300"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <Btn
+                  onClick={rest}
+                  disabled={inRun}
+                  className="w-full justify-start"
+                >
+                  <i className="fas fa-bed mr-2"></i>
+                  Rest & Recover
+                </Btn>
+                <Btn
+                  onClick={useKey}
+                  disabled={player.keys <= 0 || inRun}
+                  className="w-full justify-start"
+                >
+                  <i className="fas fa-key mr-2"></i>
+                  Use Key ({player.keys})
+                </Btn>
+                <Btn
+                  onClick={startDaily}
+                  disabled={daily.active || daily.completed || inRun}
+                  className="w-full justify-start"
+                >
+                  Start Daily
+                </Btn>
+                <Btn
+                  onClick={saveGame}
+                  disabled={inRun}
+                  className="w-full justify-start"
+                >
+                  <i className="fas fa-save mr-2"></i>
+                  Save Game
+                </Btn>
+                <Btn
+                  onClick={loadGame}
+                  disabled={inRun}
+                  className="w-full justify-start"
+                >
+                  <i className="fas fa-upload mr-2"></i>
+                  Load Game
+                </Btn>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left: Player & Actions */}
@@ -2600,9 +3193,8 @@ export default function HuntersPath() {
             </Card>
 
             <Card>
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="fas fa-backpack text-amber-400"></i>
-                <h3 className="text-lg font-bold text-zinc-100">Inventory</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-zinc-100">Inventory</h3>
                 {player.inv.length > 0 && (
                   <span className="bg-amber-600 text-white px-2 py-1 rounded-full text-xs font-bold">
                     {player.inv.length}
@@ -2610,87 +3202,7 @@ export default function HuntersPath() {
                 )}
               </div>
 
-              {player.inv.length === 0 && (
-                <div className="opacity-70 text-sm text-center py-4">
-                  Empty inventory
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {player.inv.map((it) => (
-                  <div
-                    key={it.id}
-                    className="flex items-center justify-between bg-zinc-800/30 rounded-lg p-3"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          it.type === "potion"
-                            ? "bg-green-600"
-                            : it.type === "rune"
-                            ? "bg-purple-600"
-                            : "bg-gray-600"
-                        }`}
-                      >
-                        <i
-                          className={`text-white text-sm ${
-                            it.type === "potion"
-                              ? "fas fa-flask"
-                              : it.type === "rune"
-                              ? "fas fa-gem"
-                              : "fas fa-question"
-                          }`}
-                        ></i>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-zinc-300">{it.name}</span>
-                        {it.type === "rune" && (
-                          <span className="text-xs text-zinc-500">
-                            {it.name.includes("STR") && "Boosts Strength"}
-                            {it.name.includes("AGI") && "Boosts Agility"}
-                            {it.name.includes("INT") && "Boosts Intelligence"}
-                            {it.name.includes("VIT") && "Boosts Vitality"}
-                            {it.name.includes("LUCK") && "Boosts Luck"}
-                            {!it.name.includes("STR") &&
-                              !it.name.includes("AGI") &&
-                              !it.name.includes("INT") &&
-                              !it.name.includes("VIT") &&
-                              !it.name.includes("LUCK") &&
-                              "Random Stat Boost"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {it.type === "potion" && (
-                      <Btn sm onClick={() => usePotion(it.id)}>
-                        Use
-                      </Btn>
-                    )}
-                    {it.type === "rune" && (
-                      <Btn sm onClick={() => useRune(it.id)}>
-                        Use
-                      </Btn>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {player.inv.some((item) => item.type === "rune") && (
-                <div className="mt-4 p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg">
-                  <h4 className="text-sm font-bold text-purple-300 mb-2">
-                    <i className="fas fa-info-circle mr-1"></i>
-                    Rune Information
-                  </h4>
-                  <div className="text-xs text-purple-200 space-y-1">
-                    <div>• Runes provide permanent stat boosts when used</div>
-                    <div>• Higher rank runes (A, S) provide larger bonuses</div>
-                    <div>• Runes are consumed when used</div>
-                    <div>
-                      • STR/AGI boost damage, INT helps shadow extraction
-                    </div>
-                  </div>
-                </div>
-              )}
+              <EnhancedInventory />
             </Card>
           </section>
 
