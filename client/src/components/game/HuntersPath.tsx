@@ -123,16 +123,27 @@ interface Player {
 interface DailyTask {
   id: string;
   name: string;
+  description: string;
+  type: "combat" | "exploration" | "collection" | "skill" | "challenge";
+  difficulty: "easy" | "medium" | "hard" | "epic";
   need: number;
   have: number;
+  expReward: number;
+  goldReward: number;
+  bonusRewards?: {
+    items?: Item[];
+    statPoints?: number;
+  };
 }
 
 interface Daily {
   active: boolean;
-  tasks: DailyTask[];
+  availableQuests: DailyTask[];
+  completedQuests: string[]; // IDs of completed quests
   completed: boolean;
   penaltyArmed: boolean;
   completedDate?: string; // Track when it was completed to allow reset
+  questReputation: number; // New: tracks quest completion reputation
 }
 
 interface GameTime {
@@ -689,15 +700,17 @@ export default function HuntersPath() {
   });
   const [gold, setGold] = useState(50); // Start with some gold for gate refreshes
   const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
-  const [daily, setDaily] = useState<Daily>({
-    active: false,
-    tasks: [
-      { id: "train", name: "Training Reps", need: 30, have: 0 },
-      { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
-      { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
-    ],
-    completed: false,
-    penaltyArmed: false,
+  const [daily, setDaily] = useState<Daily>(() => {
+    // Generate initial daily quests based on starting player level (1)
+    const initialQuests = generateDailyQuests(1, 0);
+    return {
+      active: true, // Auto-start daily quests
+      availableQuests: initialQuests,
+      completedQuests: [],
+      completed: false,
+      penaltyArmed: false,
+      questReputation: 0,
+    };
   });
 
   // Sound management state
@@ -840,13 +853,45 @@ export default function HuntersPath() {
         setDaily(
           gameState.daily || {
             active: false,
-            tasks: [
-              { id: "train", name: "Training Reps", need: 30, have: 0 },
-              { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
-              { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
+            availableQuests: [
+              {
+                id: "train",
+                name: "Training Reps",
+                description: "Train to increase your strength and endurance.",
+                type: "combat",
+                difficulty: "easy",
+                need: 30,
+                have: 0,
+                expReward: 8,
+                goldReward: 15,
+              },
+              {
+                id: "run",
+                name: "Cardio Minutes",
+                description: "Run to improve your stamina and agility.",
+                type: "combat",
+                difficulty: "medium",
+                need: 5,
+                have: 0,
+                expReward: 10,
+                goldReward: 20,
+              },
+              {
+                id: "focus",
+                name: "Meditation Cycles",
+                description: "Meditate to clear your mind and reduce fatigue.",
+                type: "skill",
+                difficulty: "easy",
+                need: 3,
+                have: 0,
+                expReward: 6,
+                goldReward: 10,
+              },
             ],
+            completedQuests: [],
             completed: false,
             penaltyArmed: false,
+            questReputation: 0,
           }
         );
         setLog(["Game loaded from auto-save. Welcome back, Hunter!"]);
@@ -873,15 +918,19 @@ export default function HuntersPath() {
           ]);
 
           // Reset daily quest for new day
-          setDaily({
-            active: false,
-            tasks: [
-              { id: "train", name: "Training Reps", need: 30, have: 0 },
-              { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
-              { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
-            ],
-            completed: false,
-            penaltyArmed: false,
+          setDaily((prevDaily) => {
+            const newQuests = generateDailyQuests(
+              player.level,
+              prevDaily.questReputation
+            );
+            return {
+              active: true, // Auto-start daily quests
+              availableQuests: newQuests,
+              completedQuests: [],
+              completed: false,
+              penaltyArmed: false,
+              questReputation: prevDaily.questReputation, // Preserve reputation
+            };
           });
 
           // Passive experience gain for surviving another day
@@ -993,6 +1042,16 @@ export default function HuntersPath() {
           const { exp, gold: goldGain } = gainExpGoldFromGate(prev.gate);
           const drop = rollDrop(prev.gate);
           const drops = drop ? [drop] : [];
+
+          // Track quest progress
+          trackQuestProgress("monster_defeated");
+          if (drop) {
+            trackQuestProgress("item_gained");
+          }
+          // Check if player took no damage for challenge quests
+          if (player.hp === player.maxHp) {
+            trackQuestProgress("gate_completed_no_damage");
+          }
 
           // Show combat result screen first
           setCombatResult({
@@ -1394,35 +1453,71 @@ export default function HuntersPath() {
     }
   }
 
+  // Quest Progress Tracking Functions
+  function trackQuestProgress(action: string, count: number = 1) {
+    if (!daily.active || daily.completed) return;
+
+    daily.availableQuests.forEach((quest) => {
+      if (daily.completedQuests.includes(quest.id)) return; // Skip already completed quests
+
+      let shouldProgress = false;
+
+      switch (quest.type) {
+        case "combat":
+          if (action === "monster_defeated") shouldProgress = true;
+          break;
+        case "exploration":
+          if (action === "gate_entered") shouldProgress = true;
+          break;
+        case "collection":
+          if (action === "item_gained") shouldProgress = true;
+          break;
+        case "skill":
+          if (action === "potion_used" || action === "rune_used")
+            shouldProgress = true;
+          break;
+        case "challenge":
+          if (action === "gate_completed_no_damage") shouldProgress = true;
+          break;
+      }
+
+      if (shouldProgress) {
+        progressDaily(quest.id);
+      }
+    });
+  }
+
   function startGate(g: Gate) {
     if (inRun) return;
-    if (daily.active && !daily.completed) {
-      // entering while daily in progress arms penalty
-      setDaily((d) => ({ ...d, penaltyArmed: true }));
-    }
 
-    // Initialize audio on first gate entry
-    if (!audioInitializedRef.current) {
-      initializeAudio();
-    }
+    // Track gate entry for exploration quests
+    trackQuestProgress("gate_entered");
 
-    // Clear any existing combat result
+    setRunning({
+      gate: g,
+      boss: g.boss,
+      hpEnemy: g.boss.hp,
+      tick: 0,
+    });
+    setCombatLog([]);
     setCombatResult(null);
 
-    const boss = makeBoss(g.rankIdx);
-    setRunning({ gate: g, boss, hpEnemy: boss.hp, tick: 0 });
+    // Clear any existing shadow extraction state
+    setShadowExtractionState({
+      isActive: false,
+      phase: null,
+      progress: 0,
+      bossName: "",
+      bossRank: "",
+    });
 
-    // Initialize combat log
-    setCombatLog([
-      `Hunter enters ${g.name}...`,
-      `The air is heavy with malevolent energy...`,
-      `A ${g.rank}-rank boss appears: ${boss.name}!`,
-      `Combat begins!`,
-    ]);
+    // Initialize audio for combat
+    initializeAudio();
 
-    logPush(`Entered ${g.name}. The air is heavy...`);
+    // Play gate entry sound
     playSound("gate_enter");
-    playMusic("combat_music");
+
+    logPush(`Entered ${g.name} (${g.rank}-Rank)`);
   }
 
   function rest() {
@@ -1449,50 +1544,119 @@ export default function HuntersPath() {
     }));
   }
 
-  function startDaily() {
-    if (daily.active || daily.completed) return;
-    setDaily((d) => ({ ...d, active: true }));
-    logPush(
-      "Daily Quest accepted: Train, Run, Meditate. Finish it today or face the penalty."
-    );
-  }
-
   function progressDaily(id: string) {
     if (!daily.active || daily.completed) return;
+
     setDaily((d) => {
-      const tasks = d.tasks.map((t) =>
+      const updatedQuests = d.availableQuests.map((t) =>
         t.id === id ? { ...t, have: clamp(t.have + 1, 0, t.need) } : t
       );
-      const done = tasks.every((t) => t.have >= t.need);
-      if (done)
-        logPush("Daily Quest completed! +25 EXP, -10 Fatigue, +1 potion.");
-      if (done) {
+
+      // Check if any quests are completed
+      const completedQuests = updatedQuests.filter(
+        (q) => !d.completedQuests.includes(q.id) && q.have >= q.need
+      );
+
+      const newCompletedQuests = [...d.completedQuests];
+      let totalExpGained = 0;
+      let totalGoldGained = 0;
+      let bonusItems: Item[] = [];
+      let bonusStatPoints = 0;
+
+      completedQuests.forEach((quest) => {
+        newCompletedQuests.push(quest.id);
+        totalExpGained += quest.expReward;
+        totalGoldGained += quest.goldReward;
+
+        if (quest.bonusRewards) {
+          if (quest.bonusRewards.items) {
+            bonusItems.push(...quest.bonusRewards.items);
+          }
+          if (quest.bonusRewards.statPoints) {
+            bonusStatPoints += quest.bonusRewards.statPoints;
+          }
+        }
+
+        // Log individual quest completion
+        logPush(
+          `Quest completed: ${quest.name}! +${quest.expReward} EXP, +${quest.goldReward} Gold`
+        );
+        if (quest.bonusRewards) {
+          if (quest.bonusRewards.statPoints) {
+            logPush(
+              `+${quest.bonusRewards.statPoints} Stat Points from epic quest!`
+            );
+          }
+          if (quest.bonusRewards.items) {
+            logPush(`Received ${quest.bonusRewards.items.length} bonus items!`);
+          }
+        }
+      });
+
+      // Check if all quests are completed
+      const allCompleted = updatedQuests.every((quest) =>
+        newCompletedQuests.includes(quest.id)
+      );
+
+      if (allCompleted && !d.completed) {
+        // Award reputation points
+        const reputationGain = Math.floor(totalExpGained / 10);
+
+        // Update player stats
         setPlayer((p) => ({
           ...p,
-          exp: p.exp + 25,
-          fatigue: clamp(p.fatigue - 10, 0, 100),
-          inv: [
-            ...p.inv,
-            {
-              id: uid(),
-              name: "Daily Potion",
-              type: "potion",
-              rarity: "common",
-              quality: 50,
-              description: "A basic healing potion from daily quest completion",
-              sellValue: 10,
-            },
-          ],
+          exp: p.exp + totalExpGained,
+          points: p.points + bonusStatPoints,
+          inv: [...p.inv, ...bonusItems],
         }));
+
+        setGold((g) => g + totalGoldGained);
+
+        logPush(`All daily quests completed! +${reputationGain} Reputation`);
+
+        return {
+          ...d,
+          availableQuests: updatedQuests,
+          completedQuests: newCompletedQuests,
+          completed: true,
+          completedDate: getCurrentGameDate(),
+          questReputation: d.questReputation + reputationGain,
+        };
       }
-      return { ...d, tasks, completed: done };
+
+      // Apply rewards for individual quest completions
+      if (completedQuests.length > 0) {
+        setPlayer((p) => ({
+          ...p,
+          exp: p.exp + totalExpGained,
+          points: p.points + bonusStatPoints,
+          inv: [...p.inv, ...bonusItems],
+        }));
+
+        setGold((g) => g + totalGoldGained);
+      }
+
+      return {
+        ...d,
+        availableQuests: updatedQuests,
+        completedQuests: newCompletedQuests,
+      };
     });
   }
 
   function forfeitDaily() {
-    if (!daily.active || daily.completed) return;
-    setDaily((d) => ({ ...d, active: false }));
-    applyPenaltyZone();
+    if (!daily.active) return;
+
+    setDaily({
+      active: false,
+      availableQuests: [],
+      completedQuests: [],
+      completed: false,
+      penaltyArmed: true,
+      questReputation: daily.questReputation,
+    });
+
+    logPush("Daily quests forfeited.");
   }
 
   function applyPenaltyZone() {
@@ -1842,6 +2006,24 @@ export default function HuntersPath() {
         gameState.player.equipment = {};
       }
 
+      // Handle old daily quest structure
+      if (gameState.daily) {
+        // If old structure, generate new quests
+        if (!gameState.daily.questReputation) {
+          gameState.daily.questReputation = 0;
+        }
+        if (
+          !gameState.daily.availableQuests ||
+          gameState.daily.availableQuests.length === 0
+        ) {
+          gameState.daily.availableQuests = generateDailyQuests(
+            gameState.player.level,
+            gameState.daily.questReputation
+          );
+          gameState.daily.active = true;
+        }
+      }
+
       setPlayer(gameState.player);
       setGates(gameState.gates);
       setGold(gameState.gold);
@@ -1863,16 +2045,18 @@ export default function HuntersPath() {
       setGates(generateGatePool(1));
       setGold(50);
       setGameTime(initialGameTime());
+
+      // Generate new daily quests for level 1
+      const newQuests = generateDailyQuests(1, 0);
       setDaily({
-        active: false,
-        tasks: [
-          { id: "train", name: "Training Reps", need: 30, have: 0 },
-          { id: "run", name: "Cardio Minutes", need: 5, have: 0 },
-          { id: "focus", name: "Meditation Cycles", need: 3, have: 0 },
-        ],
+        active: true,
+        availableQuests: newQuests,
+        completedQuests: [],
         completed: false,
         penaltyArmed: false,
+        questReputation: 0,
       });
+
       setLog(["Game reset. Welcome back, Hunter!"]);
       localStorage.removeItem("hunters-path-save");
     }
@@ -2820,6 +3004,246 @@ export default function HuntersPath() {
     logPush("Cleared all items and gold!");
   }
 
+  // Enhanced Daily Quest System
+  function generateDailyQuests(
+    playerLevel: number,
+    questReputation: number = 0
+  ): DailyTask[] {
+    const quests: DailyTask[] = [];
+
+    // Determine available difficulties based on level and reputation
+    const availableDifficulties: ("easy" | "medium" | "hard" | "epic")[] = [
+      "easy",
+    ];
+    if (playerLevel >= 5) availableDifficulties.push("medium");
+    if (playerLevel >= 10) availableDifficulties.push("hard");
+    if (playerLevel >= 15 && questReputation >= 50)
+      availableDifficulties.push("epic");
+
+    // Quest type definitions
+    const questTypes = [
+      {
+        type: "combat" as const,
+        name: "Monster Hunter",
+        description: "Defeat monsters in gates",
+        getObjective: (level: number, difficulty: string) => {
+          const base = Math.max(1, Math.floor(level / 3));
+          switch (difficulty) {
+            case "easy":
+              return base;
+            case "medium":
+              return base * 2;
+            case "hard":
+              return base * 3;
+            case "epic":
+              return base * 5;
+            default:
+              return base;
+          }
+        },
+      },
+      {
+        type: "exploration" as const,
+        name: "Gate Explorer",
+        description: "Enter gates of different ranks",
+        getObjective: (level: number, difficulty: string) => {
+          const base = Math.max(1, Math.floor(level / 5));
+          switch (difficulty) {
+            case "easy":
+              return base;
+            case "medium":
+              return base * 2;
+            case "hard":
+              return base * 3;
+            case "epic":
+              return base * 4;
+            default:
+              return base;
+          }
+        },
+      },
+      {
+        type: "collection" as const,
+        name: "Item Collector",
+        description: "Gather items from gates",
+        getObjective: (level: number, difficulty: string) => {
+          const base = Math.max(1, Math.floor(level / 4));
+          switch (difficulty) {
+            case "easy":
+              return base;
+            case "medium":
+              return base * 2;
+            case "hard":
+              return base * 3;
+            case "epic":
+              return base * 4;
+            default:
+              return base;
+          }
+        },
+      },
+      {
+        type: "skill" as const,
+        name: "Resource Manager",
+        description: "Use potions and runes effectively",
+        getObjective: (level: number, difficulty: string) => {
+          const base = Math.max(1, Math.floor(level / 6));
+          switch (difficulty) {
+            case "easy":
+              return base;
+            case "medium":
+              return base * 2;
+            case "hard":
+              return base * 3;
+            case "epic":
+              return base * 4;
+            default:
+              return base;
+          }
+        },
+      },
+      {
+        type: "challenge" as const,
+        name: "Perfect Hunter",
+        description: "Complete gates without taking damage",
+        getObjective: (level: number, difficulty: string) => {
+          const base = Math.max(1, Math.floor(level / 8));
+          switch (difficulty) {
+            case "easy":
+              return base;
+            case "medium":
+              return base * 2;
+            case "hard":
+              return base * 3;
+            case "epic":
+              return base * 4;
+            default:
+              return base;
+          }
+        },
+      },
+    ];
+
+    // Generate 5 random quests
+    const usedTypes = new Set<string>();
+    const usedDifficulties = new Set<string>();
+
+    for (let i = 0; i < 5; i++) {
+      // Select random quest type (avoid duplicates)
+      let availableTypes = questTypes.filter((qt) => !usedTypes.has(qt.type));
+      if (availableTypes.length === 0) {
+        availableTypes = questTypes;
+        usedTypes.clear();
+      }
+
+      const questType =
+        availableTypes[Math.floor(Math.random() * availableTypes.length)];
+      usedTypes.add(questType.type);
+
+      // Select random difficulty
+      const difficulty =
+        availableDifficulties[
+          Math.floor(Math.random() * availableDifficulties.length)
+        ];
+
+      // Calculate rewards based on level and difficulty
+      const baseExp = playerLevel * 10;
+      const baseGold = playerLevel * 5;
+
+      let expReward: number;
+      let goldReward: number;
+
+      switch (difficulty) {
+        case "easy":
+          expReward = Math.floor(baseExp * 0.8);
+          goldReward = Math.floor(baseGold * 0.8);
+          break;
+        case "medium":
+          expReward = Math.floor(baseExp * 1.2);
+          goldReward = Math.floor(baseGold * 1.2);
+          break;
+        case "hard":
+          expReward = Math.floor(baseExp * 1.8);
+          goldReward = Math.floor(baseGold * 1.8);
+          break;
+        case "epic":
+          expReward = Math.floor(baseExp * 2.5);
+          goldReward = Math.floor(baseGold * 2.5);
+          break;
+        default:
+          expReward = baseExp;
+          goldReward = baseGold;
+      }
+
+      const objective = questType.getObjective(playerLevel, difficulty);
+
+      quests.push({
+        id: `${questType.type}_${difficulty}_${i}`,
+        name: `${questType.name} (${
+          difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
+        })`,
+        description: `${questType.description} - ${objective} times`,
+        type: questType.type,
+        difficulty,
+        need: objective,
+        have: 0,
+        expReward,
+        goldReward,
+        bonusRewards:
+          difficulty === "epic"
+            ? {
+                items: [
+                  {
+                    id: uid(),
+                    name: `${
+                      difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
+                    } Quest Reward`,
+                    type: "potion",
+                    rarity: "rare",
+                    quality: 80,
+                    description: "Special reward for completing an epic quest",
+                    sellValue: 100,
+                  },
+                ],
+                statPoints: 1,
+              }
+            : undefined,
+      });
+    }
+
+    return quests;
+  }
+
+  function getDifficultyColor(difficulty: string): string {
+    switch (difficulty) {
+      case "easy":
+        return "text-green-400";
+      case "medium":
+        return "text-yellow-400";
+      case "hard":
+        return "text-orange-400";
+      case "epic":
+        return "text-purple-400";
+      default:
+        return "text-gray-400";
+    }
+  }
+
+  function getDifficultyBgColor(difficulty: string): string {
+    switch (difficulty) {
+      case "easy":
+        return "bg-green-600";
+      case "medium":
+        return "bg-yellow-600";
+      case "hard":
+        return "bg-orange-600";
+      case "epic":
+        return "bg-purple-600";
+      default:
+        return "bg-gray-600";
+    }
+  }
+
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -2976,13 +3400,6 @@ export default function HuntersPath() {
                   Use Key ({player.keys})
                 </Btn>
                 <Btn
-                  onClick={startDaily}
-                  disabled={daily.active || daily.completed || inRun}
-                  className="w-full justify-start"
-                >
-                  Start Daily
-                </Btn>
-                <Btn
                   onClick={saveGame}
                   disabled={inRun}
                   className="w-full justify-start"
@@ -3067,18 +3484,9 @@ export default function HuntersPath() {
                   <i className="fas fa-key mr-2"></i>
                   Use Key ({player.keys})
                 </Btn>
-                <Btn
-                  onClick={startDaily}
-                  disabled={daily.active || daily.completed || inRun}
-                >
-                  Start Daily
-                </Btn>
-                <Btn
-                  onClick={refreshGates}
-                  disabled={inRun || gold < Math.max(10, player.level * 5)}
-                >
-                  <i className="fas fa-sync mr-2"></i>
-                  Refresh Gates ({Math.max(10, player.level * 5)}₲)
+                <Btn onClick={refreshGates} disabled={gold < 90 || inRun}>
+                  <i className="fas fa-sync-alt mr-2"></i>
+                  Refresh Gates (90¢)
                 </Btn>
                 <Btn onClick={saveGame} disabled={inRun}>
                   <i className="fas fa-save mr-2"></i>
@@ -3925,102 +4333,172 @@ export default function HuntersPath() {
                 )}
               </div>
 
-              {!daily.active && !daily.completed && (
-                <div className="text-sm opacity-80 text-center py-8">
-                  Start your Daily Quest to earn bonuses. Fail or quit and you
-                  face the Penalty Zone.
+              {/* Quest Reputation Display */}
+              {daily.questReputation > 0 && (
+                <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-3 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <i className="fas fa-star text-purple-400"></i>
+                      <span className="text-purple-200 font-medium">
+                        Quest Reputation
+                      </span>
+                    </div>
+                    <span className="text-purple-300 font-bold">
+                      {daily.questReputation}
+                    </span>
+                  </div>
+                  <div className="text-xs text-purple-200/80 mt-1">
+                    Higher reputation unlocks epic quests and better rewards
+                  </div>
                 </div>
               )}
 
-              {daily.active && (
+              {!daily.active && !daily.completed && (
+                <div className="text-sm opacity-80 text-center py-8">
+                  Start your Daily Quest to earn bonuses. Select 3 quests from 5
+                  available options. Fail or quit and you face the Penalty Zone.
+                </div>
+              )}
+
+              {daily.active && !daily.completed && (
                 <>
                   <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-500/30 rounded-lg p-4 mb-4">
                     <div className="flex items-center space-x-2 mb-2">
                       <i className="fas fa-clock text-yellow-400"></i>
                       <span className="text-yellow-200 font-medium">
-                        Complete before entering dungeons!
+                        Complete quests to earn rewards!
                       </span>
                     </div>
                     <p className="text-sm text-yellow-100/80">
-                      Failure to complete daily quest will trigger Penalty Zone.
+                      Progress: {daily.completedQuests.length}/
+                      {daily.availableQuests.length} completed
                     </p>
                   </div>
 
-                  <div className="space-y-4">
-                    {daily.tasks.map((t) => {
-                      const taskIcons = {
-                        train: "fas fa-dumbbell",
-                        run: "fas fa-running",
-                        focus: "fas fa-om",
+                  <div className="space-y-3">
+                    {daily.availableQuests.map((quest) => {
+                      const isCompleted = daily.completedQuests.includes(
+                        quest.id
+                      );
+
+                      const questIcons = {
+                        combat: "fas fa-sword",
+                        exploration: "fas fa-door-open",
+                        collection: "fas fa-backpack",
+                        skill: "fas fa-magic",
+                        challenge: "fas fa-trophy",
                       };
-                      const taskColors = {
-                        train: "bg-green-600",
-                        run: "bg-blue-600",
-                        focus: "bg-purple-600",
-                      };
+
                       return (
                         <div
-                          key={t.id}
-                          className="flex items-center justify-between bg-zinc-800/30 rounded-lg p-4"
+                          key={quest.id}
+                          className={`relative border-2 rounded-lg p-4 transition-all ${
+                            isCompleted
+                              ? "border-green-500 bg-green-900/20"
+                              : "border-zinc-600 bg-zinc-800/30"
+                          }`}
                         >
+                          {/* Difficulty Badge */}
+                          <div
+                            className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getDifficultyBgColor(
+                              quest.difficulty
+                            )}`}
+                          >
+                            {quest.difficulty.toUpperCase()}
+                          </div>
+
                           <div className="flex items-center space-x-3">
                             <div
-                              className={`w-10 h-10 ${
-                                taskColors[t.id as keyof typeof taskColors]
-                              } rounded-full flex items-center justify-center`}
+                              className={`w-10 h-10 ${getDifficultyBgColor(
+                                quest.difficulty
+                              )} rounded-full flex items-center justify-center`}
                             >
                               <i
                                 className={`${
-                                  taskIcons[t.id as keyof typeof taskIcons]
+                                  questIcons[quest.type]
                                 } text-white`}
                               ></i>
                             </div>
-                            <div>
-                              <div className="font-medium text-zinc-100">
-                                {t.name}
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <div
+                                  className={`font-medium ${getDifficultyColor(
+                                    quest.difficulty
+                                  )}`}
+                                >
+                                  {quest.name}
+                                </div>
+                                {isCompleted && (
+                                  <i className="fas fa-check-circle text-green-400"></i>
+                                )}
                               </div>
-                              <div className="text-sm text-zinc-400">
-                                {t.id === "train" && "Physical conditioning"}
-                                {t.id === "run" && "Endurance training"}
-                                {t.id === "focus" && "Mental focus"}
+                              <div className="text-sm text-zinc-400 mt-1">
+                                {quest.description}
+                              </div>
+                              <div className="flex items-center space-x-4 mt-2 text-xs">
+                                <span className="text-green-400">
+                                  +{quest.expReward} EXP
+                                </span>
+                                <span className="text-yellow-400">
+                                  +{quest.goldReward} Gold
+                                </span>
+                                {quest.bonusRewards && (
+                                  <span className="text-purple-400">
+                                    +Bonus Rewards
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="text-right">
-                              <div className="font-bold text-green-400">
-                                {t.have}/{t.need}
-                              </div>
-                              <div className="w-16 bg-zinc-700 rounded-full h-2">
-                                <div
-                                  className="bg-green-500 h-2 rounded-full"
-                                  style={{
-                                    width: `${Math.round(
-                                      (t.have / t.need) * 100
-                                    )}%`,
-                                  }}
-                                ></div>
-                              </div>
+
+                          {/* Progress Bar for All Quests */}
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-zinc-400">Progress</span>
+                              <span className="text-green-400">
+                                {quest.have}/{quest.need}
+                              </span>
                             </div>
-                            <button
-                              className={`${
-                                taskColors[t.id as keyof typeof taskColors]
-                              } hover:opacity-80 text-white px-3 py-1 rounded transition-colors`}
-                              onClick={() => progressDaily(t.id)}
-                            >
-                              <i className="fas fa-plus"></i>
-                            </button>
+                            <div className="w-full bg-zinc-700 rounded-full h-2">
+                              <div
+                                className="bg-green-500 h-2 rounded-full transition-all"
+                                style={{
+                                  width: `${Math.round(
+                                    (quest.have / quest.need) * 100
+                                  )}%`,
+                                }}
+                              ></div>
+                            </div>
                           </div>
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between mt-4">
+                    <button
+                      onClick={forfeitDaily}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <i className="fas fa-times mr-1"></i>
+                      Forfeit
+                    </button>
+
+                    <div className="text-sm text-zinc-400">
+                      Complete quests to earn rewards and reputation!
+                    </div>
                   </div>
                 </>
               )}
 
               {daily.completed && (
                 <div className="text-emerald-400 text-sm text-center py-8">
-                  Daily complete. よくやった (yoku yatta): well done!
+                  <i className="fas fa-trophy text-2xl mb-2"></i>
+                  <div>Daily quests completed!</div>
+                  <div className="text-xs text-emerald-300 mt-1">
+                    よくやった (yoku yatta): well done!
+                  </div>
                 </div>
               )}
             </Card>
