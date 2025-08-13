@@ -2317,47 +2317,70 @@ export default function HuntersPath() {
 
   // Enhanced Inventory Utility Functions
   function equipItem(itemId: string) {
-    const item = player.inv.find((i) => i.id === itemId);
-    if (!item || item.type !== "equipment" || !item.equipmentSlot) return;
-
-    setPlayer((p) => {
-      const newInv = p.inv.filter((i) => i.id !== itemId);
-      const oldItem = item.equipmentSlot
-        ? p.equipment[item.equipmentSlot]
-        : undefined;
-
-      // Add old item back to inventory if it exists
-      if (oldItem) {
-        newInv.push(oldItem);
+    try {
+      const item = player.inv.find((i) => i.id === itemId);
+      if (!item || item.type !== "equipment" || !item.equipmentSlot) {
+        console.log("Cannot equip item:", { item, itemId });
+        return;
       }
 
-      return {
-        ...p,
-        inv: newInv,
-        equipment: {
-          ...p.equipment,
-          ...(item.equipmentSlot && { [item.equipmentSlot]: item }),
-        },
-      };
-    });
+      setPlayer((p) => {
+        const newInv = p.inv.filter((i) => i.id !== itemId);
+        const oldItem = item.equipmentSlot
+          ? p.equipment[item.equipmentSlot]
+          : undefined;
 
-    logPush(`Equipped ${item.name}!`);
+        // Add old item back to inventory if it exists
+        if (oldItem) {
+          newInv.push(oldItem);
+        }
+
+        // Create new equipment object more explicitly
+        const newEquipment = { ...p.equipment };
+        if (item.equipmentSlot === "weapon") {
+          newEquipment.weapon = item;
+        } else if (item.equipmentSlot === "armor") {
+          newEquipment.armor = item;
+        } else if (item.equipmentSlot === "accessory") {
+          newEquipment.accessory = item;
+        }
+
+        return {
+          ...p,
+          inv: newInv,
+          equipment: newEquipment,
+        };
+      });
+
+      logPush(`Equipped ${item.name}!`);
+    } catch (error) {
+      console.error("Error equipping item:", error);
+      logPush("Error equipping item. Please try again.");
+    }
   }
 
   function unequipItem(slot: keyof Equipment) {
-    const item = player.equipment[slot];
-    if (!item) return;
+    try {
+      const item = player.equipment[slot];
+      if (!item) {
+        console.log("No item to unequip in slot:", slot);
+        return;
+      }
 
-    setPlayer((p) => ({
-      ...p,
-      inv: [...p.inv, item],
-      equipment: {
-        ...p.equipment,
-        [slot]: undefined,
-      },
-    }));
+      setPlayer((p) => ({
+        ...p,
+        inv: [...p.inv, item],
+        equipment: {
+          ...p.equipment,
+          [slot]: undefined,
+        },
+      }));
 
-    logPush(`Unequipped ${item.name}!`);
+      logPush(`Unequipped ${item.name}!`);
+    } catch (error) {
+      console.error("Error unequipping item:", error);
+      logPush("Error unequipping item. Please try again.");
+    }
   }
 
   function getRarityColor(rarity: string): string {
@@ -2440,9 +2463,9 @@ export default function HuntersPath() {
   function EnhancedInventory() {
     const filteredItems = getFilteredAndSortedItems();
     const equipmentSlots = [
-      { key: "weapon", name: "Weapon", icon: "fas fa-sword" },
-      { key: "armor", name: "Armor", icon: "fas fa-shield-alt" },
-      { key: "accessory", name: "Accessory", icon: "fas fa-ring" },
+      { key: "weapon" as const, name: "Weapon", icon: "fas fa-sword" },
+      { key: "armor" as const, name: "Armor", icon: "fas fa-shield-alt" },
+      { key: "accessory" as const, name: "Accessory", icon: "fas fa-ring" },
     ];
 
     // Safety check for equipment
@@ -2487,28 +2510,31 @@ export default function HuntersPath() {
             Equipment
           </h4>
           <div className="grid grid-cols-3 gap-1">
-            {equipmentSlots.map((slot) => (
-              <div key={slot.key} className="text-center">
-                <div className="text-xs text-zinc-400 mb-1">{slot.name}</div>
-                <div className="w-8 h-8 mx-auto border-2 border-dashed border-zinc-600 rounded flex items-center justify-center">
-                  {equipment[slot.key as keyof Equipment] ? (
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center bg-purple-600">
-                      <i className="fas fa-check text-white text-xs"></i>
-                    </div>
-                  ) : (
-                    <i className={`${slot.icon} text-zinc-500 text-xs`}></i>
+            {equipmentSlots.map((slot) => {
+              const equippedItem = equipment[slot.key];
+              return (
+                <div key={slot.key} className="text-center">
+                  <div className="text-xs text-zinc-400 mb-1">{slot.name}</div>
+                  <div className="w-8 h-8 mx-auto border-2 border-dashed border-zinc-600 rounded flex items-center justify-center">
+                    {equippedItem ? (
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center bg-purple-600">
+                        <i className="fas fa-check text-white text-xs"></i>
+                      </div>
+                    ) : (
+                      <i className={`${slot.icon} text-zinc-500 text-xs`}></i>
+                    )}
+                  </div>
+                  {equippedItem && (
+                    <button
+                      onClick={() => unequipItem(slot.key)}
+                      className="text-xs text-red-400 hover:text-red-300 mt-1"
+                    >
+                      Unequip
+                    </button>
                   )}
                 </div>
-                {equipment[slot.key as keyof Equipment] && (
-                  <button
-                    onClick={() => unequipItem(slot.key as keyof Equipment)}
-                    className="text-xs text-red-400 hover:text-red-300 mt-1"
-                  >
-                    Unequip
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -2647,6 +2673,153 @@ export default function HuntersPath() {
     );
   }
 
+  // Debug mode state
+  const [debugMode, setDebugMode] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+
+  // Debug Functions
+  function addDebugItem(
+    type: "potion" | "rune" | "key" | "equipment",
+    rarity: "common" | "uncommon" | "rare" | "epic" | "legendary" = "common"
+  ) {
+    const quality =
+      rarity === "common"
+        ? 50
+        : rarity === "uncommon"
+        ? 60
+        : rarity === "rare"
+        ? 75
+        : rarity === "epic"
+        ? 85
+        : 95;
+
+    let item: Item;
+
+    switch (type) {
+      case "potion":
+        item = {
+          id: uid(),
+          name: `${
+            rarity.charAt(0).toUpperCase() + rarity.slice(1)
+          } Health Potion`,
+          type: "potion",
+          rarity,
+          quality,
+          description: `Restores ${Math.floor((quality / 100) * 50 + 25)} HP`,
+          stats: { HP: Math.floor((quality / 100) * 50 + 25) },
+          sellValue: Math.floor(quality * 1.2),
+        };
+        break;
+      case "rune":
+        const statTypes = ["STR", "AGI", "INT", "VIT", "LUCK"];
+        const runeStatType =
+          statTypes[Math.floor(Math.random() * statTypes.length)];
+        const runeStatBonus = Math.floor((quality / 100) * 5);
+        item = {
+          id: uid(),
+          name: `${
+            rarity.charAt(0).toUpperCase() + rarity.slice(1)
+          } ${runeStatType} Rune`,
+          type: "rune",
+          rarity,
+          quality,
+          description: `Boosts ${runeStatType} by ${runeStatBonus}`,
+          stats: { [runeStatType]: runeStatBonus },
+          sellValue: Math.floor(quality * 1.5),
+        };
+        break;
+      case "key":
+        item = {
+          id: uid(),
+          name: `${
+            rarity.charAt(0).toUpperCase() + rarity.slice(1)
+          } Dungeon Key`,
+          type: "key",
+          rarity,
+          quality,
+          description: "Opens a special dungeon with enhanced rewards",
+          sellValue: Math.floor(quality * 2),
+        };
+        break;
+      case "equipment":
+        const equipmentTypes = ["weapon", "armor", "accessory"];
+        const equipmentType =
+          equipmentTypes[Math.floor(Math.random() * equipmentTypes.length)];
+        const equipStatBonus = Math.floor((quality / 100) * 10);
+        const equipStatType =
+          equipmentType === "weapon"
+            ? "STR"
+            : equipmentType === "armor"
+            ? "VIT"
+            : "LUCK";
+        const equipmentNames = {
+          weapon: `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} Blade`,
+          armor: `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} Armor`,
+          accessory: `${
+            rarity.charAt(0).toUpperCase() + rarity.slice(1)
+          } Charm`,
+        };
+        item = {
+          id: uid(),
+          name: equipmentNames[equipmentType as keyof typeof equipmentNames],
+          type: "equipment",
+          rarity,
+          quality,
+          description: `Provides ${equipStatBonus} ${equipStatType}`,
+          stats: { [equipStatType]: equipStatBonus },
+          equipmentSlot: equipmentType as "weapon" | "armor" | "accessory",
+          sellValue: Math.floor(quality * 3),
+        };
+        break;
+    }
+
+    setPlayer((p) => ({
+      ...p,
+      inv: [...p.inv, item],
+    }));
+
+    logPush(`Added ${item.name} to inventory!`);
+  }
+
+  function setDebugPlayerLevel(level: number) {
+    const expNeeded = level * 100; // Simple formula for testing
+    setPlayer((p) => ({
+      ...p,
+      level,
+      exp: expNeeded - 1, // Just below the level threshold
+      expNext: expNeeded,
+    }));
+    logPush(`Set player level to ${level}!`);
+  }
+
+  function addDebugGold(amount: number) {
+    setGold((g) => g + amount);
+    logPush(`Added ${amount} gold!`);
+  }
+
+  function generateDebugGates() {
+    const debugGates = [
+      makeGate(0), // E-rank
+      makeGate(1), // D-rank
+      makeGate(2), // C-rank
+      makeGate(3), // B-rank
+      makeGate(4), // A-rank
+      makeGate(5), // S-rank
+    ];
+    setGates(debugGates);
+    logPush("Generated debug gates (E through S rank)!");
+  }
+
+  function clearDebugData() {
+    setPlayer((p) => ({
+      ...p,
+      inv: [],
+      equipment: {},
+    }));
+    setGold(0);
+    logPush("Cleared all items and gold!");
+  }
+
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -2696,6 +2869,16 @@ export default function HuntersPath() {
                     <i className="fas fa-trash mr-1"></i>
                     Reset
                   </Btn>
+                  {process.env.NODE_ENV === "development" && (
+                    <Btn
+                      onClick={() => setShowDebugPanel(!showDebugPanel)}
+                      theme="default"
+                      sm
+                    >
+                      <i className="fas fa-bug mr-1"></i>
+                      Debug
+                    </Btn>
+                  )}
                 </div>
 
                 {/* Audio Controls */}
@@ -4483,6 +4666,146 @@ export default function HuntersPath() {
           <source src="/music/defeat.mp3" type="audio/mpeg" />
         </audio>
       </div>
+
+      {/* Debug Panel */}
+      {process.env.NODE_ENV === "development" && showDebugPanel && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-zinc-900 border border-zinc-600 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-zinc-100">
+                <i className="fas fa-bug mr-2 text-red-400"></i>
+                Debug Panel
+              </h2>
+              <button
+                onClick={() => setShowDebugPanel(false)}
+                className="text-zinc-400 hover:text-zinc-200"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Player Stats */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Player Stats
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Level: {player.level}</div>
+                  <div>Gold: {gold}</div>
+                  <div>
+                    HP: {player.hp}/{player.maxHp}
+                  </div>
+                  <div>
+                    MP: {player.mp}/{player.maxMp}
+                  </div>
+                  <div>Fatigue: {player.fatigue}</div>
+                  <div>Stat Points: {player.points}</div>
+                </div>
+              </div>
+
+              {/* Add Items */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Add Items
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["potion", "rune", "key", "equipment"] as const).map(
+                    (type) => (
+                      <div key={type} className="space-y-1">
+                        <div className="text-sm font-medium text-zinc-300 capitalize">
+                          {type}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {(
+                            [
+                              "common",
+                              "uncommon",
+                              "rare",
+                              "epic",
+                              "legendary",
+                            ] as const
+                          ).map((rarity) => (
+                            <button
+                              key={rarity}
+                              onClick={() => addDebugItem(type, rarity)}
+                              className="px-2 py-1 text-xs bg-zinc-700 hover:bg-zinc-600 rounded"
+                            >
+                              {rarity}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Player Level */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Set Player Level
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 5, 10, 15, 20, 25].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => setDebugPlayerLevel(level)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+                    >
+                      Level {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add Gold */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Add Gold
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {[100, 500, 1000, 5000, 10000].map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => addDebugGold(amount)}
+                      className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 rounded text-sm"
+                    >
+                      +{amount}₲
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Generate Gates */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Generate Gates
+                </h3>
+                <button
+                  onClick={generateDebugGates}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded"
+                >
+                  Generate All Ranks (E-S)
+                </button>
+              </div>
+
+              {/* Clear Data */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Clear Data
+                </h3>
+                <button
+                  onClick={clearDebugData}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded"
+                >
+                  Clear All Items & Gold
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
