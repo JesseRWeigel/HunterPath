@@ -144,6 +144,7 @@ interface Daily {
   penaltyArmed: boolean;
   completedDate?: string; // Track when it was completed to allow reset
   questReputation: number; // New: tracks quest completion reputation
+  lastResetDate?: string; // Track when daily quests were last reset
 }
 
 interface GameTime {
@@ -189,7 +190,11 @@ interface Achievement {
 }
 
 function gatePowerForRank(rankIdx: number) {
-  // More balanced scaling - lower initial difficulty
+  // More balanced scaling - significantly reduced S-rank difficulty spike
+  if (rankIdx === 5) {
+    // S-rank - much more manageable
+    return Math.pow(1.4, rankIdx) * 20 + rankIdx * 10; // Significantly reduced scaling for S-rank
+  }
   return Math.pow(1.8, rankIdx) * 30 + rankIdx * 15;
 }
 
@@ -215,11 +220,18 @@ function makeBoss(rankIdx: number): Boss {
   const rank = RANKS[rankIdx];
   const monsterData = MONSTER_DATA[rank as keyof typeof MONSTER_DATA];
 
+  // Reduce S-rank boss damage significantly
+  let atkMultiplier = 0.8;
+  if (rankIdx === 5) {
+    // S-rank
+    atkMultiplier = 0.4; // Much lower attack for S-rank
+  }
+
   return {
     name: monsterData.name,
     maxHp: Math.floor(base * 8 + rand(-25, 25)),
     hp: Math.floor(base * 8 + rand(-25, 25)),
-    atk: Math.floor(base * 0.8 + rand(-5, 5)),
+    atk: Math.floor(base * atkMultiplier + rand(-5, 5)),
     def: Math.floor(base * 0.3 + rand(-3, 3)),
   };
 }
@@ -701,16 +713,33 @@ export default function HuntersPath() {
   const [gold, setGold] = useState(50); // Start with some gold for gate refreshes
   const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
   const [daily, setDaily] = useState<Daily>(() => {
-    // Generate initial daily quests based on starting player level (1)
+    // Check if we need to reset daily quests based on real date
+    const today = new Date().toDateString();
+    const savedDaily = localStorage.getItem("hunters-path-daily");
+
+    if (savedDaily) {
+      const parsedDaily = JSON.parse(savedDaily);
+      if (parsedDaily.lastResetDate === today) {
+        // Same day, restore saved state
+        return parsedDaily;
+      }
+    }
+
+    // New day or no saved data, generate fresh daily quests
     const initialQuests = generateDailyQuests(1, 0);
-    return {
+    const newDaily = {
       active: true, // Auto-start daily quests
       availableQuests: initialQuests,
       completedQuests: [],
       completed: false,
       penaltyArmed: false,
       questReputation: 0,
+      lastResetDate: today,
     };
+
+    // Save the new daily state
+    localStorage.setItem("hunters-path-daily", JSON.stringify(newDaily));
+    return newDaily;
   });
 
   // Sound management state
@@ -792,6 +821,9 @@ export default function HuntersPath() {
       };
       localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
 
+      // Also save daily state separately for persistence across days
+      localStorage.setItem("hunters-path-daily", JSON.stringify(daily));
+
       // Also save statistics
       const statsData = {
         playerStats,
@@ -850,44 +882,14 @@ export default function HuntersPath() {
         );
         setGold(gameState.gold || 50);
         setGameTime(gameState.gameTime || initialGameTime());
+        // Load daily state - the daily state initialization will handle the real-time reset logic
         setDaily(
           gameState.daily || {
-            active: false,
-            availableQuests: [
-              {
-                id: "train",
-                name: "Training Reps",
-                description: "Train to increase your strength and endurance.",
-                type: "combat",
-                difficulty: "easy",
-                need: 30,
-                have: 0,
-                expReward: 8,
-                goldReward: 15,
-              },
-              {
-                id: "run",
-                name: "Cardio Minutes",
-                description: "Run to improve your stamina and agility.",
-                type: "combat",
-                difficulty: "medium",
-                need: 5,
-                have: 0,
-                expReward: 10,
-                goldReward: 20,
-              },
-              {
-                id: "focus",
-                name: "Meditation Cycles",
-                description: "Meditate to clear your mind and reduce fatigue.",
-                type: "skill",
-                difficulty: "easy",
-                need: 3,
-                have: 0,
-                expReward: 6,
-                goldReward: 10,
-              },
-            ],
+            active: true,
+            availableQuests: generateDailyQuests(
+              gameState.player?.level || 1,
+              0
+            ),
             completedQuests: [],
             completed: false,
             penaltyArmed: false,
@@ -901,7 +903,54 @@ export default function HuntersPath() {
     }
   }, []);
 
-  // Game time system - advance time every 30 seconds (1 game hour)
+  // Real-time daily quest reset system - check every minute
+  useEffect(() => {
+    const checkDailyReset = () => {
+      const today = new Date().toDateString();
+
+      setDaily((prevDaily) => {
+        // If it's a new day and we haven't reset yet
+        if (prevDaily.lastResetDate !== today) {
+          setLog((l) => [
+            `New day begins! Daily quests have been refreshed.`,
+            ...l,
+          ]);
+
+          const newQuests = generateDailyQuests(
+            player.level,
+            prevDaily.questReputation
+          );
+
+          const newDaily = {
+            active: true, // Auto-start daily quests
+            availableQuests: newQuests,
+            completedQuests: [],
+            completed: false,
+            penaltyArmed: false,
+            questReputation: prevDaily.questReputation, // Preserve reputation
+            lastResetDate: today,
+          };
+
+          // Save the new daily state
+          localStorage.setItem("hunters-path-daily", JSON.stringify(newDaily));
+          return newDaily;
+        }
+        return prevDaily;
+      });
+    };
+
+    // Check immediately on mount
+    checkDailyReset();
+
+    // Then check every minute
+    const interval = setInterval(checkDailyReset, 60000); // 1 minute
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [player.level]);
+
+  // Game time system - advance time every 30 seconds (1 game hour) - simplified without daily reset
   useEffect(() => {
     if (timeRef.current) clearInterval(timeRef.current);
     timeRef.current = setInterval(() => {
@@ -912,26 +961,7 @@ export default function HuntersPath() {
 
         if (shouldAdvanceDay) {
           const newDay = prevTime.day + 1;
-          setLog((l) => [
-            `Day ${newDay} begins. Daily Quest is available again.`,
-            ...l,
-          ]);
-
-          // Reset daily quest for new day
-          setDaily((prevDaily) => {
-            const newQuests = generateDailyQuests(
-              player.level,
-              prevDaily.questReputation
-            );
-            return {
-              active: true, // Auto-start daily quests
-              availableQuests: newQuests,
-              completedQuests: [],
-              completed: false,
-              penaltyArmed: false,
-              questReputation: prevDaily.questReputation, // Preserve reputation
-            };
-          });
+          setLog((l) => [`Day ${newDay} begins.`, ...l]);
 
           // Passive experience gain for surviving another day
           const passiveExp = Math.floor(10 + newDay * 2);
@@ -1753,6 +1783,16 @@ export default function HuntersPath() {
     logPush(
       "You used a potion. 体力回復 (tairyoku kaifuku): vitality restored."
     );
+
+    // Progress Resource Manager quest
+    if (daily.active && !daily.completed) {
+      const resourceQuest = daily.availableQuests.find(
+        (q) => q.type === "skill" && q.name.includes("Resource Manager")
+      );
+      if (resourceQuest) {
+        progressDaily(resourceQuest.id);
+      }
+    }
   }
 
   function useRune(itemId: string) {
@@ -1816,6 +1856,16 @@ export default function HuntersPath() {
       `Used ${item.name}! +${statBoost} ${statType} permanently. 魔力強化 (maryoku kyōka): magical enhancement.`
     );
     playSound("rune_use");
+
+    // Progress Resource Manager quest
+    if (daily.active && !daily.completed) {
+      const resourceQuest = daily.availableQuests.find(
+        (q) => q.type === "skill" && q.name.includes("Resource Manager")
+      );
+      if (resourceQuest) {
+        progressDaily(resourceQuest.id);
+      }
+    }
   }
 
   function useKey() {
@@ -3782,19 +3832,6 @@ export default function HuntersPath() {
                 </div>
               )}
             </Card>
-
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-zinc-100">Inventory</h3>
-                {player.inv.length > 0 && (
-                  <span className="bg-amber-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                    {player.inv.length}
-                  </span>
-                )}
-              </div>
-
-              <EnhancedInventory />
-            </Card>
           </section>
 
           {/* Middle: Gates & Combat */}
@@ -4323,14 +4360,21 @@ export default function HuntersPath() {
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-zinc-100">Daily Quest</h3>
-                {daily.active && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-sm text-green-400 font-medium">
-                      Active
-                    </span>
+                <div className="flex items-center space-x-2">
+                  {daily.active && (
+                    <>
+                      <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-sm text-green-400 font-medium">
+                        Active
+                      </span>
+                    </>
+                  )}
+                  {/* Next reset timer */}
+                  <div className="text-xs text-zinc-400">
+                    <i className="fas fa-clock mr-1"></i>
+                    Resets at midnight
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Quest Reputation Display */}
@@ -4477,16 +4521,12 @@ export default function HuntersPath() {
 
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between mt-4">
-                    <button
-                      onClick={forfeitDaily}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      <i className="fas fa-times mr-1"></i>
-                      Forfeit
-                    </button>
-
-                    <div className="text-sm text-zinc-400">
+                    <div className="text-sm text-zinc-400 text-center">
                       Complete quests to earn rewards and reputation!
+                    </div>
+                    <div className="text-xs text-violet-400 text-center mt-2">
+                      <i className="fas fa-crown mr-1"></i>
+                      Complete all 5 quests for Daily Master bonus rewards!
                     </div>
                   </div>
                 </>
@@ -4501,6 +4541,20 @@ export default function HuntersPath() {
                   </div>
                 </div>
               )}
+            </Card>
+
+            {/* Inventory moved to middle column for better visibility on large screens */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-zinc-100">Inventory</h3>
+                {player.inv.length > 0 && (
+                  <span className="bg-amber-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                    {player.inv.length}
+                  </span>
+                )}
+              </div>
+
+              <EnhancedInventory />
             </Card>
           </section>
 
