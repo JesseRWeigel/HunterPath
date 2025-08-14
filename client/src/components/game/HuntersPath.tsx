@@ -2888,11 +2888,15 @@ export default function HuntersPath() {
                     ? "border-zinc-500"
                     : "border-zinc-600/30"
                 }`}
-                onClick={() =>
+                onClick={(e) => {
+                  // Don't toggle details if clicking on a button
+                  if ((e.target as HTMLElement).closest('button')) {
+                    return;
+                  }
                   setShowItemDetails(
                     showItemDetails === item.id ? null : item.id
-                  )
-                }
+                  );
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 min-w-0 flex-1">
