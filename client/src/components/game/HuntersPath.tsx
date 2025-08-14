@@ -809,6 +809,32 @@ export default function HuntersPath() {
     }[]
   >([]);
 
+  // Global error handler for mobile PWA compatibility
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      console.error("Global error caught:", error);
+      // Prevent the app from crashing completely
+      error.preventDefault();
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", event.reason);
+      // Prevent the app from crashing completely
+      event.preventDefault();
+    };
+
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection
+      );
+    };
+  }, []);
+
   // Auto-save every 30 seconds
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
@@ -2552,41 +2578,74 @@ export default function HuntersPath() {
   // Enhanced Inventory Utility Functions
   function equipItem(itemId: string) {
     try {
+      console.log("Equipping item:", itemId);
+
       const item = player.inv.find((i) => i.id === itemId);
       if (!item || item.type !== "equipment" || !item.equipmentSlot) {
         console.log("Cannot equip item:", { item, itemId });
         return;
       }
 
+      // Validate item structure
+      if (!item.id || !item.name || !item.equipmentSlot) {
+        console.error("Invalid item structure:", item);
+        logPush("Invalid item. Cannot equip.");
+        return;
+      }
+
       setPlayer((p) => {
-        const newInv = p.inv.filter((i) => i.id !== itemId);
-        const oldItem = item.equipmentSlot
-          ? p.equipment[item.equipmentSlot]
-          : undefined;
+        try {
+          // Create defensive copies to prevent mutation issues
+          const newInv = [...p.inv].filter((i) => i.id !== itemId);
+          const oldItem = item.equipmentSlot
+            ? p.equipment[item.equipmentSlot]
+            : undefined;
 
-        // Add old item back to inventory if it exists
-        if (oldItem) {
-          newInv.push(oldItem);
+          // Add old item back to inventory if it exists
+          if (oldItem) {
+            newInv.push({ ...oldItem }); // Create copy to prevent reference issues
+          }
+
+          // Create new equipment object with explicit copying
+          const newEquipment = {
+            weapon: p.equipment.weapon ? { ...p.equipment.weapon } : undefined,
+            armor: p.equipment.armor ? { ...p.equipment.armor } : undefined,
+            accessory: p.equipment.accessory
+              ? { ...p.equipment.accessory }
+              : undefined,
+          };
+
+          // Set the new item
+          if (item.equipmentSlot === "weapon") {
+            newEquipment.weapon = { ...item };
+          } else if (item.equipmentSlot === "armor") {
+            newEquipment.armor = { ...item };
+          } else if (item.equipmentSlot === "accessory") {
+            newEquipment.accessory = { ...item };
+          }
+
+          const newPlayer = {
+            ...p,
+            inv: newInv,
+            equipment: newEquipment,
+          };
+
+          console.log("New player state:", newPlayer);
+          return newPlayer;
+        } catch (setPlayerError) {
+          console.error("Error in setPlayer callback:", setPlayerError);
+          // Return unchanged state if there's an error
+          return p;
         }
-
-        // Create new equipment object more explicitly
-        const newEquipment = { ...p.equipment };
-        if (item.equipmentSlot === "weapon") {
-          newEquipment.weapon = item;
-        } else if (item.equipmentSlot === "armor") {
-          newEquipment.armor = item;
-        } else if (item.equipmentSlot === "accessory") {
-          newEquipment.accessory = item;
-        }
-
-        return {
-          ...p,
-          inv: newInv,
-          equipment: newEquipment,
-        };
       });
 
       logPush(`Equipped ${item.name}!`);
+
+      // Force a small delay and re-render for mobile PWA compatibility
+      setTimeout(() => {
+        // Trigger a small state update to ensure re-render
+        setPlayer((p) => ({ ...p }));
+      }, 100);
     } catch (error) {
       console.error("Error equipping item:", error);
       logPush("Error equipping item. Please try again.");
@@ -2595,22 +2654,53 @@ export default function HuntersPath() {
 
   function unequipItem(slot: keyof Equipment) {
     try {
+      console.log("Unequipping item from slot:", slot);
+
       const item = player.equipment[slot];
       if (!item) {
         console.log("No item to unequip in slot:", slot);
         return;
       }
 
-      setPlayer((p) => ({
-        ...p,
-        inv: [...p.inv, item],
-        equipment: {
-          ...p.equipment,
-          [slot]: undefined,
-        },
-      }));
+      // Validate item structure
+      if (!item.id || !item.name) {
+        console.error("Invalid item structure:", item);
+        logPush("Invalid item. Cannot unequip.");
+        return;
+      }
+
+      setPlayer((p) => {
+        try {
+          // Create defensive copies
+          const newInv = [...p.inv, { ...item }]; // Create copy to prevent reference issues
+          const newEquipment = { ...p.equipment };
+          newEquipment[slot] = undefined;
+
+          const newPlayer = {
+            ...p,
+            inv: newInv,
+            equipment: newEquipment,
+          };
+
+          console.log("New player state after unequip:", newPlayer);
+          return newPlayer;
+        } catch (setPlayerError) {
+          console.error(
+            "Error in setPlayer callback (unequip):",
+            setPlayerError
+          );
+          // Return unchanged state if there's an error
+          return p;
+        }
+      });
 
       logPush(`Unequipped ${item.name}!`);
+
+      // Force a small delay and re-render for mobile PWA compatibility
+      setTimeout(() => {
+        // Trigger a small state update to ensure re-render
+        setPlayer((p) => ({ ...p }));
+      }, 100);
     } catch (error) {
       console.error("Error unequipping item:", error);
       logPush("Error unequipping item. Please try again.");
@@ -2760,7 +2850,17 @@ export default function HuntersPath() {
                   </div>
                   {equippedItem && (
                     <button
-                      onClick={() => unequipItem(slot.key)}
+                      onClick={() => {
+                        try {
+                          unequipItem(slot.key);
+                        } catch (error) {
+                          console.error(
+                            "Unequip error caught in button:",
+                            error
+                          );
+                          logPush("Unequip failed. Please try again.");
+                        }
+                      }}
                       className="text-xs text-red-400 hover:text-red-300 mt-1"
                     >
                       Unequip
@@ -2848,7 +2948,20 @@ export default function HuntersPath() {
                       </Btn>
                     )}
                     {item.type === "equipment" && (
-                      <Btn sm onClick={() => equipItem(item.id)}>
+                      <Btn
+                        sm
+                        onClick={() => {
+                          try {
+                            equipItem(item.id);
+                          } catch (error) {
+                            console.error(
+                              "Equipment error caught in button:",
+                              error
+                            );
+                            logPush("Equipment failed. Please try again.");
+                          }
+                        }}
+                      >
                         Equip
                       </Btn>
                     )}
