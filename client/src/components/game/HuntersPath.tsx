@@ -1,4 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 // Hunter's Path — A Solo Leveling–inspired idle/roguelite built for Canvas preview
 // Notes:
@@ -3963,336 +3969,390 @@ export default function HuntersPath() {
 
             {/* Training Activities */}
             <Card>
-              <h3 className="text-lg font-bold mb-4 text-violet-300">
-                <i className="fas fa-dumbbell mr-2"></i>
-                Training Activities
-              </h3>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 gap-2">
-                  <Btn
-                    onClick={() => doTraining("physical")}
-                    disabled={inRun}
-                    className="justify-start text-left"
-                  >
-                    <i className="fas fa-fist-raised mr-2 text-red-400"></i>
-                    Physical Training
-                    <span className="ml-auto text-xs text-zinc-400">
-                      8-15 EXP
-                    </span>
-                  </Btn>
-                  <Btn
-                    onClick={() => doTraining("mental")}
-                    disabled={inRun}
-                    className="justify-start text-left"
-                  >
-                    <i className="fas fa-brain mr-2 text-blue-400"></i>
-                    Mental Training
-                    <span className="ml-auto text-xs text-zinc-400">
-                      6-12 EXP
-                    </span>
-                  </Btn>
-                  <Btn
-                    onClick={() => doTraining("meditation")}
-                    disabled={inRun}
-                    className="justify-start text-left"
-                  >
-                    <i className="fas fa-leaf mr-2 text-green-400"></i>
-                    Meditation
-                    <span className="ml-auto text-xs text-zinc-400">
-                      4-8 EXP, -Fatigue
-                    </span>
-                  </Btn>
-                  <Btn
-                    onClick={doWork}
-                    disabled={inRun}
-                    className="justify-start text-left"
-                  >
-                    <i className="fas fa-hammer mr-2 text-yellow-400"></i>
-                    Work Job
-                    <span className="ml-auto text-xs text-zinc-400">
-                      15-35₲, 3-8 EXP
-                    </span>
-                  </Btn>
-                </div>
-                <p className="text-xs text-zinc-500 mt-2">
-                  Train to gain experience when stuck, or work for extra gold.
-                  Most activities increase fatigue.
-                </p>
-              </div>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="training">
+                  <AccordionTrigger className="text-lg font-bold text-violet-300 hover:no-underline">
+                    <i className="fas fa-dumbbell mr-2"></i>
+                    Training Activities
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      <div className="grid grid-cols-1 gap-2">
+                        <Btn
+                          onClick={() => doTraining("physical")}
+                          disabled={inRun}
+                          className="justify-start text-left"
+                        >
+                          <i className="fas fa-fist-raised mr-2 text-red-400"></i>
+                          Physical Training
+                          <span className="ml-auto text-xs text-zinc-400">
+                            8-15 EXP
+                          </span>
+                        </Btn>
+                        <Btn
+                          onClick={() => doTraining("mental")}
+                          disabled={inRun}
+                          className="justify-start text-left"
+                        >
+                          <i className="fas fa-brain mr-2 text-blue-400"></i>
+                          Mental Training
+                          <span className="ml-auto text-xs text-zinc-400">
+                            6-12 EXP
+                          </span>
+                        </Btn>
+                        <Btn
+                          onClick={() => doTraining("meditation")}
+                          disabled={inRun}
+                          className="justify-start text-left"
+                        >
+                          <i className="fas fa-leaf mr-2 text-green-400"></i>
+                          Meditation
+                          <span className="ml-auto text-xs text-zinc-400">
+                            4-8 EXP, -Fatigue
+                          </span>
+                        </Btn>
+                        <Btn
+                          onClick={doWork}
+                          disabled={inRun}
+                          className="justify-start text-left"
+                        >
+                          <i className="fas fa-hammer mr-2 text-yellow-400"></i>
+                          Work Job
+                          <span className="ml-auto text-xs text-zinc-400">
+                            15-35₲, 3-8 EXP
+                          </span>
+                        </Btn>
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-2">
+                        Train to gain experience when stuck, or work for extra
+                        gold. Most activities increase fatigue.
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
 
             {/* Shop */}
             <Card>
-              <h3 className="text-lg font-bold mb-4 text-yellow-300">
-                <i className="fas fa-shopping-cart mr-2"></i>
-                Hunter Shop
-              </h3>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 gap-2">
-                  <Btn
-                    onClick={buyPotion}
-                    disabled={gold < 25}
-                    className="justify-between text-left"
-                  >
-                    <div className="flex items-center">
-                      <i className="fas fa-flask mr-2 text-green-400"></i>
-                      Health Potion
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="shop">
+                  <AccordionTrigger className="text-lg font-bold text-yellow-300 hover:no-underline">
+                    <i className="fas fa-shopping-cart mr-2"></i>
+                    Hunter Shop
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      <div className="grid grid-cols-1 gap-2">
+                        <Btn
+                          onClick={buyPotion}
+                          disabled={gold < 25}
+                          className="justify-between text-left"
+                        >
+                          <div className="flex items-center">
+                            <i className="fas fa-flask mr-2 text-green-400"></i>
+                            Health Potion
+                          </div>
+                          <span className="text-yellow-400">25₲</span>
+                        </Btn>
+                        <Btn
+                          onClick={() => buyUpgrade("weapon")}
+                          disabled={gold < 100 + player.level * 25}
+                          className="justify-between text-left"
+                        >
+                          <div className="flex items-center">
+                            <i className="fas fa-sword mr-2 text-red-400"></i>
+                            Weapon Upgrade (+STR)
+                          </div>
+                          <span className="text-yellow-400">
+                            {100 + player.level * 25}₲
+                          </span>
+                        </Btn>
+                        <Btn
+                          onClick={() => buyUpgrade("armor")}
+                          disabled={gold < 80 + player.level * 20}
+                          className="justify-between text-left"
+                        >
+                          <div className="flex items-center">
+                            <i className="fas fa-shield-alt mr-2 text-orange-400"></i>
+                            Armor Upgrade (+VIT)
+                          </div>
+                          <span className="text-yellow-400">
+                            {80 + player.level * 20}₲
+                          </span>
+                        </Btn>
+                        <Btn
+                          onClick={() => buyUpgrade("accessory")}
+                          disabled={gold < 120 + player.level * 30}
+                          className="justify-between text-left"
+                        >
+                          <div className="flex items-center">
+                            <i className="fas fa-ring mr-2 text-purple-400"></i>
+                            Lucky Charm (+LUCK)
+                          </div>
+                          <span className="text-yellow-400">
+                            {120 + player.level * 30}₲
+                          </span>
+                        </Btn>
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-2">
+                        Equipment prices scale with your level. Upgrades
+                        permanently increase stats.
+                      </p>
                     </div>
-                    <span className="text-yellow-400">25₲</span>
-                  </Btn>
-                  <Btn
-                    onClick={() => buyUpgrade("weapon")}
-                    disabled={gold < 100 + player.level * 25}
-                    className="justify-between text-left"
-                  >
-                    <div className="flex items-center">
-                      <i className="fas fa-sword mr-2 text-red-400"></i>
-                      Weapon Upgrade (+STR)
-                    </div>
-                    <span className="text-yellow-400">
-                      {100 + player.level * 25}₲
-                    </span>
-                  </Btn>
-                  <Btn
-                    onClick={() => buyUpgrade("armor")}
-                    disabled={gold < 80 + player.level * 20}
-                    className="justify-between text-left"
-                  >
-                    <div className="flex items-center">
-                      <i className="fas fa-shield-alt mr-2 text-orange-400"></i>
-                      Armor Upgrade (+VIT)
-                    </div>
-                    <span className="text-yellow-400">
-                      {80 + player.level * 20}₲
-                    </span>
-                  </Btn>
-                  <Btn
-                    onClick={() => buyUpgrade("accessory")}
-                    disabled={gold < 120 + player.level * 30}
-                    className="justify-between text-left"
-                  >
-                    <div className="flex items-center">
-                      <i className="fas fa-ring mr-2 text-purple-400"></i>
-                      Lucky Charm (+LUCK)
-                    </div>
-                    <span className="text-yellow-400">
-                      {120 + player.level * 30}₲
-                    </span>
-                  </Btn>
-                </div>
-                <p className="text-xs text-zinc-500 mt-2">
-                  Equipment prices scale with your level. Upgrades permanently
-                  increase stats.
-                </p>
-              </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
 
             <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-zinc-100">Stats</h3>
-                {player.points > 0 && (
-                  <div className="bg-violet-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                    {player.points} Points
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                <h4 className="text-sm font-bold text-blue-300 mb-2">
-                  <i className="fas fa-info-circle mr-1"></i>
-                  Stat Effects
-                </h4>
-                <div className="text-xs text-blue-200 space-y-1">
-                  <div>
-                    <span className="text-red-400 font-bold">STR:</span> Primary
-                    damage (+3 power each)
-                  </div>
-                  <div>
-                    <span className="text-green-400 font-bold">AGI:</span> Speed
-                    & damage (+2 power each)
-                  </div>
-                  <div>
-                    <span className="text-blue-400 font-bold">INT:</span> Magic
-                    damage & shadow extraction (+1.5 power each)
-                  </div>
-                  <div>
-                    <span className="text-orange-400 font-bold">VIT:</span>{" "}
-                    Health & defense (+0.5 power each)
-                  </div>
-                  <div>
-                    <span className="text-yellow-400 font-bold">LUCK:</span>{" "}
-                    Critical hits & item drops
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {Object.entries(player.stats).map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="flex items-center justify-between bg-zinc-800/50 rounded-lg p-3"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-8 h-8 ${
-                          STAT_COLORS[k as keyof typeof STAT_COLORS]
-                        } rounded-full flex items-center justify-center text-white text-sm font-bold`}
-                      >
-                        <i
-                          className={STAT_ICONS[k as keyof typeof STAT_ICONS]}
-                        ></i>
-                      </div>
-                      <div>
-                        <div className="font-bold text-zinc-100">{k}</div>
-                        <div className="text-sm text-zinc-400">
-                          {k === "STR" && "Strength"}
-                          {k === "AGI" && "Agility"}
-                          {k === "INT" && "Intelligence"}
-                          {k === "VIT" && "Vitality"}
-                          {k === "LUCK" && "Luck"}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="stats">
+                  <AccordionTrigger className="text-lg font-bold text-zinc-100 hover:no-underline">
+                    <div className="flex items-center justify-between w-full mr-4">
+                      <span>Stats</span>
+                      {player.points > 0 && (
+                        <div className="bg-violet-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          {player.points} Points
+                        </div>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="max-h-96 overflow-y-auto">
+                      <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                        <h4 className="text-sm font-bold text-blue-300 mb-2">
+                          <i className="fas fa-info-circle mr-1"></i>
+                          Stat Effects
+                        </h4>
+                        <div className="text-xs text-blue-200 space-y-1">
+                          <div>
+                            <span className="text-red-400 font-bold">STR:</span>{" "}
+                            Primary damage (+3 power each)
+                          </div>
+                          <div>
+                            <span className="text-green-400 font-bold">
+                              AGI:
+                            </span>{" "}
+                            Speed & damage (+2 power each)
+                          </div>
+                          <div>
+                            <span className="text-blue-400 font-bold">
+                              INT:
+                            </span>{" "}
+                            Magic damage & shadow extraction (+1.5 power each)
+                          </div>
+                          <div>
+                            <span className="text-orange-400 font-bold">
+                              VIT:
+                            </span>{" "}
+                            Health & defense (+0.5 power each)
+                          </div>
+                          <div>
+                            <span className="text-yellow-400 font-bold">
+                              LUCK:
+                            </span>{" "}
+                            Critical hits & item drops
+                          </div>
                         </div>
                       </div>
+
+                      <div className="space-y-3">
+                        {Object.entries(player.stats).map(([k, v]) => (
+                          <div
+                            key={k}
+                            className="flex items-center justify-between bg-zinc-800/50 rounded-lg p-3"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-8 h-8 ${
+                                  STAT_COLORS[k as keyof typeof STAT_COLORS]
+                                } rounded-full flex items-center justify-center text-white text-sm font-bold`}
+                              >
+                                <i
+                                  className={
+                                    STAT_ICONS[k as keyof typeof STAT_ICONS]
+                                  }
+                                ></i>
+                              </div>
+                              <div>
+                                <div className="font-bold text-zinc-100">
+                                  {k}
+                                </div>
+                                <div className="text-sm text-zinc-400">
+                                  {k === "STR" && "Strength"}
+                                  {k === "AGI" && "Agility"}
+                                  {k === "INT" && "Intelligence"}
+                                  {k === "VIT" && "Vitality"}
+                                  {k === "LUCK" && "Luck"}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-bold text-xl">{v}</span>
+                              <button
+                                className="w-8 h-8 bg-violet-600 hover:bg-violet-500 text-white rounded-full transition-colors disabled:opacity-40"
+                                onClick={() =>
+                                  allocateStatWithFeedback(
+                                    k as keyof Player["stats"]
+                                  )
+                                }
+                                disabled={player.points <= 0}
+                              >
+                                <i className="fas fa-plus text-xs"></i>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-bold text-xl">{v}</span>
-                      <button
-                        className="w-8 h-8 bg-violet-600 hover:bg-violet-500 text-white rounded-full transition-colors disabled:opacity-40"
-                        onClick={() =>
-                          allocateStatWithFeedback(k as keyof Player["stats"])
-                        }
-                        disabled={player.points <= 0}
-                      >
-                        <i className="fas fa-plus text-xs"></i>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
 
             {/* Stat Progression Chart */}
             <StatProgressionChart />
 
             <Card>
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="fas fa-users text-purple-400"></i>
-                <h3 className="text-lg font-bold text-zinc-100">Shadow Army</h3>
-                {player.shadows.length > 0 && (
-                  <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                    {player.shadows.length}
-                  </span>
-                )}
-              </div>
-
-              {player.shadows.length === 0 && (
-                <div className="opacity-70 text-sm text-center py-4">
-                  No shadows recruited
-                </div>
-              )}
-
-              <div className="space-y-3 mb-4">
-                {player.shadows.map((s) => (
-                  <div
-                    key={s.id}
-                    className={`bg-zinc-800/30 border ${getRarityBorder(
-                      s.rarity
-                    )} rounded-lg p-3`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-8 h-8 bg-gradient-to-br ${getRarityColor(
-                            s.rarity
-                          )
-                            .replace("text-", "from-")
-                            .replace(
-                              "-400",
-                              "-600"
-                            )} to-purple-800 rounded-full flex items-center justify-center`}
-                        >
-                          <i className="fas fa-ghost text-white text-xs"></i>
-                        </div>
-                        <div>
-                          <div
-                            className={`font-bold ${getRarityColor(s.rarity)}`}
-                          >
-                            {s.name}
-                          </div>
-                          <div className="text-xs text-zinc-400 capitalize">
-                            {s.rarity} {s.type} • Level {s.level}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-purple-400">
-                          +{s.power}
-                        </div>
-                        <div className="text-xs text-zinc-500">Power</div>
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-zinc-400 mb-2">
-                      {s.description}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="text-xs font-semibold text-zinc-300 mb-1">
-                        Abilities:
-                      </div>
-                      {(s.abilities || []).map((ability) => (
-                        <div
-                          key={ability.id}
-                          className="flex items-center space-x-2"
-                        >
-                          <span
-                            className={`text-xs px-2 py-1 rounded ${
-                              ability.type === "passive"
-                                ? "bg-blue-600/20 text-blue-400"
-                                : "bg-green-600/20 text-green-400"
-                            }`}
-                          >
-                            {ability.type}
-                          </span>
-                          <span className="text-xs text-zinc-300 font-medium">
-                            {ability.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t border-zinc-700">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">
-                          EXP: {s.exp}/{s.expToNext}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="shadow-army">
+                  <AccordionTrigger className="text-lg font-bold text-zinc-100 hover:no-underline">
+                    <div className="flex items-center space-x-2">
+                      <i className="fas fa-users text-purple-400"></i>
+                      <span>Shadow Army</span>
+                      {player.shadows.length > 0 && (
+                        <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                          {player.shadows.length}
                         </span>
-                        <div className="w-20 bg-zinc-700 rounded-full h-1.5">
-                          <div
-                            className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${(s.exp / s.expToNext) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="max-h-96 overflow-y-auto">
+                      {player.shadows.length === 0 && (
+                        <div className="opacity-70 text-sm text-center py-4">
+                          No shadows recruited
+                        </div>
+                      )}
 
-              {player.shadows.length > 0 && (
-                <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-purple-300">Total Army Power:</span>
-                    <span className="font-bold text-purple-400">
-                      +{player.shadows.reduce((a, s) => a + s.power, 0)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm mt-1">
-                    <span className="text-purple-300">MP Upkeep/tick:</span>
-                    <span className="font-bold text-blue-400">
-                      -{shadowUpkeep(player)} MP
-                    </span>
-                  </div>
-                </div>
-              )}
+                      <div className="space-y-3 mb-4">
+                        {player.shadows.map((s) => (
+                          <div
+                            key={s.id}
+                            className={`bg-zinc-800/30 border ${getRarityBorder(
+                              s.rarity
+                            )} rounded-lg p-3`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-3">
+                                <div
+                                  className={`w-8 h-8 bg-gradient-to-br ${getRarityColor(
+                                    s.rarity
+                                  )
+                                    .replace("text-", "from-")
+                                    .replace(
+                                      "-400",
+                                      "-600"
+                                    )} to-purple-800 rounded-full flex items-center justify-center`}
+                                >
+                                  <i className="fas fa-ghost text-white text-xs"></i>
+                                </div>
+                                <div>
+                                  <div
+                                    className={`font-bold ${getRarityColor(
+                                      s.rarity
+                                    )}`}
+                                  >
+                                    {s.name}
+                                  </div>
+                                  <div className="text-xs text-zinc-400 capitalize">
+                                    {s.rarity} {s.type} • Level {s.level}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-bold text-purple-400">
+                                  +{s.power}
+                                </div>
+                                <div className="text-xs text-zinc-500">
+                                  Power
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-xs text-zinc-400 mb-2">
+                              {s.description}
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="text-xs font-semibold text-zinc-300 mb-1">
+                                Abilities:
+                              </div>
+                              {(s.abilities || []).map((ability) => (
+                                <div
+                                  key={ability.id}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <span
+                                    className={`text-xs px-2 py-1 rounded ${
+                                      ability.type === "passive"
+                                        ? "bg-blue-600/20 text-blue-400"
+                                        : "bg-green-600/20 text-green-400"
+                                    }`}
+                                  >
+                                    {ability.type}
+                                  </span>
+                                  <span className="text-xs text-zinc-300 font-medium">
+                                    {ability.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="mt-2 pt-2 border-t border-zinc-700">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-zinc-400">
+                                  EXP: {s.exp}/{s.expToNext}
+                                </span>
+                                <div className="w-20 bg-zinc-700 rounded-full h-1.5">
+                                  <div
+                                    className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
+                                    style={{
+                                      width: `${(s.exp / s.expToNext) * 100}%`,
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {player.shadows.length > 0 && (
+                        <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-purple-300">
+                              Total Army Power:
+                            </span>
+                            <span className="font-bold text-purple-400">
+                              +{player.shadows.reduce((a, s) => a + s.power, 0)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="text-purple-300">
+                              MP Upkeep/tick:
+                            </span>
+                            <span className="font-bold text-blue-400">
+                              -{shadowUpkeep(player)} MP
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
           </section>
 
@@ -4820,245 +4880,284 @@ export default function HuntersPath() {
             </Card>
 
             <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-zinc-100">Daily Quest</h3>
-                <div className="flex items-center space-x-2">
-                  {daily.active && (
-                    <>
-                      <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="text-sm text-green-400 font-medium">
-                        Active
-                      </span>
-                    </>
-                  )}
-                  {/* Next reset timer */}
-                  <div className="text-xs text-zinc-400">
-                    <i className="fas fa-clock mr-1"></i>
-                    Resets at midnight
-                  </div>
-                </div>
-              </div>
-
-              {/* Quest Reputation Display */}
-              {daily.questReputation > 0 && (
-                <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-3 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <i className="fas fa-star text-purple-400"></i>
-                      <span className="text-purple-200 font-medium">
-                        Quest Reputation
-                      </span>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="daily-quest">
+                  <AccordionTrigger className="text-lg font-bold text-zinc-100 hover:no-underline">
+                    <div className="flex items-center justify-between w-full mr-4">
+                      <span>Daily Quest</span>
+                      <div className="flex items-center space-x-2">
+                        {daily.active && (
+                          <>
+                            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-green-400 font-medium">
+                              Active
+                            </span>
+                          </>
+                        )}
+                        {/* Next reset timer */}
+                        <div className="text-xs text-zinc-400">
+                          <i className="fas fa-clock mr-1"></i>
+                          Resets at midnight
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-purple-300 font-bold">
-                      {daily.questReputation}
-                    </span>
-                  </div>
-                  <div className="text-xs text-purple-200/80 mt-1">
-                    Higher reputation unlocks epic quests and better rewards
-                  </div>
-                </div>
-              )}
-
-              {!daily.active && !daily.completed && (
-                <div className="text-sm opacity-80 text-center py-8">
-                  Start your Daily Quest to earn bonuses. Select 3 quests from 5
-                  available options. Fail or quit and you face the Penalty Zone.
-                </div>
-              )}
-
-              {daily.active && !daily.completed && (
-                <>
-                  <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-500/30 rounded-lg p-4 mb-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <i className="fas fa-clock text-yellow-400"></i>
-                      <span className="text-yellow-200 font-medium">
-                        Complete quests to earn rewards!
-                      </span>
-                    </div>
-                    <p className="text-sm text-yellow-100/80">
-                      Progress: {daily.completedQuests.length}/
-                      {daily.availableQuests.length} completed
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {daily.availableQuests.map((quest) => {
-                      const isCompleted = daily.completedQuests.includes(
-                        quest.id
-                      );
-
-                      const questIcons = {
-                        combat: "fas fa-sword",
-                        exploration: "fas fa-door-open",
-                        collection: "fas fa-backpack",
-                        skill: "fas fa-magic",
-                        challenge: "fas fa-trophy",
-                      };
-
-                      return (
-                        <div
-                          key={quest.id}
-                          className={`relative border-2 rounded-lg p-4 transition-all ${
-                            isCompleted
-                              ? "border-green-500 bg-green-900/20"
-                              : "border-zinc-600 bg-zinc-800/30"
-                          }`}
-                        >
-                          {/* Difficulty Badge */}
-                          <div
-                            className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getDifficultyBgColor(
-                              quest.difficulty
-                            )}`}
-                          >
-                            {quest.difficulty.toUpperCase()}
-                          </div>
-
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className={`w-10 h-10 ${getDifficultyBgColor(
-                                quest.difficulty
-                              )} rounded-full flex items-center justify-center`}
-                            >
-                              <i
-                                className={`${
-                                  questIcons[quest.type]
-                                } text-white`}
-                              ></i>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <div
-                                  className={`font-medium ${getDifficultyColor(
-                                    quest.difficulty
-                                  )}`}
-                                >
-                                  {quest.name}
-                                </div>
-                                {isCompleted && (
-                                  <i className="fas fa-check-circle text-green-400"></i>
-                                )}
-                              </div>
-                              <div className="text-sm text-zinc-400 mt-1">
-                                {quest.description}
-                              </div>
-                              <div className="flex items-center space-x-4 mt-2 text-xs">
-                                <span className="text-green-400">
-                                  +{quest.expReward} EXP
-                                </span>
-                                <span className="text-yellow-400">
-                                  +{quest.goldReward} Gold
-                                </span>
-                                {quest.bonusRewards && (
-                                  <span className="text-purple-400">
-                                    +Bonus Rewards
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Progress Bar for All Quests */}
-                          <div className="mt-3">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="text-zinc-400">Progress</span>
-                              <span className="text-green-400">
-                                {quest.have}/{quest.need}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="max-h-96 overflow-y-auto">
+                      {/* Quest Reputation Display */}
+                      {daily.questReputation > 0 && (
+                        <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-3 mb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <i className="fas fa-star text-purple-400"></i>
+                              <span className="text-purple-200 font-medium">
+                                Quest Reputation
                               </span>
                             </div>
-                            <div className="w-full bg-zinc-700 rounded-full h-2">
-                              <div
-                                className="bg-green-500 h-2 rounded-full transition-all"
-                                style={{
-                                  width: `${Math.round(
-                                    (quest.have / quest.need) * 100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <span className="text-purple-300 font-bold">
+                              {daily.questReputation}
+                            </span>
+                          </div>
+                          <div className="text-xs text-purple-200/80 mt-1">
+                            Higher reputation unlocks epic quests and better
+                            rewards
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      )}
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-zinc-400 text-center">
-                      Complete quests to earn rewards and reputation!
-                    </div>
-                    <div className="text-xs text-violet-400 text-center mt-2">
-                      <i className="fas fa-crown mr-1"></i>
-                      Complete all 5 quests for Daily Master bonus rewards!
-                    </div>
-                  </div>
-                </>
-              )}
+                      {!daily.active && !daily.completed && (
+                        <div className="text-sm opacity-80 text-center py-8">
+                          Start your Daily Quest to earn bonuses. Select 3
+                          quests from 5 available options. Fail or quit and you
+                          face the Penalty Zone.
+                        </div>
+                      )}
 
-              {daily.completed && (
-                <div className="text-emerald-400 text-sm text-center py-8">
-                  <i className="fas fa-trophy text-2xl mb-2"></i>
-                  <div>Daily quests completed!</div>
-                  <div className="text-xs text-emerald-300 mt-1">
-                    よくやった (yoku yatta): well done!
-                  </div>
-                </div>
-              )}
+                      {daily.active && !daily.completed && (
+                        <>
+                          <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-500/30 rounded-lg p-4 mb-4">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <i className="fas fa-clock text-yellow-400"></i>
+                              <span className="text-yellow-200 font-medium">
+                                Complete quests to earn rewards!
+                              </span>
+                            </div>
+                            <p className="text-sm text-yellow-100/80">
+                              Progress: {daily.completedQuests.length}/
+                              {daily.availableQuests.length} completed
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+                            {daily.availableQuests.map((quest) => {
+                              const isCompleted =
+                                daily.completedQuests.includes(quest.id);
+
+                              const questIcons = {
+                                combat: "fas fa-sword",
+                                exploration: "fas fa-door-open",
+                                collection: "fas fa-backpack",
+                                skill: "fas fa-magic",
+                                challenge: "fas fa-trophy",
+                              };
+
+                              return (
+                                <div
+                                  key={quest.id}
+                                  className={`relative border-2 rounded-lg p-4 transition-all ${
+                                    isCompleted
+                                      ? "border-green-500 bg-green-900/20"
+                                      : "border-zinc-600 bg-zinc-800/30"
+                                  }`}
+                                >
+                                  {/* Difficulty Badge */}
+                                  <div
+                                    className={`absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold ${getDifficultyBgColor(
+                                      quest.difficulty
+                                    )}`}
+                                  >
+                                    {quest.difficulty.toUpperCase()}
+                                  </div>
+
+                                  <div className="flex items-center space-x-3">
+                                    <div
+                                      className={`w-10 h-10 ${getDifficultyBgColor(
+                                        quest.difficulty
+                                      )} rounded-full flex items-center justify-center`}
+                                    >
+                                      <i
+                                        className={`${
+                                          questIcons[quest.type]
+                                        } text-white`}
+                                      ></i>
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2">
+                                        <div
+                                          className={`font-medium ${getDifficultyColor(
+                                            quest.difficulty
+                                          )}`}
+                                        >
+                                          {quest.name}
+                                        </div>
+                                        {isCompleted && (
+                                          <i className="fas fa-check-circle text-green-400"></i>
+                                        )}
+                                      </div>
+                                      <div className="text-sm text-zinc-400 mt-1">
+                                        {quest.description}
+                                      </div>
+                                      <div className="flex items-center space-x-4 mt-2 text-xs">
+                                        <span className="text-green-400">
+                                          +{quest.expReward} EXP
+                                        </span>
+                                        <span className="text-yellow-400">
+                                          +{quest.goldReward} Gold
+                                        </span>
+                                        {quest.bonusRewards && (
+                                          <span className="text-purple-400">
+                                            +Bonus Rewards
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Progress Bar for All Quests */}
+                                  <div className="mt-3">
+                                    <div className="flex items-center justify-between text-xs mb-1">
+                                      <span className="text-zinc-400">
+                                        Progress
+                                      </span>
+                                      <span className="text-green-400">
+                                        {quest.have}/{quest.need}
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-zinc-700 rounded-full h-2">
+                                      <div
+                                        className="bg-green-500 h-2 rounded-full transition-all"
+                                        style={{
+                                          width: `${Math.round(
+                                            (quest.have / quest.need) * 100
+                                          )}%`,
+                                        }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="text-sm text-zinc-400 text-center">
+                              Complete quests to earn rewards and reputation!
+                            </div>
+                            <div className="text-xs text-violet-400 text-center mt-2">
+                              <i className="fas fa-crown mr-1"></i>
+                              Complete all 5 quests for Daily Master bonus
+                              rewards!
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {daily.completed && (
+                        <div className="text-emerald-400 text-sm text-center py-8">
+                          <i className="fas fa-trophy text-2xl mb-2"></i>
+                          <div>Daily quests completed!</div>
+                          <div className="text-xs text-emerald-300 mt-1">
+                            よくやった (yoku yatta): well done!
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
 
             {/* Inventory moved to middle column for better visibility on large screens */}
             <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-zinc-100">Inventory</h3>
-                {player.inv.length > 0 && (
-                  <span className="bg-amber-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                    {player.inv.length}
-                  </span>
-                )}
-              </div>
-
-              <EnhancedInventory />
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="inventory">
+                  <AccordionTrigger className="text-xl font-bold text-zinc-100 hover:no-underline">
+                    <div className="flex items-center justify-between w-full mr-4">
+                      <span>Inventory</span>
+                      {player.inv.length > 0 && (
+                        <span className="bg-amber-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                          {player.inv.length}
+                        </span>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="max-h-96 overflow-y-auto">
+                      <EnhancedInventory />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
           </section>
 
           {/* Right: Log */}
           <section className="lg:col-span-1">
             <Card>
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="fas fa-scroll text-zinc-400"></i>
-                <h3 className="text-lg font-bold text-zinc-100">
-                  Activity Log
-                </h3>
-              </div>
-
-              <div className="bg-zinc-900/50 rounded-lg p-4 h-96 overflow-y-auto custom-scrollbar space-y-2 text-sm">
-                {log.map((m, i) => (
-                  <div key={i} className="opacity-90">
-                    • {m}
-                  </div>
-                ))}
-              </div>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="activity-log">
+                  <AccordionTrigger className="text-lg font-bold text-zinc-100 hover:no-underline">
+                    <div className="flex items-center space-x-2">
+                      <i className="fas fa-scroll text-zinc-400"></i>
+                      <span>Activity Log</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="bg-zinc-900/50 rounded-lg p-4 h-96 overflow-y-auto custom-scrollbar space-y-2 text-sm">
+                      {log.map((m, i) => (
+                        <div key={i} className="opacity-90">
+                          • {m}
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
 
             <Card className="mt-6">
-              <h3 className="font-semibold mb-2">Lore (Mechanics)</h3>
-              <ul className="text-xs opacity-80 list-disc pl-5 space-y-1">
-                <li>Gates lead to Dungeons. Clear them to gain EXP/loot.</li>
-                <li>
-                  Daily Quest must be completed or the Penalty Zone triggers.
-                </li>
-                <li>
-                  Level up to gain Stat Points. STR/AGI raise damage; INT/LUCK
-                  aid extraction.
-                </li>
-                <li>
-                  Shadow Extraction after boss defeat may recruit a Shadow ally
-                  (25% base chance).
-                </li>
-                <li>Fatigue reduces your total power; Rest lowers it.</li>
-                <li>
-                  Instant Dungeon Keys open bonus runs with better rewards.
-                </li>
-              </ul>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="lore">
+                  <AccordionTrigger className="font-semibold hover:no-underline">
+                    Lore (Mechanics)
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="text-xs opacity-80 list-disc pl-5 space-y-1">
+                      <li>
+                        Gates lead to Dungeons. Clear them to gain EXP/loot.
+                      </li>
+                      <li>
+                        Daily Quest must be completed or the Penalty Zone
+                        triggers.
+                      </li>
+                      <li>
+                        Level up to gain Stat Points. STR/AGI raise damage;
+                        INT/LUCK aid extraction.
+                      </li>
+                      <li>
+                        Shadow Extraction after boss defeat may recruit a Shadow
+                        ally (25% base chance).
+                      </li>
+                      <li>Fatigue reduces your total power; Rest lowers it.</li>
+                      <li>
+                        Instant Dungeon Keys open bonus runs with better
+                        rewards.
+                      </li>
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
           </section>
         </div>
