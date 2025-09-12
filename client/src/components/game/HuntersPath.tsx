@@ -69,6 +69,22 @@ interface Shadow {
   id: string;
   name: string;
   power: number;
+  rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
+  abilities: ShadowAbility[];
+  level: number;
+  exp: number;
+  expToNext: number;
+  type: "warrior" | "mage" | "rogue" | "tank" | "support";
+  description: string;
+}
+
+interface ShadowAbility {
+  id: string;
+  name: string;
+  description: string;
+  type: "passive" | "active";
+  effect: string;
+  cooldown?: number;
 }
 
 interface Item {
@@ -250,6 +266,207 @@ function shadowName() {
     "Caecus",
   ];
   return names[rand(0, names.length - 1)] + "-" + rand(1, 999);
+}
+
+// Shadow system data
+const SHADOW_TYPES = ["warrior", "mage", "rogue", "tank", "support"] as const;
+const SHADOW_RARITIES = [
+  "common",
+  "uncommon",
+  "rare",
+  "epic",
+  "legendary",
+] as const;
+
+const SHADOW_ABILITIES: Record<string, ShadowAbility[]> = {
+  warrior: [
+    {
+      id: "berserker_rage",
+      name: "Berserker Rage",
+      description: "Increases damage by 25% when below 50% HP",
+      type: "passive",
+      effect: "damage_boost",
+    },
+    {
+      id: "cleave",
+      name: "Cleave",
+      description: "Attacks all enemies in range",
+      type: "active",
+      effect: "aoe_attack",
+      cooldown: 3,
+    },
+  ],
+  mage: [
+    {
+      id: "arcane_mastery",
+      name: "Arcane Mastery",
+      description: "Spells have 15% chance to cast twice",
+      type: "passive",
+      effect: "double_cast",
+    },
+    {
+      id: "mana_shield",
+      name: "Mana Shield",
+      description: "Absorbs damage using MP instead of HP",
+      type: "active",
+      effect: "damage_absorption",
+      cooldown: 5,
+    },
+  ],
+  rogue: [
+    {
+      id: "shadow_step",
+      name: "Shadow Step",
+      description: "Next attack has 100% critical chance",
+      type: "active",
+      effect: "guaranteed_crit",
+      cooldown: 4,
+    },
+    {
+      id: "poison_blade",
+      name: "Poison Blade",
+      description: "Attacks poison enemies for 3 turns",
+      type: "passive",
+      effect: "poison_damage",
+    },
+  ],
+  tank: [
+    {
+      id: "fortress",
+      name: "Fortress",
+      description: "Reduces all damage taken by 30%",
+      type: "passive",
+      effect: "damage_reduction",
+    },
+    {
+      id: "taunt",
+      name: "Taunt",
+      description: "Forces enemies to attack this shadow",
+      type: "active",
+      effect: "force_aggro",
+      cooldown: 2,
+    },
+  ],
+  support: [
+    {
+      id: "healing_aura",
+      name: "Healing Aura",
+      description: "Heals all allies for 10% of max HP each turn",
+      type: "passive",
+      effect: "heal_aura",
+    },
+    {
+      id: "blessing",
+      name: "Blessing",
+      description: "Increases all ally stats by 20% for 3 turns",
+      type: "active",
+      effect: "stat_boost",
+      cooldown: 6,
+    },
+  ],
+};
+
+const SHADOW_DESCRIPTIONS: Record<string, string> = {
+  warrior:
+    "A fierce combatant specializing in melee damage and aggressive tactics.",
+  mage: "A master of arcane arts, wielding powerful spells and magical abilities.",
+  rogue:
+    "A stealthy assassin with high critical hit chance and poison attacks.",
+  tank: "A stalwart defender who protects allies and absorbs enemy attacks.",
+  support:
+    "A benevolent ally who heals and enhances the capabilities of the team.",
+};
+
+function getRarityFromBossRank(bossRankIdx: number): Shadow["rarity"] {
+  // Higher rank bosses have better rarity chances
+  const rarityRoll = Math.random();
+
+  if (bossRankIdx >= 4) {
+    // S-rank and above
+    if (rarityRoll < 0.05) return "legendary";
+    if (rarityRoll < 0.15) return "epic";
+    if (rarityRoll < 0.35) return "rare";
+    if (rarityRoll < 0.65) return "uncommon";
+    return "common";
+  } else if (bossRankIdx >= 2) {
+    // C-rank and above
+    if (rarityRoll < 0.02) return "epic";
+    if (rarityRoll < 0.08) return "rare";
+    if (rarityRoll < 0.25) return "uncommon";
+    return "common";
+  } else {
+    // D-rank and below
+    if (rarityRoll < 0.01) return "rare";
+    if (rarityRoll < 0.1) return "uncommon";
+    return "common";
+  }
+}
+
+function createShadow(gatePower: number, bossRankIdx: number): Shadow {
+  const type = SHADOW_TYPES[rand(0, SHADOW_TYPES.length - 1)];
+  const rarity = getRarityFromBossRank(bossRankIdx);
+
+  // Base power calculation with rarity multiplier
+  const rarityMultipliers = {
+    common: 1,
+    uncommon: 1.2,
+    rare: 1.5,
+    epic: 2,
+    legendary: 3,
+  };
+  const basePower = Math.floor(gatePower * 0.8 * rarityMultipliers[rarity]);
+
+  // Get abilities based on type and rarity
+  const availableAbilities = SHADOW_ABILITIES[type];
+  const abilityCount =
+    rarity === "common"
+      ? 1
+      : rarity === "uncommon"
+      ? 2
+      : rarity === "rare"
+      ? 2
+      : rarity === "epic"
+      ? 3
+      : 4;
+  const abilities = availableAbilities.slice(
+    0,
+    Math.min(abilityCount, availableAbilities.length)
+  );
+
+  return {
+    id: uid(),
+    name: shadowName(),
+    power: basePower,
+    rarity,
+    abilities,
+    level: 1,
+    exp: 0,
+    expToNext: 100,
+    type,
+    description: SHADOW_DESCRIPTIONS[type],
+  };
+}
+
+function getRarityColor(rarity: Shadow["rarity"]): string {
+  const colors = {
+    common: "text-gray-400",
+    uncommon: "text-green-400",
+    rare: "text-blue-400",
+    epic: "text-purple-400",
+    legendary: "text-yellow-400",
+  };
+  return colors[rarity];
+}
+
+function getRarityBorder(rarity: Shadow["rarity"]): string {
+  const borders = {
+    common: "border-gray-500",
+    uncommon: "border-green-500",
+    rare: "border-blue-500",
+    epic: "border-purple-500",
+    legendary: "border-yellow-500",
+  };
+  return borders[rarity];
 }
 
 function initialPlayer(): Player {
@@ -902,6 +1119,38 @@ export default function HuntersPath() {
     if (saved) {
       try {
         const gameState = JSON.parse(saved);
+
+        // Migrate old shadows to new format
+        if (gameState.player.shadows) {
+          gameState.player.shadows = gameState.player.shadows.map(
+            (shadow: any) => {
+              // If shadow already has new format, return as is
+              if (shadow.rarity && shadow.abilities && shadow.type) {
+                return shadow;
+              }
+
+              // Migrate old shadow format to new format
+              const type = SHADOW_TYPES[rand(0, SHADOW_TYPES.length - 1)];
+              const rarity = "common"; // Default to common for old shadows
+              const availableAbilities = SHADOW_ABILITIES[type];
+              const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old shadows
+
+              return {
+                id: shadow.id,
+                name: shadow.name,
+                power: shadow.power,
+                rarity,
+                abilities,
+                level: 1,
+                exp: 0,
+                expToNext: 100,
+                type,
+                description: SHADOW_DESCRIPTIONS[type],
+              };
+            }
+          );
+        }
+
         setPlayer(gameState.player);
         setGates(
           gameState.gates || generateGatePool(gameState.player?.level || 1)
@@ -1333,7 +1582,8 @@ export default function HuntersPath() {
     // First victory achievement
     if (
       playerStats.totalGatesCompleted === 1 &&
-      achievements && !achievements.some((a) => a.name === "First Blood")
+      achievements &&
+      !achievements.some((a) => a.name === "First Blood")
     ) {
       newAchievements.push({
         id: uid(),
@@ -1346,7 +1596,8 @@ export default function HuntersPath() {
     // Gate master achievement
     if (
       playerStats.totalGatesCompleted === 10 &&
-      achievements && !achievements.some((a) => a.name === "Gate Master")
+      achievements &&
+      !achievements.some((a) => a.name === "Gate Master")
     ) {
       newAchievements.push({
         id: uid(),
@@ -1359,7 +1610,8 @@ export default function HuntersPath() {
     // Shadow caller achievement
     if (
       playerStats.totalShadowsExtracted === 1 &&
-      achievements && !achievements.some((a) => a.name === "Shadow Caller")
+      achievements &&
+      !achievements.some((a) => a.name === "Shadow Caller")
     ) {
       newAchievements.push({
         id: uid(),
@@ -1435,11 +1687,10 @@ export default function HuntersPath() {
           playSound("extraction_success");
 
           // Create the shadow and update player state
-          const shadowExtracted = {
-            id: uid(),
-            name: shadowName(),
-            power: Math.floor(gatePower * 0.8),
-          };
+          const shadowExtracted = createShadow(
+            gatePower,
+            RANKS.indexOf(bossRank)
+          );
 
           setPlayer((pp) => ({
             ...pp,
@@ -1447,7 +1698,12 @@ export default function HuntersPath() {
           }));
 
           recordShadowExtraction();
-          setLog((l) => [`Shadow extracted: ${shadowExtracted.name}!`, ...l]);
+          setLog((l) => [
+            `${shadowExtracted.rarity.toUpperCase()} shadow extracted: ${
+              shadowExtracted.name
+            }! (${shadowExtracted.type})`,
+            ...l,
+          ]);
 
           // Update combat result with the extracted shadow
           setCombatResult((prev) =>
@@ -1756,10 +2012,12 @@ export default function HuntersPath() {
         const pow = Math.floor(
           5 + player.stats.INT * 0.8 + bossRankIdx * 6 + rand(0, 8)
         );
-        const s = { id: uid(), name: shadowName(), power: pow };
+        const s = createShadow(pow, bossRankIdx);
         setPlayer((p) => ({ ...p, shadows: [...p.shadows, s] }));
         logPush(
-          `Shadow Extraction succeeded! ${s.name} joins you (+${pow} power).`
+          `${s.rarity.toUpperCase()} shadow extracted: ${s.name}! (${
+            s.type
+          }) - +${s.power} power`
         );
 
         // Update statistics
@@ -2098,6 +2356,37 @@ export default function HuntersPath() {
           );
           gameState.daily.active = true;
         }
+      }
+
+      // Migrate old shadows to new format
+      if (gameState.player.shadows) {
+        gameState.player.shadows = gameState.player.shadows.map(
+          (shadow: any) => {
+            // If shadow already has new format, return as is
+            if (shadow.rarity && shadow.abilities && shadow.type) {
+              return shadow;
+            }
+
+            // Migrate old shadow format to new format
+            const type = SHADOW_TYPES[rand(0, SHADOW_TYPES.length - 1)];
+            const rarity = "common"; // Default to common for old shadows
+            const availableAbilities = SHADOW_ABILITIES[type];
+            const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old shadows
+
+            return {
+              id: shadow.id,
+              name: shadow.name,
+              power: shadow.power,
+              rarity,
+              abilities,
+              level: 1,
+              exp: 0,
+              expToNext: 100,
+              type,
+              description: SHADOW_DESCRIPTIONS[type],
+            };
+          }
+        );
       }
 
       setPlayer(gameState.player);
@@ -3905,19 +4194,32 @@ export default function HuntersPath() {
                 {player.shadows.map((s) => (
                   <div
                     key={s.id}
-                    className="bg-zinc-800/30 border border-purple-500/30 rounded-lg p-3"
+                    className={`bg-zinc-800/30 border ${getRarityBorder(
+                      s.rarity
+                    )} rounded-lg p-3`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-800 rounded-full flex items-center justify-center">
+                        <div
+                          className={`w-8 h-8 bg-gradient-to-br ${getRarityColor(
+                            s.rarity
+                          )
+                            .replace("text-", "from-")
+                            .replace(
+                              "-400",
+                              "-600"
+                            )} to-purple-800 rounded-full flex items-center justify-center`}
+                        >
                           <i className="fas fa-ghost text-white text-xs"></i>
                         </div>
                         <div>
-                          <div className="font-bold text-purple-300">
+                          <div
+                            className={`font-bold ${getRarityColor(s.rarity)}`}
+                          >
                             {s.name}
                           </div>
-                          <div className="text-xs text-zinc-400">
-                            Shadow Soldier
+                          <div className="text-xs text-zinc-400 capitalize">
+                            {s.rarity} {s.type} • Level {s.level}
                           </div>
                         </div>
                       </div>
@@ -3926,6 +4228,49 @@ export default function HuntersPath() {
                           +{s.power}
                         </div>
                         <div className="text-xs text-zinc-500">Power</div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-zinc-400 mb-2">
+                      {s.description}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold text-zinc-300 mb-1">
+                        Abilities:
+                      </div>
+                      {(s.abilities || []).map((ability) => (
+                        <div
+                          key={ability.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${
+                              ability.type === "passive"
+                                ? "bg-blue-600/20 text-blue-400"
+                                : "bg-green-600/20 text-green-400"
+                            }`}
+                          >
+                            {ability.type}
+                          </span>
+                          <span className="text-xs text-zinc-300 font-medium">
+                            {ability.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-zinc-700">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">
+                          EXP: {s.exp}/{s.expToNext}
+                        </span>
+                        <div className="w-20 bg-zinc-700 rounded-full h-1.5">
+                          <div
+                            className="bg-purple-500 h-1.5 rounded-full transition-all duration-300"
+                            style={{ width: `${(s.exp / s.expToNext) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -4977,28 +5322,29 @@ export default function HuntersPath() {
                     Achievements ({achievements?.length || 0})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {achievements && achievements.map((achievement) => (
-                      <div
-                        key={achievement.id}
-                        className="bg-zinc-800/50 border border-yellow-500/30 rounded-lg p-3"
-                      >
-                        <div className="flex items-center space-x-2 mb-1">
-                          <i className="fas fa-trophy text-yellow-400"></i>
-                          <span className="font-bold text-yellow-300">
-                            {achievement.name}
-                          </span>
+                    {achievements &&
+                      achievements.map((achievement) => (
+                        <div
+                          key={achievement.id}
+                          className="bg-zinc-800/50 border border-yellow-500/30 rounded-lg p-3"
+                        >
+                          <div className="flex items-center space-x-2 mb-1">
+                            <i className="fas fa-trophy text-yellow-400"></i>
+                            <span className="font-bold text-yellow-300">
+                              {achievement.name}
+                            </span>
+                          </div>
+                          <p className="text-sm text-zinc-400">
+                            {achievement.description}
+                          </p>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            Unlocked:{" "}
+                            {new Date(
+                              achievement.unlockedAt
+                            ).toLocaleDateString()}
+                          </p>
                         </div>
-                        <p className="text-sm text-zinc-400">
-                          {achievement.description}
-                        </p>
-                        <p className="text-xs text-zinc-500 mt-1">
-                          Unlocked:{" "}
-                          {new Date(
-                            achievement.unlockedAt
-                          ).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </Card>
               )}
