@@ -1333,7 +1333,7 @@ export default function HuntersPath() {
     // First victory achievement
     if (
       playerStats.totalGatesCompleted === 1 &&
-      !achievements.some((a) => a.name === "First Blood")
+      achievements && !achievements.some((a) => a.name === "First Blood")
     ) {
       newAchievements.push({
         id: uid(),
@@ -1346,7 +1346,7 @@ export default function HuntersPath() {
     // Gate master achievement
     if (
       playerStats.totalGatesCompleted === 10 &&
-      !achievements.some((a) => a.name === "Gate Master")
+      achievements && !achievements.some((a) => a.name === "Gate Master")
     ) {
       newAchievements.push({
         id: uid(),
@@ -1359,7 +1359,7 @@ export default function HuntersPath() {
     // Shadow caller achievement
     if (
       playerStats.totalShadowsExtracted === 1 &&
-      !achievements.some((a) => a.name === "Shadow Caller")
+      achievements && !achievements.some((a) => a.name === "Shadow Caller")
     ) {
       newAchievements.push({
         id: uid(),
@@ -2890,7 +2890,7 @@ export default function HuntersPath() {
                 }`}
                 onClick={(e) => {
                   // Don't toggle details if clicking on a button
-                  if ((e.target as HTMLElement).closest('button')) {
+                  if ((e.target as HTMLElement).closest("button")) {
                     return;
                   }
                   setShowItemDetails(
@@ -4970,14 +4970,14 @@ export default function HuntersPath() {
               </div>
 
               {/* Achievements */}
-              {achievements.length > 0 && (
+              {achievements && achievements.length > 0 && (
                 <Card className="mt-6">
                   <h3 className="text-lg font-bold text-zinc-100 mb-4">
                     <i className="fas fa-medal mr-2 text-yellow-400"></i>
-                    Achievements ({achievements.length})
+                    Achievements ({achievements?.length || 0})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {achievements.map((achievement) => (
+                    {achievements && achievements.map((achievement) => (
                       <div
                         key={achievement.id}
                         className="bg-zinc-800/50 border border-yellow-500/30 rounded-lg p-3"
