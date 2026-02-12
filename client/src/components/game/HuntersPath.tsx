@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audioManager";
 import type { SoundName, MusicName } from "@/lib/audioManager";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, hapticRumble } from "@/lib/haptics";
+import { useParticles } from "@/lib/particles";
+import type { ParticlePreset } from "@/lib/particles";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -1004,6 +1006,9 @@ const MONSTER_DATA = {
 };
 
 export default function HuntersPath() {
+  // Particle effects system
+  const { trigger: triggerParticles, ParticleLayer } = useParticles();
+
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [log, setLog] = useState<string[]>([
     "Welcome, Hunter. Complete your Daily Quest, then clear a Gate.",
@@ -1390,7 +1395,7 @@ export default function HuntersPath() {
         const oldHp = player.hp;
         const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
 
-        // Trigger visual effects, sounds, haptics, and floating damage numbers
+        // Trigger visual effects, sounds, haptics, particles, and floating damage numbers
         if (dmgPlayer > 0) {
           triggerVisualEffect("screenShake");
           playSound("attack");
@@ -1399,9 +1404,11 @@ export default function HuntersPath() {
             triggerVisualEffect("criticalHit");
             playSound("critical");
             hapticHeavy();
+            triggerParticles("critical-hit", "75%", "40%");
             addDamageNumber(dmgPlayer, "critical", "enemy");
           } else {
             hapticMedium();
+            triggerParticles("combat-hit", "75%", "40%");
             addDamageNumber(dmgPlayer, "damage", "enemy");
           }
         }
@@ -1409,6 +1416,7 @@ export default function HuntersPath() {
           triggerVisualEffect("damageFlash");
           playSound("damage");
           hapticWarning();
+          triggerParticles("combat-hit", "25%", "40%");
           addDamageNumber(dmgBoss, "damage", "player");
         } else {
           playSound("block");
@@ -1603,6 +1611,7 @@ export default function HuntersPath() {
         logPush(`Level Up! Welcome to level ${level}. +5 stat points!`);
         playSound("level_up");
         hapticHeavy();
+        triggerParticles("level-up", "50%", "50%");
       }
 
       // If player leveled up, refresh gates to unlock new tiers
@@ -1801,10 +1810,11 @@ export default function HuntersPath() {
           progress: 100,
         }));
 
-        // Play success/failure sound + haptics
+        // Play success/failure sound + haptics + particles
         if (success) {
           playSound("extraction_success");
           hapticSuccess();
+          triggerParticles("spirit-bind", "50%", "50%");
 
           // Create the spirit and update player state
           const spiritBound = createSpirit(
@@ -2169,9 +2179,10 @@ export default function HuntersPath() {
       inv: p.inv.filter((i: Item) => i.id !== itemId),
     }));
 
-    // Trigger heal visual effect
+    // Trigger heal visual effect + particles
     triggerVisualEffect("healFlash");
     playSound("heal");
+    triggerParticles("heal", "25%", "40%");
 
     // Add combat log entry if in combat
     if (inRun && running) {
@@ -4277,6 +4288,9 @@ export default function HuntersPath() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Particle Effects Layer */}
+                  <ParticleLayer />
 
                   {/* Combat Arena with Enhanced Visuals */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative z-10">
