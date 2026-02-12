@@ -677,12 +677,24 @@ function initialGameTime(): GameTime {
 function Card({
   children,
   className = "",
+  glow,
 }: {
   children: React.ReactNode;
   className?: string;
+  glow?: "purple" | "red" | "green" | "gold";
 }) {
+  const glowCls = glow
+    ? {
+        purple: "border-violet-500/40 shadow-violet-500/10",
+        red: "border-red-500/40 shadow-red-500/10",
+        green: "border-green-500/40 shadow-green-500/10",
+        gold: "border-yellow-500/40 shadow-yellow-500/10",
+      }[glow]
+    : "";
   return (
-    <div className={`game-card rounded-xl border p-6 shadow-2xl ${className}`}>
+    <div
+      className={`game-card rounded-xl border p-6 ${glowCls} ${className}`}
+    >
       {children}
     </div>
   );
@@ -736,14 +748,14 @@ function Bar({
   return (
     <div className="mt-3">
       <div className="flex justify-between text-sm opacity-90 mb-1">
-        <span>{label}</span>
-        <span>
+        <span className="font-medium">{label}</span>
+        <span className="tabular-nums">
           {fmt(value)} / {fmt(max)} ({pct}%)
         </span>
       </div>
-      <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+      <div className="w-full h-3 bg-zinc-800/80 rounded-full overflow-hidden border border-zinc-700/50">
         <div
-          className={`h-3 rounded-full transition-all duration-300 ${color}`}
+          className={`h-full rounded-full transition-all duration-500 ease-out progress-shimmer ${color}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -3434,10 +3446,10 @@ export default function HuntersPath() {
               {/* Game Title and Time */}
               <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-zinc-100">
+                  <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-wide bg-gradient-to-r from-violet-400 via-purple-300 to-violet-400 bg-clip-text text-transparent drop-shadow-sm">
                     Hunter's Path
                   </h1>
-                  <p className="text-zinc-400 text-sm">
+                  <p className="text-zinc-500 text-xs font-medium tracking-widest uppercase">
                     {formatGameTime(gameTime)}
                   </p>
                 </div>

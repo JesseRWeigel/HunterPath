@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -53,6 +53,14 @@
 
   /* Font family */
   --font-game: "Inter", system-ui, sans-serif;
+  --font-display: "Rajdhani", "Inter", system-ui, sans-serif;
+
+  /* Rarity glow colors */
+  --rarity-common: hsl(0, 0%, 60%);
+  --rarity-uncommon: hsl(142, 76%, 46%);
+  --rarity-rare: hsl(217, 91%, 60%);
+  --rarity-epic: hsl(262, 83%, 58%);
+  --rarity-legendary: hsl(45, 100%, 51%);
 }
 
 .dark {
@@ -96,6 +104,10 @@
   .game-card {
     background: var(--game-card);
     border-color: var(--game-border);
+    border-width: 1.5px;
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   .game-gradient {
@@ -105,6 +117,36 @@
       hsl(240, 6%, 10%) 35%,
       hsl(262, 83%, 8%) 100%
     );
+  }
+
+  /* Display font for headings */
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+  }
+
+  /* ─── Rarity border glow ─────────────────────────── */
+  .rarity-common { border-color: var(--rarity-common); }
+  .rarity-uncommon {
+    border-color: var(--rarity-uncommon);
+    box-shadow: 0 0 8px hsl(142, 76%, 46% / 0.2);
+  }
+  .rarity-rare {
+    border-color: var(--rarity-rare);
+    box-shadow: 0 0 10px hsl(217, 91%, 60% / 0.25);
+  }
+  .rarity-epic {
+    border-color: var(--rarity-epic);
+    box-shadow: 0 0 12px hsl(262, 83%, 58% / 0.3);
+  }
+  .rarity-legendary {
+    border-color: var(--rarity-legendary);
+    box-shadow: 0 0 16px hsl(45, 100%, 51% / 0.35);
+    animation: legendary-shimmer 3s ease-in-out infinite;
+  }
+  @keyframes legendary-shimmer {
+    0%, 100% { box-shadow: 0 0 16px hsl(45, 100%, 51% / 0.35); }
+    50% { box-shadow: 0 0 24px hsl(45, 100%, 51% / 0.5), 0 0 40px hsl(45, 100%, 51% / 0.15); }
   }
 
   .stat-str {
@@ -125,15 +167,36 @@
 
   .progress-hp {
     background: linear-gradient(90deg, var(--hp-color), hsl(0, 84%, 50%));
+    box-shadow: 0 0 6px hsl(0, 84%, 60% / 0.4);
   }
   .progress-mp {
     background: linear-gradient(90deg, var(--mp-color), hsl(217, 91%, 50%));
+    box-shadow: 0 0 6px hsl(217, 91%, 60% / 0.4);
   }
   .progress-exp {
     background: linear-gradient(90deg, var(--exp-color), hsl(262, 83%, 48%));
+    box-shadow: 0 0 6px hsl(262, 83%, 58% / 0.4);
   }
   .progress-fatigue {
     background: linear-gradient(90deg, var(--fatigue-color), hsl(0, 84%, 60%));
+    box-shadow: 0 0 6px hsl(25, 95%, 53% / 0.4);
+  }
+
+  /* Animated shimmer overlay on progress bars */
+  .progress-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    animation: bar-shimmer 2.5s ease-in-out infinite;
+  }
+  @keyframes bar-shimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
   }
 
   .glow-purple {
