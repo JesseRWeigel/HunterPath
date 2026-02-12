@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audioManager";
 import type { SoundName, MusicName } from "@/lib/audioManager";
 
@@ -783,6 +784,81 @@ function BarMini({
   );
 }
 
+// ─── Framer Motion combat components ──────────────────────────
+
+// Animated health bar with spring physics
+function CombatBar({
+  value,
+  max,
+  color,
+  label,
+}: {
+  value: number;
+  max: number;
+  color: string;
+  label: string;
+}) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span className={color}>{label}</span>
+        <span className="text-zinc-300 tabular-nums">
+          {fmt(value)}/{fmt(max)}
+        </span>
+      </div>
+      <div className="w-full bg-zinc-700/80 rounded-full h-3 overflow-hidden border border-zinc-600/40">
+        <motion.div
+          className={`h-full rounded-full progress-shimmer ${
+            label === "HP" && color.includes("green")
+              ? "bg-gradient-to-r from-green-600 to-green-500 shadow-green-500/40"
+              : label === "MP"
+              ? "bg-gradient-to-r from-blue-600 to-blue-500 shadow-blue-500/40"
+              : "bg-gradient-to-r from-red-600 to-red-500 shadow-red-500/40"
+          }`}
+          style={{ boxShadow: "0 0 6px currentColor" }}
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Floating damage/heal numbers
+function DamageNumber({
+  amount,
+  type,
+  id,
+}: {
+  amount: number;
+  type: "damage" | "heal" | "critical" | "block";
+  id: string;
+}) {
+  const colorMap = {
+    damage: "text-red-400",
+    heal: "text-green-400",
+    critical: "text-yellow-300 text-lg font-black",
+    block: "text-zinc-400",
+  };
+  const prefix = type === "heal" ? "+" : type === "block" ? "" : "-";
+  const label = type === "block" ? "BLOCKED" : `${prefix}${fmt(amount)}`;
+
+  return (
+    <motion.div
+      key={id}
+      className={`absolute font-bold pointer-events-none z-20 ${colorMap[type]}`}
+      initial={{ opacity: 1, y: 0, scale: type === "critical" ? 1.4 : 1 }}
+      animate={{ opacity: 0, y: -40, scale: type === "critical" ? 1.8 : 1.1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1, ease: "easeOut" }}
+    >
+      {label}
+    </motion.div>
+  );
+}
+
 function generateGatePool(playerLevel: number): Gate[] {
   const gates: Gate[] = [];
 
@@ -947,6 +1023,17 @@ export default function HuntersPath() {
     levelUp: false,
     statAllocation: false,
   });
+  // Floating damage numbers for combat
+  const [damageNumbers, setDamageNumbers] = useState<
+    { id: string; amount: number; type: "damage" | "heal" | "critical" | "block"; side: "player" | "enemy" }[]
+  >([]);
+
+  const addDamageNumber = (amount: number, type: "damage" | "heal" | "critical" | "block", side: "player" | "enemy") => {
+    const id = uid();
+    setDamageNumbers((prev) => [...prev.slice(-5), { id, amount, type, side }]);
+    setTimeout(() => setDamageNumbers((prev) => prev.filter((d) => d.id !== id)), 1100);
+  };
+
   const [gold, setGold] = useState(50); // Start with some gold for gate refreshes
   const [gameTime, setGameTime] = useState<GameTime>(initialGameTime);
   const [daily, setDaily] = useState<Daily>(() => {
@@ -1299,20 +1386,26 @@ export default function HuntersPath() {
         const oldHp = player.hp;
         const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
 
-        // Trigger visual effects and sounds
+        // Trigger visual effects, sounds, and floating damage numbers
         if (dmgPlayer > 0) {
           triggerVisualEffect("screenShake");
           playSound("attack");
-          if (dmgPlayer > pPower * 1.5) {
+          const isCrit = dmgPlayer > pPower * 1.5;
+          if (isCrit) {
             triggerVisualEffect("criticalHit");
             playSound("critical");
+            addDamageNumber(dmgPlayer, "critical", "enemy");
+          } else {
+            addDamageNumber(dmgPlayer, "damage", "enemy");
           }
         }
         if (dmgBoss > 0) {
           triggerVisualEffect("damageFlash");
           playSound("damage");
+          addDamageNumber(dmgBoss, "damage", "player");
         } else {
           playSound("block");
+          addDamageNumber(0, "block", "player");
         }
 
         // MP upkeep
@@ -4175,69 +4268,64 @@ export default function HuntersPath() {
                   {/* Combat Arena with Enhanced Visuals */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative z-10">
                     {/* Hunter Side with Glow Effects */}
-                    <div className="bg-zinc-800/50 border border-purple-500/30 rounded-lg p-4 relative group hover:border-purple-400/50 transition-all duration-300">
+                    <motion.div
+                      className="bg-zinc-800/50 border border-purple-500/30 rounded-lg p-4 relative group hover:border-purple-400/50 transition-colors duration-300"
+                      initial={{ opacity: 0, x: -30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    >
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                      {/* Floating damage numbers on player side */}
+                      <AnimatePresence>
+                        {damageNumbers.filter(d => d.side === "player").map((d) => (
+                          <DamageNumber key={d.id} id={d.id} amount={d.amount} type={d.type} />
+                        ))}
+                      </AnimatePresence>
+
                       <div className="text-center mb-4 relative z-10">
                         <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg shadow-purple-500/30 animate-pulse">
                           <i className="fas fa-user-shield text-white text-xl"></i>
                         </div>
-                        <h5 className="font-bold text-purple-300">Hunter</h5>
+                        <h5 className="font-bold text-purple-300 font-display">Hunter</h5>
                         <p className="text-xs text-zinc-400">
                           Level {player.level}
                         </p>
                       </div>
 
                       <div className="space-y-3 relative z-10">
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-green-400">HP</span>
-                            <span className="text-zinc-300">
-                              {fmt(player.hp)}/{fmt(player.maxHp)}
-                            </span>
-                          </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-green-600 to-green-500 h-3 rounded-full transition-all duration-500 shadow-sm"
-                              style={{
-                                width: `${Math.round(
-                                  (player.hp / player.maxHp) * 100
-                                )}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-blue-400">MP</span>
-                            <span className="text-zinc-300">
-                              {fmt(player.mp)}/{fmt(player.maxMp)}
-                            </span>
-                          </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-blue-600 to-blue-500 h-3 rounded-full transition-all duration-500 shadow-sm"
-                              style={{
-                                width: `${Math.round(
-                                  (player.mp / player.maxMp) * 100
-                                )}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
+                        <CombatBar value={player.hp} max={player.maxHp} color="text-green-400" label="HP" />
+                        <CombatBar value={player.mp} max={player.maxMp} color="text-blue-400" label="MP" />
                       </div>
-                    </div>
+                    </motion.div>
 
                     {/* Enemy Side with Threatening Effects */}
-                    <div className="bg-zinc-800/50 border border-red-500/30 rounded-lg p-4 relative group hover:border-red-400/50 transition-all duration-300">
+                    <motion.div
+                      className="bg-zinc-800/50 border border-red-500/30 rounded-lg p-4 relative group hover:border-red-400/50 transition-colors duration-300"
+                      initial={{ opacity: 0, x: 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+                    >
                       <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                      {/* Floating damage numbers on enemy side */}
+                      <AnimatePresence>
+                        {damageNumbers.filter(d => d.side === "enemy").map((d) => (
+                          <DamageNumber key={d.id} id={d.id} amount={d.amount} type={d.type} />
+                        ))}
+                      </AnimatePresence>
+
                       <div className="text-center mb-4 relative z-10">
-                        <div
+                        <motion.div
                           className={`w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg shadow-red-500/30 ${
                             running ? "monster-idle" : ""
-                          } ${
-                            visualEffects.criticalHit ? "monster-damage" : ""
                           }`}
+                          animate={
+                            visualEffects.criticalHit
+                              ? { scale: [1, 0.85, 1], rotate: [0, -5, 5, 0] }
+                              : {}
+                          }
+                          transition={{ duration: 0.3 }}
                         >
                           <i
                             className={`fas ${
@@ -4249,8 +4337,8 @@ export default function HuntersPath() {
                                 : "fa-dragon"
                             } text-white text-xl`}
                           ></i>
-                        </div>
-                        <h5 className="font-bold text-red-300">
+                        </motion.div>
+                        <h5 className="font-bold text-red-300 font-display">
                           {running?.boss.name || combatResult?.boss.name}
                         </h5>
                         <p className="text-xs text-zinc-400 mb-2">
@@ -4273,34 +4361,14 @@ export default function HuntersPath() {
                       </div>
 
                       <div className="relative z-10">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-red-400">HP</span>
-                          <span className="text-zinc-300">
-                            {running
-                              ? `${fmt(running.hpEnemy)}/${fmt(
-                                  running.boss.maxHp
-                                )}`
-                              : "0/0"}
-                          </span>
-                        </div>
-                        <div className="w-full bg-zinc-700 rounded-full h-3 overflow-hidden">
-                          <div
-                            className={`bg-gradient-to-r from-red-600 to-red-500 h-3 rounded-full transition-all duration-500 animate-pulse shadow-sm ${
-                              visualEffects.criticalHit
-                                ? "animate-critical-hit"
-                                : ""
-                            }`}
-                            style={{
-                              width: running
-                                ? `${Math.round(
-                                    (running.hpEnemy / running.boss.maxHp) * 100
-                                  )}%`
-                                : "0%",
-                            }}
-                          ></div>
-                        </div>
+                        <CombatBar
+                          value={running ? running.hpEnemy : 0}
+                          max={running ? running.boss.maxHp : 1}
+                          color="text-red-400"
+                          label="HP"
+                        />
                       </div>
-                    </div>
+                    </motion.div>
                   </div>
 
                   {/* Enhanced Turn Indicator */}
