@@ -6,43 +6,44 @@ This document outlines the planned enhancements for Hunter's Path graphics and a
 
 ## Phase 1: Audio System Upgrade
 
-### 1.1 Upgrade to Howler.js
+### 1.1 Upgrade to Howler.js ✅
 
 - **Goal**: Better cross-browser audio compatibility and advanced features
+- **Status**: Completed — `audioManager.ts` singleton wrapping Howler.js
 - **Benefits**:
-  - Better mobile audio support
-  - Spatial audio capabilities
-  - Audio pooling and management
-  - More reliable autoplay handling
-  - Advanced audio effects (fade, pan, etc.)
+  - ✅ Better mobile audio support
+  - Spatial audio capabilities (future)
+  - ✅ Audio pooling and management
+  - ✅ More reliable autoplay handling
+  - ✅ Advanced audio effects (fade, pan, etc.)
 
-### 1.2 Enhanced Sound Effects
+### 1.2 Enhanced Sound Effects ✅
 
-- **Combat Sounds**: More varied attack sounds, impact effects, critical hits
-- **Environmental Audio**: Gate-specific ambient sounds, monster growls
-- **UI Sounds**: Button clicks, menu navigation, item interactions
-- **Achievement Sounds**: Level-up fanfares, milestone celebrations
+- ✅ **Combat Sounds**: Attack, damage, critical, block, victory, defeat SFX with procedural Web Audio fallbacks
+- **Environmental Audio**: Gate-specific ambient sounds, monster growls (future)
+- ✅ **UI Sounds**: Button clicks, menu navigation, item interactions
+- ✅ **Achievement Sounds**: Level-up fanfares, milestone celebrations
 
-### 1.3 Dynamic Music System
+### 1.3 Dynamic Music System ✅
 
 - **Different Tracks for Different States**:
-  - Main menu theme
-  - Exploration/resting music
-  - Combat music (intensity varies with gate rank)
-  - Victory/defeat themes
-  - Shadow extraction sequence music
-- **Smooth Transitions**: Crossfade between different music states
+  - ✅ Exploration/resting music (ambient track)
+  - ✅ Combat music (intensity varies with gate rank)
+  - ✅ Victory/defeat themes
+  - ✅ Spirit binding sequence music
+  - Main menu theme (future — currently uses ambient)
+- ✅ **Smooth Transitions**: Crossfade between different music states (1s fade-in, 0.8s fade-out)
 
 ## Phase 2: Visual Art Direction
 
-### 2.1 Cel-shaded Anime UI
+### 2.1 Cel-shaded Anime UI ✅
 
 - **Modern Anime-inspired Interface**:
-  - Clean, bold lines
-  - Vibrant but cohesive color palette
-  - Smooth gradients and shadows
-  - Consistent iconography style
-- **Typography**: Modern, readable fonts with anime aesthetic
+  - ✅ Clean, bold lines (1.5px game-card borders, inset highlights)
+  - ✅ Vibrant but cohesive color palette (rarity glow system)
+  - ✅ Smooth gradients and shadows (progress bar shimmer, gate environments)
+  - Consistent iconography style (future)
+- ✅ **Typography**: Rajdhani display font with gradient title treatment
 
 ### 2.2 Silhouette Shadow Monsters
 
@@ -52,14 +53,15 @@ This document outlines the planned enhancements for Hunter's Path graphics and a
   - Dynamic poses and animations
   - Environmental integration
 
-### 2.3 Gate Background Variations
+### 2.3 Gate Background Variations ✅
 
 - **Different Environments for Different Ranks**:
-  - E-rank: Urban ruins, simple structures
-  - C-rank: Forest clearings, ancient temples
-  - B-rank: Mountain passes, underground caves
-  - A-rank: Floating islands, magical realms
-  - S-rank: Otherworldly dimensions, cosmic landscapes
+  - ✅ E-rank: Mossy cave with spore-drift particles
+  - ✅ D-rank: Torch-lit dungeon with ember-float and flicker animation
+  - ✅ C-rank: Moonlit forest with wisp-float mist particles
+  - ✅ B-rank: Mountain pass with rock-rumble and tremor effects
+  - ✅ A-rank: Grand hall with golden glow and flame-wisp particles
+  - ✅ S-rank: Cosmic void with pulsing orbs and cosmic-orb particles
 
 ## Phase 3: Animated Assets
 
@@ -81,14 +83,14 @@ This document outlines the planned enhancements for Hunter's Path graphics and a
   - Progress indicators
 - **Micro-interactions**: Small animations that enhance user experience
 
-### 3.3 Particle Effects
+### 3.3 Particle Effects ✅ (CSS/Framer Motion instead of Lottie)
 
-- **Lottie Animations for Special Effects**:
-  - Combat impact particles
-  - Level-up celebrations
-  - Shadow extraction effects
-  - Item rarity glows
-  - Achievement notifications
+- **Framer Motion Particle System** (`particles.tsx`):
+  - ✅ Combat impact particles (combat-hit, critical-hit presets)
+  - ✅ Level-up celebrations (level-up preset, 20 particles)
+  - ✅ Spirit binding effects (spirit-bind preset, purple/indigo palette)
+  - ✅ Item rarity glows (CSS rarity border glow classes with animated shimmer)
+  - Achievement notifications (future)
 
 ## Phase 4: Performance Optimization
 
@@ -103,26 +105,26 @@ This document outlines the planned enhancements for Hunter's Path graphics and a
 ### 4.2 Mobile Performance
 
 - **Smooth Experience on Phones**:
-  - Touch-optimized controls
-  - Responsive design for all screen sizes
-  - Battery-efficient animations
-  - Offline asset caching
+  - ✅ Touch-optimized controls (44px min targets, -webkit-tap-highlight removed, touch-manipulation)
+  - Responsive design for all screen sizes (partially — existing responsive layout)
+  - Battery-efficient animations (future optimization)
+  - Offline asset caching (existing service worker)
 
 ## Implementation Priority
 
 ### High Priority (Core Experience)
 
-1. Howler.js audio upgrade
-2. Basic cel-shaded UI elements
-3. Gate background variations
-4. Enhanced sound effects
+1. ✅ Howler.js audio upgrade — `audioManager.ts` with procedural fallbacks
+2. ✅ Basic cel-shaded UI elements — Rajdhani font, rarity glows, card styling
+3. ✅ Gate background variations — 6 unique environments with CSS particles
+4. ✅ Enhanced sound effects — 15 SFX with Web Audio procedural fallbacks
 
 ### Medium Priority (Polish)
 
-1. Animated monster assets
-2. Dynamic music system
-3. Particle effects
-4. UI micro-interactions
+1. Animated monster assets (not started)
+2. ✅ Dynamic music system — crossfade between ambient/combat/victory/defeat
+3. ✅ Particle effects — Framer Motion burst system with 6 presets
+4. UI micro-interactions (partially — haptic feedback added)
 
 ### Low Priority (Advanced Features)
 
