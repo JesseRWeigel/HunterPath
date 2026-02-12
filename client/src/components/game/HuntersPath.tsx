@@ -5,17 +5,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { audioManager } from "@/lib/audioManager";
+import type { SoundName, MusicName } from "@/lib/audioManager";
 
-// Hunter's Path — A Solo Leveling–inspired idle/roguelite built for Canvas preview
+// Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
-// - Uses the *logic* of Solo Leveling: Gates/Dungeons, Daily Quests with penalties,
-//   stat allocation on level-up, fatigue, shadow extraction (post-boss), instant dungeons.
-// - Avoids copyrighted characters/story specifics; it's an homage to the mechanics.
+// - Mechanics: Gates/Dungeons, Daily Quests with penalties,
+//   stat allocation on level-up, fatigue, spirit binding (post-boss), instant dungeons.
+// - An original IP idle/roguelite RPG.
 //
 // Play tips:
 // 1) Complete Daily Quest before running a dungeon to avoid penalties.
 // 2) Allocate stat points after leveling up (top-right panel).
-// 3) Beat a dungeon boss to attempt Shadow Extraction — your INT and LUCK matter.
+// 3) Beat a dungeon boss to attempt Spirit Binding — your INT and LUCK matter.
 // 4) Fatigue rises with runs; high fatigue reduces damage and raises failure risk.
 // 5) Instant Dungeon Keys drop sometimes; use them for a bonus run.
 
@@ -71,12 +73,12 @@ interface Gate {
   boss: Boss;
 }
 
-interface Shadow {
+interface Spirit {
   id: string;
   name: string;
   power: number;
   rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
-  abilities: ShadowAbility[];
+  abilities: SpiritAbility[];
   level: number;
   exp: number;
   expToNext: number;
@@ -84,7 +86,7 @@ interface Shadow {
   description: string;
 }
 
-interface ShadowAbility {
+interface SpiritAbility {
   id: string;
   name: string;
   description: string;
@@ -136,7 +138,7 @@ interface Player {
     VIT: number;
     LUCK: number;
   };
-  shadows: Shadow[];
+  spirits: Spirit[];
   inv: Item[];
   keys: number;
   equipment: Equipment;
@@ -189,7 +191,7 @@ interface CombatResult {
   expGained: number;
   goldGained: number;
   drops: Item[];
-  shadowExtracted?: Shadow;
+  spiritBound?: Spirit;
   combatLog: string[];
 }
 
@@ -199,7 +201,7 @@ interface PlayerStatistics {
   totalGatesFailed: number;
   totalExpGained: number;
   totalGoldGained: number;
-  totalShadowsExtracted: number;
+  totalSpiritsBound: number;
   highestGateRank: string;
   lastUpdated: string;
 }
@@ -258,7 +260,7 @@ function makeBoss(rankIdx: number): Boss {
   };
 }
 
-function shadowName() {
+function spiritName() {
   const names = [
     "Umbra",
     "Noctis",
@@ -274,9 +276,9 @@ function shadowName() {
   return names[rand(0, names.length - 1)] + "-" + rand(1, 999);
 }
 
-// Shadow system data
-const SHADOW_TYPES = ["warrior", "mage", "rogue", "tank", "support"] as const;
-const SHADOW_RARITIES = [
+// Spirit system data
+const SPIRIT_TYPES = ["warrior", "mage", "rogue", "tank", "support"] as const;
+const SPIRIT_RARITIES = [
   "common",
   "uncommon",
   "rare",
@@ -284,7 +286,7 @@ const SHADOW_RARITIES = [
   "legendary",
 ] as const;
 
-const SHADOW_ABILITIES: Record<string, ShadowAbility[]> = {
+const SPIRIT_ABILITIES: Record<string, SpiritAbility[]> = {
   warrior: [
     {
       id: "berserker_rage",
@@ -347,7 +349,7 @@ const SHADOW_ABILITIES: Record<string, ShadowAbility[]> = {
     {
       id: "taunt",
       name: "Taunt",
-      description: "Forces enemies to attack this shadow",
+      description: "Forces enemies to attack this spirit",
       type: "active",
       effect: "force_aggro",
       cooldown: 2,
@@ -372,7 +374,7 @@ const SHADOW_ABILITIES: Record<string, ShadowAbility[]> = {
   ],
 };
 
-const SHADOW_DESCRIPTIONS: Record<string, string> = {
+const SPIRIT_DESCRIPTIONS: Record<string, string> = {
   warrior:
     "A fierce combatant specializing in melee damage and aggressive tactics.",
   mage: "A master of arcane arts, wielding powerful spells and magical abilities.",
@@ -383,7 +385,7 @@ const SHADOW_DESCRIPTIONS: Record<string, string> = {
     "A benevolent ally who heals and enhances the capabilities of the team.",
 };
 
-function getRarityFromBossRank(bossRankIdx: number): Shadow["rarity"] {
+function getRarityFromBossRank(bossRankIdx: number): Spirit["rarity"] {
   // Higher rank bosses have better rarity chances
   const rarityRoll = Math.random();
 
@@ -408,8 +410,8 @@ function getRarityFromBossRank(bossRankIdx: number): Shadow["rarity"] {
   }
 }
 
-function createShadow(gatePower: number, bossRankIdx: number): Shadow {
-  const type = SHADOW_TYPES[rand(0, SHADOW_TYPES.length - 1)];
+function createSpirit(gatePower: number, bossRankIdx: number): Spirit {
+  const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
   const rarity = getRarityFromBossRank(bossRankIdx);
 
   // Base power calculation with rarity multiplier
@@ -423,7 +425,7 @@ function createShadow(gatePower: number, bossRankIdx: number): Shadow {
   const basePower = Math.floor(gatePower * 0.8 * rarityMultipliers[rarity]);
 
   // Get abilities based on type and rarity
-  const availableAbilities = SHADOW_ABILITIES[type];
+  const availableAbilities = SPIRIT_ABILITIES[type];
   const abilityCount =
     rarity === "common"
       ? 1
@@ -441,7 +443,7 @@ function createShadow(gatePower: number, bossRankIdx: number): Shadow {
 
   return {
     id: uid(),
-    name: shadowName(),
+    name: spiritName(),
     power: basePower,
     rarity,
     abilities,
@@ -449,11 +451,11 @@ function createShadow(gatePower: number, bossRankIdx: number): Shadow {
     exp: 0,
     expToNext: 100,
     type,
-    description: SHADOW_DESCRIPTIONS[type],
+    description: SPIRIT_DESCRIPTIONS[type],
   };
 }
 
-function getRarityColor(rarity: Shadow["rarity"]): string {
+function getRarityColor(rarity: Spirit["rarity"]): string {
   const colors = {
     common: "text-gray-400",
     uncommon: "text-green-400",
@@ -464,7 +466,7 @@ function getRarityColor(rarity: Shadow["rarity"]): string {
   return colors[rarity];
 }
 
-function getRarityBorder(rarity: Shadow["rarity"]): string {
+function getRarityBorder(rarity: Spirit["rarity"]): string {
   const borders = {
     common: "border-gray-500",
     uncommon: "border-green-500",
@@ -493,7 +495,7 @@ function initialPlayer(): Player {
       VIT: 5,
       LUCK: 5,
     },
-    shadows: [], // {id, name, power, upkeep}
+    spirits: [], // {id, name, power, upkeep}
     inv: [], // {id, name, type}
     keys: 0, // Instant Dungeon Keys
     equipment: {},
@@ -504,15 +506,15 @@ function playerPower(p: Player) {
   const { STR, AGI, INT, VIT } = p.stats;
   // More balanced power calculation - each stat matters more
   const base = STR * 3 + AGI * 2 + INT * 1.5 + VIT * 0.5;
-  const shadowBonus = p.shadows.reduce((a, s) => a + s.power, 0);
+  const spiritBonus = p.spirits.reduce((a, s) => a + s.power, 0);
   const fatiguePenalty = 1 - Math.min(0.4, p.fatigue / 250); // reduced penalty, up to -40%
-  return Math.max(1, (base + shadowBonus) * fatiguePenalty);
+  return Math.max(1, (base + spiritBonus) * fatiguePenalty);
 }
 
-function shadowUpkeep(p: Player) {
+function spiritUpkeep(p: Player) {
   // MP upkeep per tick when in dungeon
   return Math.floor(
-    p.shadows.length * 1 + p.shadows.reduce((a, s) => a + s.power * 0.02, 0)
+    p.spirits.length * 1 + p.spirits.reduce((a, s) => a + s.power * 0.02, 0)
   );
 }
 
@@ -896,7 +898,7 @@ const MONSTER_DATA = {
     sound: "The clash of steel and roar of dragons fills the hall...",
   },
   S: {
-    name: "Shadow Lord",
+    name: "Void Lord",
     description:
       "A being of pure darkness and malice. Their very presence corrupts the air around them.",
     icon: "fas fa-user-tie",
@@ -965,19 +967,10 @@ export default function HuntersPath() {
     return newDaily;
   });
 
-  // Sound management state
+  // Sound management state — delegates to audioManager singleton
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [volume, setVolume] = useState(0.7);
-  const [currentMusic, setCurrentMusic] = useState<string | null>(null);
-
-  // Audio refs for sound management
-  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
-  const musicRef = useRef<HTMLAudioElement | null>(null);
-
-  // Web Audio API for fallback sounds
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioInitializedRef = useRef(false);
 
   // Simple statistics state for Phase 1
   const [playerStats, setPlayerStats] = useState<PlayerStatistics>({
@@ -985,7 +978,7 @@ export default function HuntersPath() {
     totalGatesFailed: 0,
     totalExpGained: 0,
     totalGoldGained: 0,
-    totalShadowsExtracted: 0,
+    totalSpiritsBound: 0,
     highestGateRank: "E",
     lastUpdated: new Date().toISOString(),
   });
@@ -999,8 +992,8 @@ export default function HuntersPath() {
 
   const inRun = Boolean(running);
 
-  // Shadow extraction sequence state
-  const [shadowExtractionState, setShadowExtractionState] = useState<{
+  // Spirit binding sequence state
+  const [spiritBindingState, setSpiritBindingState] = useState<{
     isActive: boolean;
     phase: "preparing" | "extracting" | "success" | "failure" | null;
     progress: number;
@@ -1113,11 +1106,16 @@ export default function HuntersPath() {
     }
   }, []);
 
-  // Start ambient music on mount
+  // Sync audioManager with React state
   useEffect(() => {
-    // Don't auto-start music due to autoplay policies
-    // Music will start on first user interaction
+    audioManager.soundEnabled = soundEnabled;
+  }, [soundEnabled]);
+  useEffect(() => {
+    audioManager.musicEnabled = musicEnabled;
   }, [musicEnabled]);
+  useEffect(() => {
+    audioManager.volume = volume;
+  }, [volume]);
 
   // Load game on startup
   useEffect(() => {
@@ -1126,32 +1124,32 @@ export default function HuntersPath() {
       try {
         const gameState = JSON.parse(saved);
 
-        // Migrate old shadows to new format
-        if (gameState.player.shadows) {
-          gameState.player.shadows = gameState.player.shadows.map(
-            (shadow: any) => {
-              // If shadow already has new format, return as is
-              if (shadow.rarity && shadow.abilities && shadow.type) {
-                return shadow;
+        // Migrate old spirits to new format
+        if (gameState.player.spirits) {
+          gameState.player.spirits = gameState.player.spirits.map(
+            (spirit: any) => {
+              // If spirit already has new format, return as is
+              if (spirit.rarity && spirit.abilities && spirit.type) {
+                return spirit;
               }
 
-              // Migrate old shadow format to new format
-              const type = SHADOW_TYPES[rand(0, SHADOW_TYPES.length - 1)];
-              const rarity = "common"; // Default to common for old shadows
-              const availableAbilities = SHADOW_ABILITIES[type];
-              const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old shadows
+              // Migrate old spirit format to new format
+              const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
+              const rarity = "common"; // Default to common for old spirits
+              const availableAbilities = SPIRIT_ABILITIES[type];
+              const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
 
               return {
-                id: shadow.id,
-                name: shadow.name,
-                power: shadow.power,
+                id: spirit.id,
+                name: spirit.name,
+                power: spirit.power,
                 rarity,
                 abilities,
                 level: 1,
                 exp: 0,
                 expToNext: 100,
                 type,
-                description: SHADOW_DESCRIPTIONS[type],
+                description: SPIRIT_DESCRIPTIONS[type],
               };
             }
           );
@@ -1306,7 +1304,7 @@ export default function HuntersPath() {
         }
 
         // MP upkeep
-        const upkeep = shadowUpkeep(player);
+        const upkeep = spiritUpkeep(player);
         const newMp = clamp(player.mp - upkeep, 0, player.maxMp);
 
         // Fatigue gain
@@ -1395,14 +1393,14 @@ export default function HuntersPath() {
           updateStats(true, exp, goldGain, prev.gate.rank);
           checkAchievements();
 
-          // Automatically attempt shadow extraction with visual sequence
+          // Automatically attempt spirit binding with visual sequence
           const extractionChance = calcExtractionChance(
             player,
             prev.gate.rankIdx
           );
           if (Math.random() < extractionChance) {
             // Start the visual extraction sequence
-            startShadowExtractionSequence(
+            startSpiritBindingSequence(
               boss.name,
               prev.gate.rank,
               prev.gate.power
@@ -1574,10 +1572,10 @@ export default function HuntersPath() {
     });
   }
 
-  function recordShadowExtraction() {
+  function recordSpiritBinding() {
     setPlayerStats((stats) => ({
       ...stats,
-      totalShadowsExtracted: stats.totalShadowsExtracted + 1,
+      totalSpiritsBound: stats.totalSpiritsBound + 1,
       lastUpdated: new Date().toISOString(),
     }));
   }
@@ -1613,16 +1611,16 @@ export default function HuntersPath() {
       });
     }
 
-    // Shadow caller achievement
+    // Spirit caller achievement
     if (
-      playerStats.totalShadowsExtracted === 1 &&
+      playerStats.totalSpiritsBound === 1 &&
       achievements &&
-      !achievements.some((a) => a.name === "Shadow Caller")
+      !achievements.some((a) => a.name === "Spirit Caller")
     ) {
       newAchievements.push({
         id: uid(),
-        name: "Shadow Caller",
-        description: "Extract your first shadow",
+        name: "Spirit Caller",
+        description: "Bind your first spirit",
         unlockedAt: new Date().toISOString(),
       });
     }
@@ -1638,13 +1636,13 @@ export default function HuntersPath() {
     }
   }
 
-  // Shadow extraction sequence functions
-  function startShadowExtractionSequence(
+  // Spirit binding sequence functions
+  function startSpiritBindingSequence(
     bossName: string,
     bossRank: string,
     gatePower: number
   ) {
-    setShadowExtractionState({
+    setSpiritBindingState({
       isActive: true,
       phase: "preparing",
       progress: 0,
@@ -1657,7 +1655,7 @@ export default function HuntersPath() {
 
     // Phase 1: Preparing (2 seconds)
     setTimeout(() => {
-      setShadowExtractionState((prev) => ({
+      setSpiritBindingState((prev) => ({
         ...prev,
         phase: "extracting",
         progress: 0,
@@ -1668,7 +1666,7 @@ export default function HuntersPath() {
 
       // Phase 2: Extracting (3 seconds with progress animation)
       const extractionInterval = setInterval(() => {
-        setShadowExtractionState((prev) => {
+        setSpiritBindingState((prev) => {
           if (prev.progress >= 100) {
             clearInterval(extractionInterval);
             return prev;
@@ -1682,7 +1680,7 @@ export default function HuntersPath() {
         const chance = calcExtractionChance(player, RANKS.indexOf(bossRank));
         const success = Math.random() < chance;
 
-        setShadowExtractionState((prev) => ({
+        setSpiritBindingState((prev) => ({
           ...prev,
           phase: success ? "success" : "failure",
           progress: 100,
@@ -1692,31 +1690,31 @@ export default function HuntersPath() {
         if (success) {
           playSound("extraction_success");
 
-          // Create the shadow and update player state
-          const shadowExtracted = createShadow(
+          // Create the spirit and update player state
+          const spiritBound = createSpirit(
             gatePower,
             RANKS.indexOf(bossRank)
           );
 
           setPlayer((pp) => ({
             ...pp,
-            shadows: [...pp.shadows, shadowExtracted],
+            spirits: [...pp.spirits, spiritBound],
           }));
 
-          recordShadowExtraction();
+          recordSpiritBinding();
           setLog((l) => [
-            `${shadowExtracted.rarity.toUpperCase()} shadow extracted: ${
-              shadowExtracted.name
-            }! (${shadowExtracted.type})`,
+            `${spiritBound.rarity.toUpperCase()} spirit bound: ${
+              spiritBound.name
+            }! (${spiritBound.type})`,
             ...l,
           ]);
 
-          // Update combat result with the extracted shadow
+          // Update combat result with the bound spirit
           setCombatResult((prev) =>
             prev
               ? {
                   ...prev,
-                  shadowExtracted,
+                  spiritBound,
                 }
               : prev
           );
@@ -1726,7 +1724,7 @@ export default function HuntersPath() {
 
         // End sequence after 2 seconds
         setTimeout(() => {
-          setShadowExtractionState({
+          setSpiritBindingState({
             isActive: false,
             phase: null,
             progress: 0,
@@ -1739,31 +1737,31 @@ export default function HuntersPath() {
   }
 
   function getExtractionSequenceText() {
-    const { phase, bossName, progress } = shadowExtractionState;
+    const { phase, bossName, progress } = spiritBindingState;
 
     switch (phase) {
       case "preparing":
         return {
-          title: "Shadow Extraction Initiated",
-          subtitle: `Preparing to extract shadow from ${bossName}...`,
+          title: "Spirit Binding Initiated",
+          subtitle: `Preparing to bind spirit from ${bossName}...`,
           description: "Gathering magical energy and focusing your will...",
         };
       case "extracting":
         return {
-          title: "Extracting Shadow",
+          title: "Binding Spirit",
           subtitle: `${progress}% Complete`,
-          description: "The shadow essence is being drawn forth...",
+          description: "The spirit essence is being drawn forth...",
         };
       case "success":
         return {
           title: "Extraction Successful!",
-          subtitle: `${bossName}'s shadow joins you!`,
-          description: "A new shadow ally has been bound to your will.",
+          subtitle: `${bossName}'s spirit joins you!`,
+          description: "A new spirit ally has been bound to your will.",
         };
       case "failure":
         return {
           title: "Extraction Failed",
-          subtitle: "The shadow crumbles to dust...",
+          subtitle: "The spirit crumbles to dust...",
           description: "The essence was too weak or your focus wavered.",
         };
       default:
@@ -1820,17 +1818,14 @@ export default function HuntersPath() {
     setCombatLog([]);
     setCombatResult(null);
 
-    // Clear any existing shadow extraction state
-    setShadowExtractionState({
+    // Clear any existing spirit binding state
+    setSpiritBindingState({
       isActive: false,
       phase: null,
       progress: 0,
       bossName: "",
       bossRank: "",
     });
-
-    // Initialize audio for combat
-    initializeAudio();
 
     // Play gate entry sound
     playSound("gate_enter");
@@ -2002,7 +1997,7 @@ export default function HuntersPath() {
     const bossName = running?.boss.name || "Unknown Boss";
 
     // Start the visual extraction sequence
-    startShadowExtractionSequence(
+    startSpiritBindingSequence(
       bossName,
       bossRank,
       running?.gate.power || 100
@@ -2018,16 +2013,16 @@ export default function HuntersPath() {
         const pow = Math.floor(
           5 + player.stats.INT * 0.8 + bossRankIdx * 6 + rand(0, 8)
         );
-        const s = createShadow(pow, bossRankIdx);
-        setPlayer((p) => ({ ...p, shadows: [...p.shadows, s] }));
+        const s = createSpirit(pow, bossRankIdx);
+        setPlayer((p) => ({ ...p, spirits: [...p.spirits, s] }));
         logPush(
-          `${s.rarity.toUpperCase()} shadow extracted: ${s.name}! (${
+          `${s.rarity.toUpperCase()} spirit bound: ${s.name}! (${
             s.type
           }) - +${s.power} power`
         );
 
         // Update statistics
-        recordShadowExtraction();
+        recordSpiritBinding();
         checkAchievements();
       } else {
         logPush("Extraction failed. The shade crumbles to dust.");
@@ -2035,8 +2030,8 @@ export default function HuntersPath() {
     }, 7000); // Wait for the full sequence to complete
   }
 
-  // Test function for shadow extraction (for easier testing)
-  function testShadowExtraction() {
+  // Test function for spirit binding (for easier testing)
+  function testSpiritBinding() {
     // Function removed for production
   }
 
@@ -2364,32 +2359,32 @@ export default function HuntersPath() {
         }
       }
 
-      // Migrate old shadows to new format
-      if (gameState.player.shadows) {
-        gameState.player.shadows = gameState.player.shadows.map(
-          (shadow: any) => {
-            // If shadow already has new format, return as is
-            if (shadow.rarity && shadow.abilities && shadow.type) {
-              return shadow;
+      // Migrate old spirits to new format
+      if (gameState.player.spirits) {
+        gameState.player.spirits = gameState.player.spirits.map(
+          (spirit: any) => {
+            // If spirit already has new format, return as is
+            if (spirit.rarity && spirit.abilities && spirit.type) {
+              return spirit;
             }
 
-            // Migrate old shadow format to new format
-            const type = SHADOW_TYPES[rand(0, SHADOW_TYPES.length - 1)];
-            const rarity = "common"; // Default to common for old shadows
-            const availableAbilities = SHADOW_ABILITIES[type];
-            const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old shadows
+            // Migrate old spirit format to new format
+            const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
+            const rarity = "common"; // Default to common for old spirits
+            const availableAbilities = SPIRIT_ABILITIES[type];
+            const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
 
             return {
-              id: shadow.id,
-              name: shadow.name,
-              power: shadow.power,
+              id: spirit.id,
+              name: spirit.name,
+              power: spirit.power,
               rarity,
               abilities,
               level: 1,
               exp: 0,
               expToNext: 100,
               type,
-              description: SHADOW_DESCRIPTIONS[type],
+              description: SPIRIT_DESCRIPTIONS[type],
             };
           }
         );
@@ -2442,313 +2437,36 @@ export default function HuntersPath() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inRun]);
 
-  // Sound management functions
+  // Sound management — thin wrappers around audioManager singleton
   function playSound(soundName: string, volumeOverride?: number) {
-    if (!soundEnabled) return;
-
-    try {
-      const audio = audioRefs.current[soundName];
-      if (audio) {
-        audio.volume = volumeOverride !== undefined ? volumeOverride : volume;
-        audio.currentTime = 0;
-
-        // Check if the audio file is valid by testing its duration
-        if (audio.duration && audio.duration > 0) {
-          audio.play().catch(() => {
-            // Fallback to generated sounds if audio file fails
-            playFallbackSound(soundName);
-          });
-        } else {
-          // Audio file is invalid (like our placeholder), use fallback
-          playFallbackSound(soundName);
-        }
-      } else {
-        // No audio file available, use fallback
-        playFallbackSound(soundName);
-      }
-    } catch (error) {
-      // Fallback to generated sounds on any error
-      playFallbackSound(soundName);
-    }
+    audioManager.playSound(soundName as SoundName, volumeOverride);
   }
 
   function playMusic(musicName: string, loop: boolean = true) {
-    if (!musicEnabled || currentMusic === musicName) return;
-
-    try {
-      // Stop current music
-      if (musicRef.current) {
-        musicRef.current.pause();
-        musicRef.current.currentTime = 0;
-      }
-
-      // Start new music
-      const audio = audioRefs.current[musicName];
-      if (audio) {
-        audio.volume = volume * 0.5; // Music at half volume
-        audio.loop = loop;
-        audio.currentTime = 0;
-        audio.play().catch(() => {
-          // Fallback to generated music if audio file fails
-          if (musicName === "ambient_music") {
-            startAmbientMusic();
-          }
-        });
-        musicRef.current = audio;
-        setCurrentMusic(musicName);
-      } else {
-        // No music file available, use fallback
-        if (musicName === "ambient_music") {
-          startAmbientMusic();
-          setCurrentMusic(musicName);
-        }
-      }
-    } catch (error) {
-      // Fallback to generated music on any error
-      if (musicName === "ambient_music") {
-        startAmbientMusic();
-        setCurrentMusic(musicName);
-      }
-    }
+    // Map legacy names to new MusicName type
+    const nameMap: Record<string, MusicName> = {
+      ambient_music: "ambient",
+      combat_music: "combat",
+      victory_music: "victory_music",
+      defeat_music: "defeat_music",
+    };
+    audioManager.playMusic(nameMap[musicName] ?? (musicName as MusicName), loop);
   }
 
   function stopMusic() {
-    if (musicRef.current) {
-      musicRef.current.pause();
-      musicRef.current.currentTime = 0;
-      musicRef.current = null;
-      setCurrentMusic(null);
-    }
+    audioManager.stopMusic(true);
   }
 
   function updateVolume(newVolume: number) {
     setVolume(newVolume);
-
-    // Update all audio elements
-    Object.values(audioRefs.current).forEach((audio) => {
-      if (audio === musicRef.current) {
-        audio.volume = newVolume * 0.5; // Music at half volume
-      } else {
-        audio.volume = newVolume;
-      }
-    });
   }
 
   function toggleSound() {
-    setSoundEnabled(!soundEnabled);
-    // Initialize audio on first sound toggle
-    if (!audioInitializedRef.current) {
-      initializeAudio();
-    }
+    setSoundEnabled((prev) => !prev);
   }
 
   function toggleMusic() {
-    setMusicEnabled((prevMusicEnabled) => {
-      const newMusicEnabled = !prevMusicEnabled;
-
-      // Initialize audio on first music toggle
-      if (!audioInitializedRef.current) {
-        initializeAudio();
-      }
-
-      if (newMusicEnabled) {
-        // Music is being enabled
-        if (currentMusic) {
-          playMusic(currentMusic);
-        } else {
-          // Start ambient music if no current music
-          playMusic("ambient_music");
-        }
-      } else {
-        // Music is being disabled
-        stopMusic();
-      }
-
-      return newMusicEnabled;
-    });
-  }
-
-  // Web Audio API sound generation functions
-  function createAudioContext() {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-    }
-
-    // Resume audio context if it's suspended (required for autoplay policy)
-    if (audioContextRef.current.state === "suspended") {
-      audioContextRef.current.resume();
-    }
-
-    return audioContextRef.current;
-  }
-
-  function initializeAudio() {
-    if (audioInitializedRef.current) return;
-
-    try {
-      const audioContext = createAudioContext();
-      // Resume the context to enable audio
-      if (audioContext.state === "suspended") {
-        audioContext.resume().then(() => {
-          audioInitializedRef.current = true;
-          console.log("Audio context initialized successfully");
-        });
-      } else {
-        audioInitializedRef.current = true;
-      }
-    } catch (error) {
-      console.error("Failed to initialize audio context:", error);
-    }
-  }
-
-  function generateSound(
-    frequency: number,
-    duration: number,
-    type: OscillatorType = "sine",
-    volume: number = 0.3
-  ) {
-    if (!soundEnabled) return;
-
-    // Initialize audio context on first sound
-    if (!audioInitializedRef.current) {
-      initializeAudio();
-    }
-
-    try {
-      const audioContext = createAudioContext();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-      oscillator.type = type;
-
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(
-        volume,
-        audioContext.currentTime + 0.01
-      );
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.001,
-        audioContext.currentTime + duration
-      );
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + duration);
-    } catch (error) {
-      // Silently handle audio errors
-    }
-  }
-
-  function playFallbackSound(soundName: string) {
-    if (!soundEnabled) return;
-
-    switch (soundName) {
-      case "attack":
-        generateSound(800, 0.1, "square", 0.2);
-        break;
-      case "damage":
-        generateSound(200, 0.3, "sawtooth", 0.3);
-        break;
-      case "critical":
-        generateSound(1200, 0.2, "square", 0.4);
-        setTimeout(() => generateSound(800, 0.2, "square", 0.3), 100);
-        break;
-      case "block":
-        generateSound(400, 0.15, "sine", 0.2);
-        break;
-      case "victory":
-        generateSound(523, 0.2, "sine", 0.3); // C
-        setTimeout(() => generateSound(659, 0.2, "sine", 0.3), 200); // E
-        setTimeout(() => generateSound(784, 0.3, "sine", 0.3), 400); // G
-        break;
-      case "defeat":
-        generateSound(200, 0.5, "sawtooth", 0.4);
-        setTimeout(() => generateSound(150, 0.5, "sawtooth", 0.4), 500);
-        break;
-      case "heal":
-        generateSound(600, 0.2, "sine", 0.2);
-        setTimeout(() => generateSound(800, 0.2, "sine", 0.2), 200);
-        break;
-      case "rune_use":
-        generateSound(1000, 0.3, "sine", 0.3);
-        setTimeout(() => generateSound(1200, 0.2, "sine", 0.2), 300);
-        break;
-      case "level_up":
-        generateSound(523, 0.15, "sine", 0.3); // C
-        setTimeout(() => generateSound(659, 0.15, "sine", 0.3), 150); // E
-        setTimeout(() => generateSound(784, 0.15, "sine", 0.3), 300); // G
-        setTimeout(() => generateSound(1047, 0.3, "sine", 0.3), 450); // C high
-        break;
-      case "rest":
-        generateSound(300, 0.4, "sine", 0.2);
-        setTimeout(() => generateSound(400, 0.3, "sine", 0.2), 400);
-        break;
-      case "gate_enter":
-        generateSound(150, 0.3, "sawtooth", 0.3);
-        setTimeout(() => generateSound(200, 0.3, "sawtooth", 0.3), 300);
-        break;
-      case "extraction_start":
-        generateSound(400, 0.2, "sine", 0.2);
-        setTimeout(() => generateSound(600, 0.2, "sine", 0.2), 200);
-        break;
-      case "extraction_loop":
-        generateSound(800, 0.1, "sine", 0.1);
-        break;
-      case "extraction_success":
-        generateSound(523, 0.2, "sine", 0.3); // C
-        setTimeout(() => generateSound(659, 0.2, "sine", 0.3), 200); // E
-        setTimeout(() => generateSound(784, 0.2, "sine", 0.3), 400); // G
-        setTimeout(() => generateSound(1047, 0.4, "sine", 0.3), 600); // C high
-        break;
-      case "extraction_failure":
-        generateSound(200, 0.4, "sawtooth", 0.3);
-        setTimeout(() => generateSound(150, 0.4, "sawtooth", 0.3), 400);
-        break;
-      default:
-        generateSound(500, 0.1, "sine", 0.2);
-    }
-  }
-
-  // Simple ambient music generator
-  function startAmbientMusic() {
-    if (!musicEnabled) return;
-
-    // Initialize audio context on first music
-    if (!audioInitializedRef.current) {
-      initializeAudio();
-    }
-
-    const audioContext = createAudioContext();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    // Create a gentle ambient drone
-    oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // A3
-    oscillator.type = "sine";
-
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(
-      volume * 0.1,
-      audioContext.currentTime + 2
-    ); // Very quiet
-
-    oscillator.start(audioContext.currentTime);
-
-    // Store reference to stop later
-    musicRef.current = {
-      pause: () => {
-        oscillator.stop();
-        gainNode.disconnect();
-      },
-      currentTime: 0,
-    } as any;
+    setMusicEnabled((prev) => !prev);
   }
 
   // Stat progression visualization component
@@ -2858,13 +2576,13 @@ export default function HuntersPath() {
     inventory: boolean;
     training: boolean;
     shop: boolean;
-    shadows: boolean;
+    spirits: boolean;
   }>({
     player: false,
     inventory: false,
     training: false,
     shop: false,
-    shadows: false,
+    spirits: false,
   });
 
   // Mobile menu state
@@ -4140,7 +3858,7 @@ export default function HuntersPath() {
                             <span className="text-blue-400 font-bold">
                               INT:
                             </span>{" "}
-                            Magic damage & shadow extraction (+1.5 power each)
+                            Magic damage & spirit binding (+1.5 power each)
                           </div>
                           <div>
                             <span className="text-orange-400 font-bold">
@@ -4216,28 +3934,28 @@ export default function HuntersPath() {
 
             <Card>
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="shadow-army">
+                <AccordionItem value="spirit-legion">
                   <AccordionTrigger className="text-lg font-bold text-zinc-100 hover:no-underline">
                     <div className="flex items-center space-x-2">
                       <i className="fas fa-users text-purple-400"></i>
-                      <span>Shadow Army</span>
-                      {player.shadows.length > 0 && (
+                      <span>Spirit Legion</span>
+                      {player.spirits.length > 0 && (
                         <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                          {player.shadows.length}
+                          {player.spirits.length}
                         </span>
                       )}
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="max-h-96 overflow-y-auto">
-                      {player.shadows.length === 0 && (
+                      {player.spirits.length === 0 && (
                         <div className="opacity-70 text-sm text-center py-4">
-                          No shadows recruited
+                          No spirits recruited
                         </div>
                       )}
 
                       <div className="space-y-3 mb-4">
-                        {player.shadows.map((s) => (
+                        {player.spirits.map((s) => (
                           <div
                             key={s.id}
                             className={`bg-zinc-800/30 border ${getRarityBorder(
@@ -4329,14 +4047,14 @@ export default function HuntersPath() {
                         ))}
                       </div>
 
-                      {player.shadows.length > 0 && (
+                      {player.spirits.length > 0 && (
                         <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-purple-300">
                               Total Army Power:
                             </span>
                             <span className="font-bold text-purple-400">
-                              +{player.shadows.reduce((a, s) => a + s.power, 0)}
+                              +{player.spirits.reduce((a, s) => a + s.power, 0)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-sm mt-1">
@@ -4344,7 +4062,7 @@ export default function HuntersPath() {
                               MP Upkeep/tick:
                             </span>
                             <span className="font-bold text-blue-400">
-                              -{shadowUpkeep(player)} MP
+                              -{spiritUpkeep(player)} MP
                             </span>
                           </div>
                         </div>
@@ -4692,19 +4410,19 @@ export default function HuntersPath() {
                             </div>
                           </div>
 
-                          {/* Shadow Extraction */}
-                          {combatResult.shadowExtracted ? (
+                          {/* Spirit Binding Result */}
+                          {combatResult.spiritBound ? (
                             <div className="bg-purple-900/30 rounded-lg p-3 border border-purple-500/30">
                               <div className="flex items-center space-x-2">
                                 <i className="fas fa-ghost text-purple-400"></i>
                                 <div>
                                   <div className="text-purple-400 font-bold">
-                                    Shadow Extracted:{" "}
-                                    {combatResult.shadowExtracted.name}
+                                    Spirit Bound:{" "}
+                                    {combatResult.spiritBound.name}
                                   </div>
                                   <div className="text-purple-300 text-xs">
                                     Power:{" "}
-                                    {fmt(combatResult.shadowExtracted.power)}
+                                    {fmt(combatResult.spiritBound.power)}
                                   </div>
                                 </div>
                               </div>
@@ -4713,7 +4431,7 @@ export default function HuntersPath() {
                             <div className="bg-zinc-700/30 rounded-lg p-3 border border-zinc-600/30">
                               <div className="text-zinc-400 text-sm text-center">
                                 <i className="fas fa-times mr-2"></i>
-                                No shadow extracted
+                                No spirit bound
                               </div>
                             </div>
                           )}
@@ -4759,7 +4477,7 @@ export default function HuntersPath() {
                   <div className="flex items-center justify-between relative z-10">
                     <div className="text-xs text-zinc-400 bg-zinc-800/30 px-3 py-2 rounded-lg">
                       <div>
-                        Shadow Upkeep: {fmt(shadowUpkeep(player))} MP/tick
+                        Spirit Upkeep: {fmt(spiritUpkeep(player))} MP/tick
                       </div>
                       <div>Fatigue: {player.fatigue}%</div>
                     </div>
@@ -5146,7 +4864,7 @@ export default function HuntersPath() {
                         INT/LUCK aid extraction.
                       </li>
                       <li>
-                        Shadow Extraction after boss defeat may recruit a Shadow
+                        Spirit Binding after boss defeat may recruit a Spirit
                         ally (25% base chance).
                       </li>
                       <li>Fatigue reduces your total power; Rest lowers it.</li>
@@ -5162,8 +4880,8 @@ export default function HuntersPath() {
           </section>
         </div>
 
-        {/* Shadow Extraction Sequence Modal */}
-        {shadowExtractionState.isActive && (
+        {/* Spirit Binding Sequence Modal */}
+        {spiritBindingState.isActive && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
             <div className="relative w-full h-full flex items-center justify-center">
               {/* Background Effects */}
@@ -5178,14 +4896,14 @@ export default function HuntersPath() {
                 {/* Ripple effects */}
                 <div
                   className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-purple-500/30 rounded-full animate-shadow-ripple ${
-                    shadowExtractionState.phase === "extracting"
+                    spiritBindingState.phase === "extracting"
                       ? "opacity-100"
                       : "opacity-0"
                   }`}
                 ></div>
                 <div
                   className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-purple-400/20 rounded-full animate-pulse ${
-                    shadowExtractionState.phase === "extracting"
+                    spiritBindingState.phase === "extracting"
                       ? "opacity-100"
                       : "opacity-0"
                   }`}
@@ -5197,13 +4915,13 @@ export default function HuntersPath() {
                 {/* Phase-specific background */}
                 <div
                   className={`mb-8 p-8 rounded-lg border-2 transition-all duration-500 ${
-                    shadowExtractionState.phase === "preparing"
+                    spiritBindingState.phase === "preparing"
                       ? "bg-blue-900/30 border-blue-500/50"
-                      : shadowExtractionState.phase === "extracting"
+                      : spiritBindingState.phase === "extracting"
                       ? "bg-purple-900/30 border-purple-500/50"
-                      : shadowExtractionState.phase === "success"
+                      : spiritBindingState.phase === "success"
                       ? "bg-green-900/30 border-green-500/50"
-                      : shadowExtractionState.phase === "failure"
+                      : spiritBindingState.phase === "failure"
                       ? "bg-red-900/30 border-red-500/50"
                       : "bg-zinc-900/30 border-zinc-500/50"
                   }`}
@@ -5211,26 +4929,26 @@ export default function HuntersPath() {
                   {/* Icon */}
                   <div
                     className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-500 ${
-                      shadowExtractionState.phase === "preparing"
+                      spiritBindingState.phase === "preparing"
                         ? "bg-blue-600 animate-shadow-pulse"
-                        : shadowExtractionState.phase === "extracting"
+                        : spiritBindingState.phase === "extracting"
                         ? "bg-purple-600 animate-shadow-spin animate-shadow-glow"
-                        : shadowExtractionState.phase === "success"
+                        : spiritBindingState.phase === "success"
                         ? "bg-green-600 animate-shadow-bounce"
-                        : shadowExtractionState.phase === "failure"
+                        : spiritBindingState.phase === "failure"
                         ? "bg-red-600 animate-shadow-pulse"
                         : "bg-zinc-600"
                     }`}
                   >
                     <i
                       className={`text-3xl text-white ${
-                        shadowExtractionState.phase === "preparing"
+                        spiritBindingState.phase === "preparing"
                           ? "fas fa-magic"
-                          : shadowExtractionState.phase === "extracting"
+                          : spiritBindingState.phase === "extracting"
                           ? "fas fa-ghost"
-                          : shadowExtractionState.phase === "success"
+                          : spiritBindingState.phase === "success"
                           ? "fas fa-check"
-                          : shadowExtractionState.phase === "failure"
+                          : spiritBindingState.phase === "failure"
                           ? "fas fa-times"
                           : "fas fa-question"
                       }`}
@@ -5244,13 +4962,13 @@ export default function HuntersPath() {
                       <>
                         <h2
                           className={`text-3xl font-bold mb-4 transition-all duration-500 ${
-                            shadowExtractionState.phase === "preparing"
+                            spiritBindingState.phase === "preparing"
                               ? "text-blue-300"
-                              : shadowExtractionState.phase === "extracting"
+                              : spiritBindingState.phase === "extracting"
                               ? "text-purple-300"
-                              : shadowExtractionState.phase === "success"
+                              : spiritBindingState.phase === "success"
                               ? "text-green-300"
-                              : shadowExtractionState.phase === "failure"
+                              : spiritBindingState.phase === "failure"
                               ? "text-red-300"
                               : "text-zinc-300"
                           }`}
@@ -5265,12 +4983,12 @@ export default function HuntersPath() {
                         <p className="text-zinc-400 mb-6">{text.description}</p>
 
                         {/* Progress Bar for extracting phase */}
-                        {shadowExtractionState.phase === "extracting" && (
+                        {spiritBindingState.phase === "extracting" && (
                           <div className="w-full bg-zinc-700 rounded-full h-4 mb-4 overflow-hidden">
                             <div
                               className="bg-gradient-to-r from-purple-500 to-purple-400 h-4 rounded-full transition-all duration-300 ease-out"
                               style={{
-                                width: `${shadowExtractionState.progress}%`,
+                                width: `${spiritBindingState.progress}%`,
                               }}
                             ></div>
                           </div>
@@ -5278,8 +4996,8 @@ export default function HuntersPath() {
 
                         {/* Boss Info */}
                         <div className="text-sm text-zinc-500">
-                          Target: {shadowExtractionState.bossName} (
-                          {shadowExtractionState.bossRank}-Rank)
+                          Target: {spiritBindingState.bossName} (
+                          {spiritBindingState.bossRank}-Rank)
                         </div>
                       </>
                     );
@@ -5287,7 +5005,7 @@ export default function HuntersPath() {
                 </div>
 
                 {/* Additional Effects */}
-                {shadowExtractionState.phase === "extracting" && (
+                {spiritBindingState.phase === "extracting" && (
                   <div className="text-center">
                     <div className="text-purple-400 text-sm animate-pulse">
                       <i className="fas fa-magic mr-2"></i>
@@ -5296,15 +5014,15 @@ export default function HuntersPath() {
                   </div>
                 )}
 
-                {shadowExtractionState.phase === "success" && (
+                {spiritBindingState.phase === "success" && (
                   <div className="text-center">
                     <div className="text-green-400 text-lg font-bold animate-bounce">
-                      🎉 Shadow Extraction Complete! 🎉
+                      🎉 Spirit Binding Complete! 🎉
                     </div>
                   </div>
                 )}
 
-                {shadowExtractionState.phase === "failure" && (
+                {spiritBindingState.phase === "failure" && (
                   <div className="text-center">
                     <div className="text-red-400 text-lg font-bold animate-pulse">
                       💀 Extraction Failed 💀
@@ -5398,9 +5116,9 @@ export default function HuntersPath() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Shadows Extracted:</span>
+                      <span className="text-zinc-400">Spirits Bound:</span>
                       <span className="text-purple-400 font-bold">
-                        {playerStats.totalShadowsExtracted}
+                        {playerStats.totalSpiritsBound}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -5580,15 +5298,15 @@ export default function HuntersPath() {
           <Card>
             <div className="text-center text-zinc-400 text-sm">
               <p className="mb-2">
-                Hunter's Path — A Solo Leveling-inspired idle/roguelite built
-                for Canvas preview
+                Hunter's Path — An idle/roguelite RPG built for Canvas
+                preview
               </p>
               <div className="flex justify-center space-x-4 text-xs flex-wrap">
                 <span>Complete Daily Quest before dungeons</span>
                 <span>•</span>
                 <span>Allocate stat points after leveling</span>
                 <span>•</span>
-                <span>Extract shadows from defeated bosses</span>
+                <span>Bind spirits from defeated bosses</span>
               </div>
               <p className="mt-2 text-xs">
                 "Virtus in arduis" — strength through trials.
@@ -5598,168 +5316,7 @@ export default function HuntersPath() {
         </footer>
       </div>
 
-      {/* Audio Elements */}
-      <div style={{ display: "none" }}>
-        {/* Combat Sounds */}
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.attack = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/attack.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.damage = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/damage.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.critical = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/critical.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.block = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/block.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.victory = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/victory.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.defeat = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/defeat.mp3" type="audio/mpeg" />
-        </audio>
-
-        {/* UI Sounds */}
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.heal = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/heal.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.rune_use = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/rune_use.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.level_up = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/level_up.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.rest = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/rest.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.gate_enter = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/gate_enter.mp3" type="audio/mpeg" />
-        </audio>
-
-        {/* Shadow Extraction Sounds */}
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.extraction_start = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/extraction_start.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.extraction_loop = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/extraction_loop.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.extraction_success = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/extraction_success.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.extraction_failure = el;
-          }}
-          preload="auto"
-        >
-          <source src="/sounds/extraction_failure.mp3" type="audio/mpeg" />
-        </audio>
-
-        {/* Music Tracks */}
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.ambient_music = el;
-          }}
-          preload="auto"
-        >
-          <source src="/music/ambient.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.combat_music = el;
-          }}
-          preload="auto"
-        >
-          <source src="/music/combat.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.victory_music = el;
-          }}
-          preload="auto"
-        >
-          <source src="/music/victory.mp3" type="audio/mpeg" />
-        </audio>
-        <audio
-          ref={(el) => {
-            if (el) audioRefs.current.defeat_music = el;
-          }}
-          preload="auto"
-        >
-          <source src="/music/defeat.mp3" type="audio/mpeg" />
-        </audio>
-      </div>
+      {/* Audio managed by audioManager singleton — no DOM elements needed */}
 
       {/* Debug Panel */}
       {process.env.NODE_ENV === "development" && showDebugPanel && (
