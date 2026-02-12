@@ -1,15 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 // ─── Lightweight Particle System ─────────────────────────────────
 // Creates CSS-animated particles for combat impacts, level-ups,
 // spirit binding, and item rarity effects. Uses Framer Motion for
-// smooth enter/exit and CSS for the bulk animation work.
+// smooth animations and auto-cleanup after each burst's lifetime.
 
 interface Particle {
   id: string;
-  x: number;
-  y: number;
   color: string;
   size: number;
   angle: number;
@@ -18,6 +16,13 @@ interface Particle {
 }
 
 type ParticlePreset = "combat-hit" | "critical-hit" | "level-up" | "spirit-bind" | "heal" | "gold";
+
+interface BurstData {
+  id: string;
+  preset: ParticlePreset;
+  x: string;
+  y: string;
+}
 
 const PRESET_CONFIGS: Record<ParticlePreset, {
   count: number;
@@ -74,8 +79,6 @@ function createParticles(preset: ParticlePreset): Particle[] {
   const config = PRESET_CONFIGS[preset];
   return Array.from({ length: config.count }, (_, i) => ({
     id: `${preset}-${Date.now()}-${i}`,
-    x: 0,
-    y: 0,
     color: config.colors[Math.floor(Math.random() * config.colors.length)],
     size: config.sizeRange[0] + Math.random() * (config.sizeRange[1] - config.sizeRange[0]),
     angle: (Math.PI * 2 * i) / config.count + (Math.random() - 0.5) * 0.5,
@@ -85,10 +88,9 @@ function createParticles(preset: ParticlePreset): Particle[] {
 }
 
 /**
- * ParticleBurst component — renders an expanding burst of particles.
- * Mount this component to trigger a burst; it auto-unmounts after lifetime.
+ * Single burst of particles. Renders and auto-removes after its lifetime.
  */
-export function ParticleBurst({
+function ParticleBurst({
   preset,
   x = "50%",
   y = "50%",
@@ -140,38 +142,44 @@ export function ParticleBurst({
 }
 
 /**
- * Hook to manage particle bursts. Returns a trigger function and
- * the JSX to render active bursts.
+ * Stable top-level component — render this in JSX, pass bursts from useParticles().
  */
-export function useParticles() {
-  const [bursts, setBursts] = useState<
-    { id: string; preset: ParticlePreset; x: string; y: string }[]
-  >([]);
-
-  const trigger = (preset: ParticlePreset, x = "50%", y = "50%") => {
-    const id = `burst-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    setBursts((prev) => [...prev.slice(-3), { id, preset, x, y }]);
-  };
-
-  const remove = (id: string) => {
-    setBursts((prev) => prev.filter((b) => b.id !== id));
-  };
-
-  const ParticleLayer = () => (
-    <AnimatePresence>
+export function ParticleLayer({ bursts, onBurstComplete }: {
+  bursts: BurstData[];
+  onBurstComplete: (id: string) => void;
+}) {
+  return (
+    <>
       {bursts.map((b) => (
         <ParticleBurst
           key={b.id}
           preset={b.preset}
           x={b.x}
           y={b.y}
-          onComplete={() => remove(b.id)}
+          onComplete={() => onBurstComplete(b.id)}
         />
       ))}
-    </AnimatePresence>
+    </>
   );
+}
 
-  return { trigger, ParticleLayer };
+/**
+ * Hook to manage particle bursts. Returns a trigger function and
+ * the bursts array + removal callback to pass to <ParticleLayer />.
+ */
+export function useParticles() {
+  const [bursts, setBursts] = useState<BurstData[]>([]);
+
+  const trigger = useCallback((preset: ParticlePreset, x = "50%", y = "50%") => {
+    const id = `burst-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setBursts((prev) => [...prev.slice(-3), { id, preset, x, y }]);
+  }, []);
+
+  const removeBurst = useCallback((id: string) => {
+    setBursts((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
+  return { trigger, bursts, removeBurst };
 }
 
 export type { ParticlePreset };

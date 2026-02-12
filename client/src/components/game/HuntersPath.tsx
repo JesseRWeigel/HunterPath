@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audioManager";
 import type { SoundName, MusicName } from "@/lib/audioManager";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, hapticRumble } from "@/lib/haptics";
-import { useParticles } from "@/lib/particles";
+import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
@@ -1007,7 +1007,7 @@ const MONSTER_DATA = {
 
 export default function HuntersPath() {
   // Particle effects system
-  const { trigger: triggerParticles, ParticleLayer } = useParticles();
+  const { trigger: triggerParticles, bursts, removeBurst } = useParticles();
 
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [log, setLog] = useState<string[]>([
@@ -4290,7 +4290,7 @@ export default function HuntersPath() {
                   </div>
 
                   {/* Particle Effects Layer */}
-                  <ParticleLayer />
+                  <ParticleLayer bursts={bursts} onBurstComplete={removeBurst} />
 
                   {/* Combat Arena with Enhanced Visuals */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 relative z-10">
