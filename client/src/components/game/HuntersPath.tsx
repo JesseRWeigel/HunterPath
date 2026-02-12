@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audioManager";
 import type { SoundName, MusicName } from "@/lib/audioManager";
+import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, hapticRumble } from "@/lib/haptics";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -717,16 +718,19 @@ function Btn({
   className?: string;
 }) {
   const base =
-    "rounded-xl px-4 py-2 font-bold transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105";
+    "rounded-xl px-4 py-2 font-bold font-display tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105 select-none touch-manipulation";
   const size = sm ? "px-3 py-1 text-sm" : "text-sm";
   const themeCls =
     theme === "danger"
-      ? "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white"
-      : "bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-500 hover:to-purple-400 text-white";
+      ? "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-500/20"
+      : "bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-500 hover:to-purple-400 text-white shadow-lg shadow-violet-500/20";
   return (
     <button
       className={`${base} ${size} ${themeCls} ${className}`}
-      onClick={onClick}
+      onClick={() => {
+        hapticLight();
+        onClick?.();
+      }}
       disabled={disabled}
     >
       {children}
@@ -1386,7 +1390,7 @@ export default function HuntersPath() {
         const oldHp = player.hp;
         const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
 
-        // Trigger visual effects, sounds, and floating damage numbers
+        // Trigger visual effects, sounds, haptics, and floating damage numbers
         if (dmgPlayer > 0) {
           triggerVisualEffect("screenShake");
           playSound("attack");
@@ -1394,14 +1398,17 @@ export default function HuntersPath() {
           if (isCrit) {
             triggerVisualEffect("criticalHit");
             playSound("critical");
+            hapticHeavy();
             addDamageNumber(dmgPlayer, "critical", "enemy");
           } else {
+            hapticMedium();
             addDamageNumber(dmgPlayer, "damage", "enemy");
           }
         }
         if (dmgBoss > 0) {
           triggerVisualEffect("damageFlash");
           playSound("damage");
+          hapticWarning();
           addDamageNumber(dmgBoss, "damage", "player");
         } else {
           playSound("block");
@@ -1452,6 +1459,7 @@ export default function HuntersPath() {
           clearInterval(tickRef.current!);
           playSound("victory");
           playMusic("victory_music", false);
+          hapticSuccess();
 
           const { exp, gold: goldGain } = gainExpGoldFromGate(prev.gate);
           const drop = rollDrop(prev.gate);
@@ -1531,6 +1539,7 @@ export default function HuntersPath() {
           clearInterval(tickRef.current!);
           playSound("defeat");
           playMusic("defeat_music", false);
+          hapticWarning();
 
           // Show combat result screen
           setCombatResult({
@@ -1593,6 +1602,7 @@ export default function HuntersPath() {
 
         logPush(`Level Up! Welcome to level ${level}. +5 stat points!`);
         playSound("level_up");
+        hapticHeavy();
       }
 
       // If player leveled up, refresh gates to unlock new tiers
@@ -1791,9 +1801,10 @@ export default function HuntersPath() {
           progress: 100,
         }));
 
-        // Play success/failure sound
+        // Play success/failure sound + haptics
         if (success) {
           playSound("extraction_success");
+          hapticSuccess();
 
           // Create the spirit and update player state
           const spiritBound = createSpirit(
@@ -1825,6 +1836,7 @@ export default function HuntersPath() {
           );
         } else {
           playSound("extraction_failure");
+          hapticWarning();
         }
 
         // End sequence after 2 seconds
@@ -1932,8 +1944,9 @@ export default function HuntersPath() {
       bossRank: "",
     });
 
-    // Play gate entry sound
+    // Play gate entry sound + haptic rumble
     playSound("gate_enter");
+    hapticRumble();
 
     logPush(`Entered ${g.name} (${g.rank}-Rank)`);
   }

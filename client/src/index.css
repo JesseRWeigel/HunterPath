@@ -88,11 +88,28 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: var(--font-game);
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent text selection during gameplay on mobile */
+  .game-gradient {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Ensure minimum 44px touch targets on mobile (WCAG 2.5.5) */
+  @media (pointer: coarse) {
+    button, [role="button"], a {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 }
 
