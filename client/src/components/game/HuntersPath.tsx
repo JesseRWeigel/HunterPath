@@ -4090,12 +4090,14 @@ export default function HuntersPath() {
 
               {(inRun && running) || combatResult ? (
                 <div
-                  className={`bg-gradient-to-r from-red-900/30 to-purple-900/30 border border-red-500/30 rounded-lg p-6 mb-6 relative overflow-hidden transition-all duration-300 ${
+                  className={`border rounded-lg p-6 mb-6 relative overflow-hidden transition-all duration-500 ${
                     visualEffects.screenShake ? "animate-screen-shake" : ""
                   } ${
                     visualEffects.damageFlash ? "animate-damage-flash" : ""
                   } ${visualEffects.healFlash ? "animate-heal-flash" : ""} ${
-                    running ? `gate-environment-${running.gate.rank}` : ""
+                    running
+                      ? `gate-environment-${running.gate.rank}`
+                      : "bg-gradient-to-r from-red-900/30 to-purple-900/30 border-red-500/30"
                   }`}
                 >
                   {/* Animated Background Particles */}
@@ -4104,21 +4106,16 @@ export default function HuntersPath() {
                     <div className="combat-particle absolute top-8 right-8 w-1 h-1 bg-red-400 rounded-full animate-floating-particle opacity-40"></div>
                     <div className="combat-particle absolute bottom-6 left-12 w-1.5 h-1.5 bg-blue-400 rounded-full animate-floating-particle opacity-50"></div>
                     <div className="combat-particle absolute bottom-12 right-4 w-1 h-1 bg-green-400 rounded-full animate-floating-particle opacity-30"></div>
-                    <div className="combat-particle absolute top-1/2 left-1/4 w-1 h-1 bg-yellow-400 rounded-full animate-floating-particle opacity-40"></div>
-                    <div className="combat-particle absolute top-1/3 right-1/3 w-1.5 h-1.5 bg-purple-400 rounded-full animate-floating-particle opacity-50"></div>
 
-                    {/* Environment-specific particles */}
+                    {/* Environment-specific particles — 6 per rank for depth */}
                     {running && (
                       <>
-                        <div
-                          className={`environment-particle environment-particle-${running.gate.rank} absolute top-1/4 left-1/4 w-8 h-8 rounded-full animate-floating-particle`}
-                        ></div>
-                        <div
-                          className={`environment-particle environment-particle-${running.gate.rank} absolute bottom-1/4 right-1/4 w-6 h-6 rounded-full animate-floating-particle`}
-                        ></div>
-                        <div
-                          className={`environment-particle environment-particle-${running.gate.rank} absolute top-3/4 right-1/3 w-4 h-4 rounded-full animate-floating-particle`}
-                        ></div>
+                        <div className={`environment-particle environment-particle-${running.gate.rank} absolute top-[10%] left-[15%] w-10 h-10 rounded-full`} style={{ animationDelay: "0s" }}></div>
+                        <div className={`environment-particle environment-particle-${running.gate.rank} absolute top-[60%] right-[10%] w-7 h-7 rounded-full`} style={{ animationDelay: "1s" }}></div>
+                        <div className={`environment-particle environment-particle-${running.gate.rank} absolute bottom-[15%] left-[40%] w-5 h-5 rounded-full`} style={{ animationDelay: "2s" }}></div>
+                        <div className={`environment-particle environment-particle-${running.gate.rank} absolute top-[40%] right-[30%] w-8 h-8 rounded-full`} style={{ animationDelay: "0.5s" }}></div>
+                        <div className={`environment-particle environment-particle-${running.gate.rank} absolute bottom-[30%] left-[10%] w-6 h-6 rounded-full`} style={{ animationDelay: "1.5s" }}></div>
+                        <div className={`environment-particle environment-particle-${running.gate.rank} absolute top-[75%] right-[50%] w-4 h-4 rounded-full`} style={{ animationDelay: "3s" }}></div>
                       </>
                     )}
                   </div>
