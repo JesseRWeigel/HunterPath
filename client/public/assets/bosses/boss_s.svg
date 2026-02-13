@@ -1,32 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Void Lord - S Rank Boss -->
-  <rect width="64" height="64" fill="#0a0a15"/>
-  <!-- Dark energy aura -->
-  <circle cx="32" cy="32" r="28" fill="url(#voidGrad)" opacity="0.5"/>
-  <!-- Shadowy body -->
-  <ellipse cx="32" cy="42" rx="18" ry="16" fill="#1a0a2a"/>
-  <!-- Hood/head -->
-  <circle cx="32" cy="22" r="16" fill="#0a0515"/>
-  <!-- Void eyes - white glowing -->
-  <circle cx="26" cy="20" r="5" fill="#ffffff"/>
-  <circle cx="38" cy="20" r="5" fill="#ffffff"/>
-  <circle cx="26" cy="20" r="2" fill="#9932cc"/>
-  <circle cx="38" cy="20" r="2" fill="#9932cc"/>
-  <!-- Tentacle-like appendages -->
-  <path d="M14,30 Q8,36 10,44" stroke="#1a0a2a" stroke-width="3" fill="none"/>
-  <path d="M50,30 Q56,36 54,44" stroke="#1a0a2a" stroke-width="3" fill="none"/>
-  <path d="M20,50 Q16,56 20,60" stroke="#1a0a2a" stroke-width="3" fill="none"/>
-  <path d="M44,50 Q48,56 44,60" stroke="#1a0a2a" stroke-width="3" fill="none"/>
-  <!-- Floating orbs -->
-  <circle cx="16" cy="16" r="3" fill="#9932cc" opacity="0.8"/>
-  <circle cx="48" cy="16" r="3" fill="#9932cc" opacity="0.8"/>
-  <circle cx="12" cy="36" r="2" fill="#4b0082" opacity="0.8"/>
-  <circle cx="52" cy="36" r="2" fill="#4b0082" opacity="0.8"/>
-  <!-- Definition for gradient -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
-    <radialGradient id="voidGrad">
-      <stop offset="0%" stop-color="#4b0082"/>
-      <stop offset="100%" stop-color="#0a0a15"/>
+    <radialGradient id="voidGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#4b0082"/>
+      <stop offset="40%" style="stop-color:#2a0040"/>
+      <stop offset="100%" style="stop-color:#0a0015"/>
     </radialGradient>
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="50%" style="stop-color:#9932cc"/>
+      <stop offset="100%" style="stop-color:#4b0082"/>
+    </radialGradient>
+    <filter id="voidFilter">
+      <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cosmic">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="5"/>
+    </filter>
   </defs>
+
+  <!-- Cosmic background -->
+  <rect width="128" height="128" fill="#050010"/>
+
+  <!-- Stars -->
+  <circle cx="20" cy="15" r="1" fill="#ffffff" opacity="0.8"/>
+  <circle cx="108" cy="25" r="1.5" fill="#ffffff" opacity="0.9"/>
+  <circle cx="45" cy="8" r="1" fill="#9932cc" opacity="0.7"/>
+  <circle cx="95" cy="12" r="1" fill="#ffffff" opacity="0.6"/>
+  <circle cx="15" cy="50" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="115" cy="55" r="1" fill="#9932cc" opacity="0.8"/>
+  <circle cx="60" cy="5" r="1.5" fill="#ffffff" opacity="0.7"/>
+  <circle cx="25" cy="110" r="1" fill="#ffffff" opacity="0.6"/>
+  <circle cx="100" cy="105" r="1" fill="#4b0082" opacity="0.9"/>
+
+  <!-- Void aura -->
+  <circle cx="64" cy="64" r="55" fill="url(#voidGrad)" filter="url(#voidFilter)" opacity="0.7"/>
+
+  <!-- Shadowy robe body -->
+  <ellipse cx="64" cy="95" rx="30" ry="28" fill="#0a0515"/>
+  <ellipse cx="64" cy="92" rx="25" ry="24" fill="#150a25"/>
+
+  <!-- Robe flowing -->
+  <path d="M35,60 L25,120 Q64,128 103,120 L93,60 Q64,50 35,60" fill="#0a0515"/>
+  <path d="M40,65 L32,115 Q64,122 96,115 L88,65 Q64,58 40,65" fill="#150a25"/>
+
+  <!-- Hood -->
+  <circle cx="64" cy="40" r="28" fill="#0a0515"/>
+  <circle cx="64" cy="42" r="24" fill="#150a25"/>
+
+  <!-- Face in darkness -->
+  <ellipse cx="64" cy="44" rx="16" ry="18" fill="#050008"/>
+
+  <!-- Glowing void eyes -->
+  <ellipse cx="54" cy="42" rx="8" ry="10" fill="url(#eyeGlow)" filter="url(#voidFilter)"/>
+  <ellipse cx="74" cy="42" rx="8" ry="10" fill="url(#eyeGlow)" filter="url(#voidFilter)"/>
+  <circle cx="56" cy="40" r="4" fill="#ffffff"/>
+  <circle cx="76" cy="40" r="4" fill="#ffffff"/>
+
+  <!-- Cosmic energy wisps -->
+  <path d="M20,35 Q10,50 15,70" stroke="#4b0082" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M108,35 Q118,50 113,70" stroke="#4b0082" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M30,100 Q15,110 20,120" stroke="#9932cc" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M98,100 Q113,110 108,120" stroke="#9932cc" stroke-width="2" fill="none" opacity="0.5"/>
+
+  <!-- Floating orbs -->
+  <circle cx="20" cy="30" r="4" fill="#9932cc" opacity="0.8" filter="url(#voidFilter)"/>
+  <circle cx="108" cy="30" r="4" fill="#9932cc" opacity="0.8" filter="url(#voidFilter)"/>
+  <circle cx="15" cy="70" r="3" fill="#4b0082" opacity="0.7"/>
+  <circle cx="113" cy="70" r="3" fill="#4b0082" opacity="0.7"/>
+  <circle cx="25" cy="95" r="2" fill="#9932cc" opacity="0.6"/>
+  <circle cx="103" cy="95" r="2" fill="#9932cc" opacity="0.6"/>
+
+  <!-- Staff -->
+  <rect x="5" y="45" width="4" height="80" fill="#1a0a2a" rx="2"/>
+  <circle cx="7" cy="42" r="8" fill="#4b0082" filter="url(#voidFilter)"/>
+  <circle cx="7" cy="42" r="5" fill="#9932cc"/>
+  <circle cx="7" cy="42" r="2" fill="#ffffff"/>
 </svg>

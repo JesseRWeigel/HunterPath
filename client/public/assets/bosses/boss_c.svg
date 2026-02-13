@@ -1,20 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Dark Elf Assassin - C Rank Boss -->
-  <rect width="64" height="64" fill="#1a1a2e"/>
-  <!-- Cloak -->
-  <path d="M20,16 L16,56 L48,56 L44,16 Z" fill="#2a1a3a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" image-rendering="pixelated">
+  <!-- Dark Elf Assassin - C Rank -->
+  <defs>
+    <linearGradient id="elfCloak" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a1a3a"/>
+      <stop offset="100%" style="stop-color:#0a0515"/>
+    </linearGradient>
+    <filter id="purpleGlow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="128" height="128" fill="#0a0515"/>
+
+  <!-- Moon glow behind -->
+  <circle cx="90" cy="30" r="25" fill="#4444ff" opacity="0.15"/>
+
+  <!-- Cloak flowing -->
+  <path d="M30,35 L20,110 Q64,120 108,110 L98,35 Q64,25 30,35" fill="url(#elfCloak)"/>
+
   <!-- Hood -->
-  <ellipse cx="32" cy="20" rx="14" ry="12" fill="#1a0a2a"/>
-  <!-- Face shadow -->
-  <ellipse cx="32" cy="22" rx="10" ry="8" fill="#0a0510"/>
+  <ellipse cx="64" cy="38" rx="28" ry="26" fill="#1a0a2a"/>
+  <ellipse cx="64" cy="40" rx="24" ry="22" fill="#0a0515"/>
+
+  <!-- Face in shadow -->
+  <ellipse cx="64" cy="42" rx="16" ry="14" fill="#0a0515"/>
+
   <!-- Glowing purple eyes -->
-  <circle cx="27" cy="20" r="4" fill="#9932cc"/>
-  <circle cx="37" cy="20" r="4" fill="#9932cc"/>
-  <circle cx="27" cy="20" r="1.5" fill="#ff00ff"/>
-  <circle cx="37" cy="20" r="1.5" fill="#ff00ff"/>
-  <!-- Dagger -->
-  <rect x="50" y="38" width="3" height="14" fill="#4a4a4a"/>
-  <polygon points="50,52 53,52 56,58 47,58" fill="#c0c0c0"/>
-  <!-- Cloak trim -->
-  <path d="M18,50 Q32,56 46,50" stroke="#9932cc" stroke-width="2" fill="none"/>
+  <ellipse cx="54" cy="40" rx="7" ry="5" fill="#9932cc" filter="url(#purpleGlow)"/>
+  <ellipse cx="74" cy="40" rx="7" ry="5" fill="#9932cc" filter="url(#purpleGlow)"/>
+  <circle cx="55" cy="39" r="3" fill="#ff00ff"/>
+  <circle cx="75" cy="39" r="3" fill="#ff00ff"/>
+
+  <!-- Hood trim -->
+  <path d="M36,30 Q64,20 92,30 L94,35 Q64,28 34,35 Z" fill="#9932cc" opacity="0.6"/>
+
+  <!-- Cloak clasp -->
+  <circle cx="64" cy="65" r="6" fill="#9932cc"/>
+  <circle cx="64" cy="65" r="3" fill="#ff00ff"/>
+
+  <!-- Dagger in right hand -->
+  <rect x="100" y="70" width="4" height="25" fill="#3a3a4a" transform="rotate(20 102 82)"/>
+  <polygon points="98,68 106,68 104,58 100,58" fill="#c0c0c0"/>
+  <polygon points="102,55 106,55 108,50 100,50" fill="#e0e0ff"/>
+
+  <!-- Shadowy aura -->
+  <ellipse cx="64" cy="105" rx="35" ry="8" fill="#1a0a2a" opacity="0.5"/>
 </svg>
