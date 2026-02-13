@@ -1,7 +1,7 @@
 {
   "name": "Hunter's Path",
   "short_name": "HunterPath",
-  "description": "A Solo Leveling-inspired idle/roguelite game with dungeon clearing, stat progression, and shadow extraction mechanics.",
+  "description": "An idle/roguelite RPG with dungeon clearing, stat progression, spirit binding, and fatigue management mechanics.",
   "start_url": "/HunterPath/",
   "scope": "/HunterPath/",
   "display": "standalone",

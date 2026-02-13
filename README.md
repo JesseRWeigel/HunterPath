@@ -1,6 +1,6 @@
-# Hunter's Path - Solo Leveling Inspired Game
+# Hunter's Path
 
-A Solo Leveling-inspired idle/roguelite game built with React, TypeScript, and Express.js. Features dungeon clearing mechanics, stat progression systems, daily quests with penalties, shadow extraction mechanics, and fatigue management.
+An idle/roguelite RPG built with React, TypeScript, and Express.js. Features dungeon clearing mechanics, stat progression systems, daily quests with penalties, spirit binding mechanics, and fatigue management.
 
 ## 🌟 Features
 
@@ -8,7 +8,7 @@ A Solo Leveling-inspired idle/roguelite game built with React, TypeScript, and E
 - **Offline Play** - Works without internet connection
 - **Gates & Dungeons** - Clear dungeons of different ranks (E through S)
 - **Stat System** - Allocate points to STR, AGI, INT, VIT, and LUCK
-- **Shadow Extraction** - Recruit shadow allies from defeated bosses
+- **Spirit Binding** - Recruit bound spirits from defeated bosses
 - **Daily Quests** - Complete daily tasks or face penalties
 - **Fatigue System** - Manage fatigue affecting combat performance
 - **Instant Dungeon Keys** - Special items for bonus runs
@@ -79,7 +79,7 @@ npm start
 
 - **Gates**: Enter dungeons to gain EXP and loot
 - **Leveling**: Gain stat points on level up
-- **Shadows**: Extract shadows from defeated bosses
+- **Spirits**: Bind spirits from defeated bosses
 - **Daily Quests**: Complete for bonuses or face penalties
 - **Fatigue**: Manage fatigue for optimal performance
 
@@ -87,7 +87,7 @@ npm start
 
 1. Complete Daily Quest before running dungeons
 2. Allocate stat points after leveling up
-3. Extract shadows from defeated bosses (INT and LUCK help)
+3. Bind spirits from defeated bosses (INT and LUCK help)
 4. Manage fatigue by resting
 5. Use Instant Dungeon Keys for bonus runs
 

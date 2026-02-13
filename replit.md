@@ -1,8 +1,8 @@
-# Hunter's Path - Solo Leveling Game
+# Hunter's Path
 
 ## Overview
 
-Hunter's Path is a Solo Leveling-inspired idle/roguelite game built with React and TypeScript. The game features dungeon clearing mechanics, stat progression systems, daily quests with penalties, shadow extraction mechanics, and fatigue management. Players can explore gates of different ranks (E through S), level up their character through combat, allocate stat points, and extract shadows from defeated bosses. The application uses a full-stack architecture with Express.js backend and React frontend, utilizing shadcn/ui for the component library and Drizzle ORM for database management.
+Hunter's Path is an idle/roguelite RPG built with React and TypeScript. The game features dungeon clearing mechanics, stat progression systems, daily quests with penalties, spirit binding mechanics, and fatigue management. Players can explore gates of different ranks (E through S), level up their character through combat, allocate stat points, and bind spirits from defeated bosses. The application uses a full-stack architecture with Express.js backend and React frontend, utilizing shadcn/ui for the component library and Drizzle ORM for database management.
 
 ## User Preferences
 
@@ -39,7 +39,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Game Architecture
 - **Game State**: Local React state management with real-time updates
-- **Mechanics**: Idle/incremental game loop with dungeon exploration, stat allocation, and shadow extraction
+- **Mechanics**: Idle/incremental game loop with dungeon exploration, stat allocation, and spirit binding
 - **Ranking System**: E-S rank progression system for gates and equipment
 - **Fatigue System**: Resource management affecting player performance
 - **Daily Quests**: Time-based quest system with penalties for non-completion

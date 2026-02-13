@@ -70,7 +70,7 @@ export function Stats({ player, allocateStatWithFeedback }: StatsProps) {
                 </div>
                 <div>
                   <span className="text-blue-400 font-bold">INT:</span> Magic
-                  damage & shadow extraction (+1.5 power each)
+                  damage & spirit binding (+1.5 power each)
                 </div>
                 <div>
                   <span className="text-orange-400 font-bold">VIT:</span> Health

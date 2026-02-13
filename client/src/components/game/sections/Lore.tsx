@@ -22,7 +22,7 @@ export function Lore() {
               extraction.
             </li>
             <li>
-              Shadow Extraction after boss defeat may recruit a Shadow ally (25%
+              Spirit Binding after boss defeat may recruit a bound spirit (25%
               base chance).
             </li>
             <li>Fatigue reduces your total power; Rest lowers it.</li>

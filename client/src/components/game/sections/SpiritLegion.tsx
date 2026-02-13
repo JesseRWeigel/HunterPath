@@ -6,7 +6,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-interface Shadow {
+interface Spirit {
   id: string;
   name: string;
   rarity: string;
@@ -24,46 +24,46 @@ interface Shadow {
 }
 
 interface Player {
-  shadows: Shadow[];
+  shadows: Spirit[];
 }
 
-interface ShadowArmyProps {
+interface SpiritLegionProps {
   player: Player;
   getRarityBorder: (rarity: string) => string;
   getRarityColor: (rarity: string) => string;
-  shadowUpkeep: (player: Player) => number;
+  spiritUpkeep: (player: Player) => number;
 }
 
-export function ShadowArmy({
+export function SpiritLegion({
   player,
   getRarityBorder,
   getRarityColor,
-  shadowUpkeep,
-}: ShadowArmyProps) {
+  spiritUpkeep,
+}: SpiritLegionProps) {
   return (
     <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="shadow-army">
+      <AccordionItem value="spirit-legion">
         <AccordionTrigger className="text-lg font-bold text-zinc-100 hover:no-underline">
           <div className="flex items-center space-x-2">
             <i className="fas fa-users text-purple-400"></i>
-            <span>Shadow Army</span>
-            {player.shadows.length > 0 && (
+            <span>Spirit Legion</span>
+            {player.spirits.length > 0 && (
               <span className="bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                {player.shadows.length}
+                {player.spirits.length}
               </span>
             )}
           </div>
         </AccordionTrigger>
         <AccordionContent>
           <div className="max-h-96 overflow-y-auto">
-            {player.shadows.length === 0 && (
+            {player.spirits.length === 0 && (
               <div className="opacity-70 text-sm text-center py-4">
-                No shadows recruited
+                No spirits bound
               </div>
             )}
 
             <div className="space-y-3 mb-4">
-              {player.shadows.map((s) => (
+              {player.spirits.map((s) => (
                 <div
                   key={s.id}
                   className={`bg-zinc-800/30 border ${getRarityBorder(
@@ -149,18 +149,18 @@ export function ShadowArmy({
               ))}
             </div>
 
-            {player.shadows.length > 0 && (
+            {player.spirits.length > 0 && (
               <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-purple-300">Total Army Power:</span>
+                  <span className="text-purple-300">Total Legion Power:</span>
                   <span className="font-bold text-purple-400">
-                    +{player.shadows.reduce((a, s) => a + s.power, 0)}
+                    +{player.spirits.reduce((a, s) => a + s.power, 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
                   <span className="text-purple-300">MP Upkeep/tick:</span>
                   <span className="font-bold text-blue-400">
-                    -{shadowUpkeep(player)} MP
+                    -{spiritUpkeep(player)} MP
                   </span>
                 </div>
               </div>

@@ -1,0 +1,66 @@
+[      14ms] [ERROR] WebSocket connection to 'ws://localhost:5000/?token=bdjYrlr_lPJI' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/@vite/client:535
+[      36ms] SyntaxError: Failed to construct 'WebSocket': The URL 'ws://localhost:undefined/?token=bdjYrlr_lPJI' is invalid.
+    at setupWebSocket (http://localhost:5000/@vite/client:536:19)
+    at fallback (http://localhost:5000/@vite/client:509:16)
+    at WebSocket.<anonymous> (http://localhost:5000/@vite/client:555:7)
+[      36ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:135
+[      37ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:135
+[      73ms] TypeError: Cannot read properties of null (reading 'useEffect')
+    at Object.useEffect (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:1078:29)
+    at QueryClientProvider (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/@tanstack_react-query.js?v=f23cd135:2808:9)
+    at renderWithHooks (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:11548:26)
+    at mountIndeterminateComponent (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:14926:21)
+    at beginWork (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:15914:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:3674:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:3699:24)
+    at invokeGuardedCallback (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:3733:39)
+    at beginWork$1 (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19765:15)
+    at performUnitOfWork (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19198:20)
+[      37ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:135
+[      37ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:135
+[      74ms] TypeError: Cannot read properties of null (reading 'useEffect')
+    at Object.useEffect (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:1078:29)
+    at QueryClientProvider (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/@tanstack_react-query.js?v=f23cd135:2808:9)
+    at renderWithHooks (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:11548:26)
+    at mountIndeterminateComponent (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:14926:21)
+    at beginWork (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:15914:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:3674:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:3699:24)
+    at invokeGuardedCallback (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:3733:39)
+    at beginWork$1 (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19765:15)
+    at performUnitOfWork (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19198:20)
+[      37ms] [ERROR] The above error occurred in the <QueryClientProvider> component:
+
+    at QueryClientProvider (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/@tanstack_react-query.js?v=f23cd135:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:14031
+[      74ms] TypeError: Cannot read properties of null (reading 'useEffect')
+    at Object.useEffect (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-3TFVT2CW.js?v=b243a4a6:1078:29)
+    at QueryClientProvider (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/@tanstack_react-query.js?v=f23cd135:2808:9)
+    at renderWithHooks (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:11548:26)
+    at mountIndeterminateComponent (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:14926:21)
+    at beginWork (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:15914:22)
+    at beginWork$1 (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19753:22)
+    at performUnitOfWork (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19198:20)
+    at workLoopSync (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19137:13)
+    at renderRootSync (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:19116:15)
+    at recoverFromConcurrentError (http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/chunk-WERSD76P.js?v=699444b2:18736:28)
+[      40ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
