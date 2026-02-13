@@ -939,6 +939,7 @@ const MONSTER_DATA = {
     description:
       "A small but fierce goblin with crude weapons. Though weak individually, they fight with surprising ferocity.",
     icon: "fas fa-user-ninja",
+    image: "/assets/bosses/boss_e.svg",
     color: "text-green-400",
     bgColor: "bg-green-900/30",
     borderColor: "border-green-500/30",
@@ -951,6 +952,7 @@ const MONSTER_DATA = {
     description:
       "A muscular orc warrior with blood-red eyes. Their rage makes them unpredictable and dangerous.",
     icon: "fas fa-user-shield",
+    image: "/assets/bosses/boss_d.svg",
     color: "text-blue-400",
     bgColor: "bg-blue-900/30",
     borderColor: "border-blue-500/30",
@@ -962,6 +964,7 @@ const MONSTER_DATA = {
     description:
       "A shadowy figure with deadly precision. Their movements are like liquid darkness.",
     icon: "fas fa-user-secret",
+    image: "/assets/bosses/boss_c.svg",
     color: "text-purple-400",
     bgColor: "bg-purple-900/30",
     borderColor: "border-purple-500/30",
@@ -974,6 +977,7 @@ const MONSTER_DATA = {
     description:
       "A massive troll with stone-like skin. Their club can crush bones with a single swing.",
     icon: "fas fa-user-graduate",
+    image: "/assets/bosses/boss_b.svg",
     color: "text-red-400",
     bgColor: "bg-red-900/30",
     borderColor: "border-red-500/30",
@@ -985,6 +989,7 @@ const MONSTER_DATA = {
     description:
       "A legendary warrior clad in dragon-scale armor. Their sword burns with ancient fire.",
     icon: "fas fa-user-crown",
+    image: "/assets/bosses/boss_a.svg",
     color: "text-orange-400",
     bgColor: "bg-orange-900/30",
     borderColor: "border-orange-500/30",
@@ -996,6 +1001,7 @@ const MONSTER_DATA = {
     description:
       "A being of pure darkness and malice. Their very presence corrupts the air around them.",
     icon: "fas fa-user-tie",
+    image: "/assets/bosses/boss_s.svg",
     color: "text-yellow-400",
     bgColor: "bg-yellow-900/30",
     borderColor: "border-yellow-500/30",
@@ -3734,9 +3740,11 @@ export default function HuntersPath() {
           <section className="lg:col-span-1 space-y-6">
             <Card>
               <div className="flex items-center space-x-4 mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <i className="fas fa-user-ninja text-2xl text-white"></i>
-                </div>
+                <img
+                  src="/assets/ui/player.svg"
+                  alt="Hunter"
+                  className="w-16 h-16 rounded-full object-cover"
+                />
                 <div>
                   <h2 className="text-xl font-bold text-zinc-100">Hunter</h2>
                   <div className="flex items-center space-x-2">
@@ -4311,9 +4319,11 @@ export default function HuntersPath() {
                       </AnimatePresence>
 
                       <div className="text-center mb-4 relative z-10">
-                        <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg shadow-purple-500/30 animate-pulse">
-                          <i className="fas fa-user-shield text-white text-xl"></i>
-                        </div>
+                        <img
+                          src="/assets/ui/player.svg"
+                          alt="Hunter"
+                          className="w-16 h-16 rounded-full object-cover mx-auto mb-2 shadow-lg shadow-purple-500/30"
+                        />
                         <h5 className="font-bold text-purple-300 font-display">Hunter</h5>
                         <p className="text-xs text-zinc-400">
                           Level {player.level}
@@ -4354,16 +4364,24 @@ export default function HuntersPath() {
                           }
                           transition={{ duration: 0.3 }}
                         >
-                          <i
-                            className={`fas ${
-                              running
-                                ? MONSTER_DATA[
-                                    running.gate
-                                      .rank as keyof typeof MONSTER_DATA
-                                  ]?.icon
-                                : "fa-dragon"
-                            } text-white text-xl`}
-                          ></i>
+                          {running && MONSTER_DATA[running.gate.rank as keyof typeof MONSTER_DATA]?.image ? (
+                            <img
+                              src={MONSTER_DATA[running.gate.rank as keyof typeof MONSTER_DATA]?.image}
+                              alt="Boss"
+                              className="w-16 h-16 object-contain"
+                            />
+                          ) : (
+                            <i
+                              className={`fas ${
+                                running
+                                  ? MONSTER_DATA[
+                                      running.gate
+                                        .rank as keyof typeof MONSTER_DATA
+                                    ]?.icon
+                                  : "fa-dragon"
+                              } text-white text-xl`}
+                            ></i>
+                          )}
                         </motion.div>
                         <h5 className="font-bold text-red-300 font-display">
                           {running?.boss.name || combatResult?.boss.name}

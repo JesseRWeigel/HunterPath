@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Dragon Knight - A Rank Boss -->
+  <rect width="64" height="64" fill="#1a1a2e"/>
+  <!-- Armor body -->
+  <ellipse cx="32" cy="44" rx="20" ry="16" fill="#4a4a5a"/>
+  <!-- Dragon scale pattern -->
+  <path d="M20,40 L24,44 L20,48 M28,38 L32,42 L28,46 M36,38 L40,42 L36,46 M44,40 L48,44 L44,48" stroke="#2a2a3a" stroke-width="2"/>
+  <!-- Helmet -->
+  <ellipse cx="32" cy="20" rx="14" ry="12" fill="#5a5a6a"/>
+  <!-- Helmet crest -->
+  <polygon points="32,4 28,14 36,14" fill="#ff4500"/>
+  <!-- Visor -->
+  <rect x="22" y="16" width="20" height="6" fill="#2a2a3a"/>
+  <!-- Eye glow through visor -->
+  <circle cx="26" cy="19" r="2" fill="#ff4500"/>
+  <circle cx="38" cy="19" r="2" fill="#ff4500"/>
+  <!-- Cape -->
+  <path d="M16,30 L12,58 L52,58 L48,30 Z" fill="#8b0000"/>
+  <!-- Sword -->
+  <rect x="50" y="20" width="4" height="36" fill="#708090"/>
+  <polygon points="50,16 50,24 44,20" fill="#c0c0c0"/>
+  <!-- Sword glow -->
+  <rect x="52" y="22" width="2" height="32" fill="#ff4500" opacity="0.6"/>
+</svg>

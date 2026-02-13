@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Dark Elf Assassin - C Rank Boss -->
+  <rect width="64" height="64" fill="#1a1a2e"/>
+  <!-- Cloak -->
+  <path d="M20,16 L16,56 L48,56 L44,16 Z" fill="#2a1a3a"/>
+  <!-- Hood -->
+  <ellipse cx="32" cy="20" rx="14" ry="12" fill="#1a0a2a"/>
+  <!-- Face shadow -->
+  <ellipse cx="32" cy="22" rx="10" ry="8" fill="#0a0510"/>
+  <!-- Glowing purple eyes -->
+  <circle cx="27" cy="20" r="4" fill="#9932cc"/>
+  <circle cx="37" cy="20" r="4" fill="#9932cc"/>
+  <circle cx="27" cy="20" r="1.5" fill="#ff00ff"/>
+  <circle cx="37" cy="20" r="1.5" fill="#ff00ff"/>
+  <!-- Dagger -->
+  <rect x="50" y="38" width="3" height="14" fill="#4a4a4a"/>
+  <polygon points="50,52 53,52 56,58 47,58" fill="#c0c0c0"/>
+  <!-- Cloak trim -->
+  <path d="M18,50 Q32,56 46,50" stroke="#9932cc" stroke-width="2" fill="none"/>
+</svg>

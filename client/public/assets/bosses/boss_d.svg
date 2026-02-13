@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Orc Berserker - D Rank Boss -->
+  <rect width="64" height="64" fill="#1a1a2e"/>
+  <!-- Body -->
+  <ellipse cx="32" cy="42" rx="20" ry="18" fill="#4a3728"/>
+  <!-- Head -->
+  <circle cx="32" cy="20" r="16" fill="#6b4423"/>
+  <!-- Tusks -->
+  <polygon points="22,28 16,36 26,32" fill="#f5f5dc"/>
+  <polygon points="42,28 48,36 38,32" fill="#f5f5dc"/>
+  <!-- Eyes - Red rage -->
+  <circle cx="25" cy="18" r="5" fill="#ff0000"/>
+  <circle cx="39" cy="18" r="5" fill="#ff0000"/>
+  <circle cx="26" cy="17" r="2" fill="#ffff00"/>
+  <circle cx="40" cy="17" r="2" fill="#ffff00"/>
+  <!-- Battle scars -->
+  <path d="M20,24 L28,26" stroke="#8b0000" stroke-width="2"/>
+  <path d="M44,22 L36,26" stroke="#8b0000" stroke-width="2"/>
+  <!-- Weapon - Axe -->
+  <rect x="50" y="28" width="4" height="28" fill="#5c4033"/>
+  <polygon points="50,24 50,40 38,32" fill="#708090"/>
+</svg>

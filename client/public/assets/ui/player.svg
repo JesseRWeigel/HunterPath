@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Hunter Player Avatar -->
+  <rect width="64" height="64" fill="#1a1a2e"/>
+  <!-- Cloak/Body -->
+  <path d="M20,20 L16,56 L48,56 L44,20 Z" fill="#2a1a3a"/>
+  <!-- Armor -->
+  <ellipse cx="32" cy="42" rx="14" ry="12" fill="#3a3a4a"/>
+  <!-- Head -->
+  <circle cx="32" cy="20" r="12" fill="#d4a574"/>
+  <!-- Hair -->
+  <ellipse cx="32" cy="14" rx="10" ry="6" fill="#4a3020"/>
+  <!-- Eyes -->
+  <circle cx="28" cy="20" r="2" fill="#2a2a2a"/>
+  <circle cx="36" cy="20" r="2" fill="#2a2a2a"/>
+  <!-- Confident expression -->
+  <path d="M28,26 Q32,28 36,26" stroke="#2a2a2a" stroke-width="1.5" fill="none"/>
+  <!-- Shoulder armor -->
+  <ellipse cx="20" cy="32" rx="6" ry="4" fill="#5a5a6a"/>
+  <ellipse cx="44" cy="32" rx="6" ry="4" fill="#5a5a6a"/>
+  <!-- Belt -->
+  <rect x="18" y="48" width="28" height="4" fill="#5a4030"/>
+  <ellipse cx="32" cy="50" rx="4" ry="3" fill="#c0a030"/>
+</svg>

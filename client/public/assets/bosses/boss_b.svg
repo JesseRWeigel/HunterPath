@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Troll Chieftain - B Rank Boss -->
+  <rect width="64" height="64" fill="#1a1a2e"/>
+  <!-- Body - massive -->
+  <ellipse cx="32" cy="44" rx="24" ry="18" fill="#5a5a5a"/>
+  <!-- Head -->
+  <circle cx="32" cy="20" r="18" fill="#6a6a6a"/>
+  <!-- Stone texture spots -->
+  <circle cx="24" cy="28" r="3" fill="#4a4a4a"/>
+  <circle cx="40" cy="32" r="2" fill="#4a4a4a"/>
+  <circle cx="28" cy="14" r="2" fill="#4a4a4a"/>
+  <!-- Eyes - small, menacing -->
+  <circle cx="26" cy="18" r="4" fill="#ff6600"/>
+  <circle cx="38" cy="18" r="4" fill="#ff6600"/>
+  <circle cx="26" cy="18" r="1.5" fill="#ffffff"/>
+  <circle cx="38" cy="18" r="1.5" fill="#ffffff"/>
+  <!-- Nose -->
+  <ellipse cx="32" cy="24" rx="4" ry="3" fill="#4a4a4a"/>
+  <!-- Large tusks -->
+  <polygon points="24,28 20,38 28,30" fill="#f5f5dc"/>
+  <polygon points="40,28 44,38 36,30" fill="#f5f5dc"/>
+  <!-- Club weapon -->
+  <rect x="8" y="28" width="6" height="28" fill="#5c4033" rx="2"/>
+  <circle cx="11" cy="26" r="6" fill="#5c4033"/>
+  <circle cx="11" cy="26" r="4" fill="#4a3020"/>
+</svg>
