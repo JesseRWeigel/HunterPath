@@ -939,7 +939,7 @@ const MONSTER_DATA = {
     description:
       "A small but fierce goblin with crude weapons. Though weak individually, they fight with surprising ferocity.",
     icon: "fas fa-user-ninja",
-    image: "/assets/bosses/boss_e.svg",
+    image: "./assets/bosses/boss_e.svg",
     color: "text-green-400",
     bgColor: "bg-green-900/30",
     borderColor: "border-green-500/30",
@@ -952,7 +952,7 @@ const MONSTER_DATA = {
     description:
       "A muscular orc warrior with blood-red eyes. Their rage makes them unpredictable and dangerous.",
     icon: "fas fa-user-shield",
-    image: "/assets/bosses/boss_d.svg",
+    image: "./assets/bosses/boss_d.svg",
     color: "text-blue-400",
     bgColor: "bg-blue-900/30",
     borderColor: "border-blue-500/30",
@@ -964,7 +964,7 @@ const MONSTER_DATA = {
     description:
       "A shadowy figure with deadly precision. Their movements are like liquid darkness.",
     icon: "fas fa-user-secret",
-    image: "/assets/bosses/boss_c.svg",
+    image: "./assets/bosses/boss_c.svg",
     color: "text-purple-400",
     bgColor: "bg-purple-900/30",
     borderColor: "border-purple-500/30",
@@ -977,7 +977,7 @@ const MONSTER_DATA = {
     description:
       "A massive troll with stone-like skin. Their club can crush bones with a single swing.",
     icon: "fas fa-user-graduate",
-    image: "/assets/bosses/boss_b.svg",
+    image: "./assets/bosses/boss_b.svg",
     color: "text-red-400",
     bgColor: "bg-red-900/30",
     borderColor: "border-red-500/30",
@@ -989,7 +989,7 @@ const MONSTER_DATA = {
     description:
       "A legendary warrior clad in dragon-scale armor. Their sword burns with ancient fire.",
     icon: "fas fa-user-crown",
-    image: "/assets/bosses/boss_a.svg",
+    image: "./assets/bosses/boss_a.svg",
     color: "text-orange-400",
     bgColor: "bg-orange-900/30",
     borderColor: "border-orange-500/30",
@@ -1001,7 +1001,7 @@ const MONSTER_DATA = {
     description:
       "A being of pure darkness and malice. Their very presence corrupts the air around them.",
     icon: "fas fa-user-tie",
-    image: "/assets/bosses/boss_s.svg",
+    image: "./assets/bosses/boss_s.svg",
     color: "text-yellow-400",
     bgColor: "bg-yellow-900/30",
     borderColor: "border-yellow-500/30",
@@ -3741,7 +3741,7 @@ export default function HuntersPath() {
             <Card>
               <div className="flex items-center space-x-4 mb-6">
                 <img
-                  src="/assets/ui/player.svg"
+                  src="./assets/ui/player.svg"
                   alt="Hunter"
                   className="w-16 h-16 rounded-full object-cover"
                 />
@@ -4320,7 +4320,7 @@ export default function HuntersPath() {
 
                       <div className="text-center mb-4 relative z-10">
                         <img
-                          src="/assets/ui/player.svg"
+                          src="./assets/ui/player.svg"
                           alt="Hunter"
                           className="w-16 h-16 rounded-full object-cover mx-auto mb-2 shadow-lg shadow-purple-500/30"
                         />

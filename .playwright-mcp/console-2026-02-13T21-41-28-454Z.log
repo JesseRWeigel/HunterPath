@@ -1,0 +1,5 @@
+[      73ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ https://jesserweigel.github.io/HunterPath/assets/index-CyaD21z5.js:95
+[      74ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ https://jesserweigel.github.io/HunterPath/assets/index-CyaD21z5.js:95
+[      86ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://jesserweigel.github.io/assets/ui/player.svg:0
+[   13380ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://jesserweigel.github.io/assets/ui/player.svg:0
+[   13394ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://jesserweigel.github.io/assets/bosses/boss_e.svg:0
