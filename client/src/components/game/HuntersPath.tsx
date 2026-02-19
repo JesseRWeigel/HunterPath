@@ -146,6 +146,8 @@ interface Player {
   inv: Item[];
   keys: number;
   equipment: Equipment;
+  rebirths: number;        // Number of times rebirthing
+  prestigePoints: number;  // Total prestige points earned
 }
 
 interface DailyTask {
@@ -503,6 +505,8 @@ function initialPlayer(): Player {
     inv: [], // {id, name, type}
     keys: 0, // Instant Dungeon Keys
     equipment: {},
+    rebirths: 0,
+    prestigePoints: 0,
   };
 }
 
