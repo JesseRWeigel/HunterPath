@@ -1020,6 +1020,7 @@ export default function HuntersPath() {
   const { trigger: triggerParticles, bursts, removeBurst } = useParticles();
 
   const [player, setPlayer] = useState<Player>(initialPlayer);
+  const [rebirthModalOpen, setRebirthModalOpen] = useState(false);
   const [log, setLog] = useState<string[]>([
     "Welcome, Hunter. Complete your Daily Quest, then clear a Gate.",
   ]);
@@ -1672,6 +1673,27 @@ export default function HuntersPath() {
 
   function logPush(msg: string) {
     setLog((l) => [msg, ...l].slice(0, 120));
+  }
+
+  function handleRebirth() {
+    const earnedPoints = Math.floor(
+      player.level * 10 * (1 + player.rebirths * 0.5)
+    );
+    setPlayer((prev) => ({
+      ...initialPlayer(),
+      ...prev,
+      level: prev.level,
+      stats: prev.stats,
+      spirits: prev.spirits,
+      inventory: prev.inv,
+      rebirths: prev.rebirths + 1,
+      prestigePoints: prev.prestigePoints + earnedPoints,
+    }));
+    setRebirthModalOpen(false);
+    setLog((prev) => [
+      `⚡ REBIRTH! You are now stronger! (+${earnedPoints} Prestige Points)`,
+      ...prev,
+    ]);
   }
 
   // Simple statistics tracking functions
