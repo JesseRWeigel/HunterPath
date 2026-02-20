@@ -1,16 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audioManager";
 import type { SoundName, MusicName } from "@/lib/audioManager";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, hapticRumble } from "@/lib/haptics";
 import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
+import { RebirthModal } from "./sections/RebirthModal";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -3615,6 +3612,13 @@ export default function HuntersPath() {
                     <span className="font-bold">{player.keys}</span>
                     <span className="text-zinc-400 text-sm">Keys</span>
                   </div>
+                  {player.prestigePoints > 0 && (
+                    <div className="flex items-center space-x-2 bg-purple-900/50 px-3 py-2 rounded-lg">
+                      <i className="fas fa-star text-purple-400"></i>
+                      <span className="font-bold text-purple-300">{player.prestigePoints.toLocaleString()}</span>
+                      <span className="text-purple-400 text-sm">PP</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3634,6 +3638,36 @@ export default function HuntersPath() {
                     <i className="fas fa-trash mr-1"></i>
                     Reset
                   </Btn>
+                  {player.level >= 50 && (
+                    <button
+                      onClick={() => setRebirthModalOpen(true)}
+                      className="flex items-center space-x-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded text-white text-sm font-bold"
+                      title="Rebirth (Level 50+)"
+                    >
+                      <i className="fas fa-bolt"></i>
+                      <span>Rebirth</span>
+                      {player.rebirths > 0 && (
+                        <span className="bg-purple-800 px-2 py-0.5 rounded text-xs">
+                          +{player.rebirths * 15}%
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  {player.level >= 50 && (
+                    <Btn
+                      onClick={() => setRebirthModalOpen(true)}
+                      theme="purple"
+                      sm
+                    >
+                      <i className="fas fa-bolt mr-1"></i>
+                      Rebirth
+                      {player.rebirths > 0 && (
+                        <span className="ml-1 bg-purple-800 px-1.5 py-0.5 rounded text-xs">
+                          +{player.rebirths * 15}%
+                        </span>
+                      )}
+                    </Btn>
+                  )}
                   {process.env.NODE_ENV === "development" && (
                     <Btn
                       onClick={() => setShowDebugPanel(!showDebugPanel)}
@@ -5465,6 +5499,64 @@ export default function HuntersPath() {
       </div>
 
       {/* Audio managed by audioManager singleton — no DOM elements needed */}
+
+      {/* Rebirth Modal */}
+      {rebirthModalOpen && (
+        <Dialog open={rebirthModalOpen} onOpenChange={setRebirthModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>⚡ Rebirth</DialogTitle>
+              <DialogDescription>
+                Reset your progress to gain permanent bonuses!
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="bg-red-900/20 border border-red-500/30 p-3 rounded-lg">
+                <p className="text-red-400 font-bold">⚠️ This will reset:</p>
+                <ul className="text-red-300 text-sm mt-2 space-y-1">
+                  <li>• All gold (₲)</li>
+                  <li>• All keys</li>
+                  <li>• All gates cleared</li>
+                  <li>• Fatigue</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-900/20 border border-green-500/30 p-3 rounded-lg">
+                <p className="text-green-400 font-bold">✅ You will keep:</p>
+                <ul className="text-green-300 text-sm mt-2 space-y-1">
+                  <li>• Your level ({player.level})</li>
+                  <li>• All allocated stats</li>
+                  <li>• Your Spirit Legion</li>
+                </ul>
+              </div>
+
+              <div className="bg-purple-900/20 border border-purple-500/30 p-3 rounded-lg text-center">
+                <p className="text-purple-400 font-bold">🎁 You will gain:</p>
+                <p className="text-2xl font-bold text-purple-300">
+                  +{Math.floor(player.level * 10 * (1 + player.rebirths * 0.5))} Prestige Points
+                </p>
+                <p className="text-purple-400">+{(player.rebirths + 1) * 15}% Power Bonus</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <button
+                onClick={() => setRebirthModalOpen(false)}
+                className="px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRebirth}
+                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 font-bold"
+              >
+                Confirm Rebirth
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Debug Panel */}
       {process.env.NODE_ENV === "development" && showDebugPanel && (
