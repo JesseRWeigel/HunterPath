@@ -1050,6 +1050,12 @@ export default function HuntersPath() {
 
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [rebirthModalOpen, setRebirthModalOpen] = useState(false);
+  const [offlineGains, setOfflineGains] = useState<{
+    show: boolean;
+    exp: number;
+    gold: number;
+    hours: number;
+  } | null>(null);
   const [log, setLog] = useState<string[]>([
     "Welcome, Hunter. Complete your Daily Quest, then clear a Gate.",
   ]);
@@ -1217,6 +1223,7 @@ export default function HuntersPath() {
         gold,
         gameTime,
         daily,
+        lastSaved: new Date().toISOString(),
       };
       localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
 
@@ -1335,6 +1342,51 @@ export default function HuntersPath() {
             questReputation: 0,
           }
         );
+        // Calculate offline progress
+        if (gameState.lastSaved) {
+          const msElapsed = Date.now() - new Date(gameState.lastSaved).getTime();
+          const hoursElapsed = Math.min(8, msElapsed / (1000 * 60 * 60));
+
+          if (hoursElapsed >= 0.1) { // at least 6 minutes offline
+            const level = gameState.player?.level || 1;
+            const offlineExpPerHour = 20 + level * 5;
+            const offlineGoldPerHour = 10 + level * 3;
+            const offlineExp = Math.floor(offlineExpPerHour * hoursElapsed);
+            const offlineGold = Math.floor(offlineGoldPerHour * hoursElapsed);
+
+            // Apply gold immediately
+            setGold(g => g + offlineGold);
+
+            // Apply EXP with leveling (inline version of handleLevelGain)
+            setPlayer(p => {
+              let exp = p.exp + offlineExp;
+              let level = p.level;
+              let expNext = p.expNext;
+              let points = p.points;
+              let maxHp = p.maxHp;
+              let maxMp = p.maxMp;
+
+              while (exp >= expNext) {
+                exp -= expNext;
+                level += 1;
+                expNext = Math.floor(expNext * 1.35);
+                points += 5;
+                maxHp += 10;
+                maxMp += 5;
+              }
+
+              return { ...p, exp, level, expNext, points, maxHp, maxMp };
+            });
+
+            setOfflineGains({
+              show: true,
+              exp: offlineExp,
+              gold: offlineGold,
+              hours: hoursElapsed,
+            });
+          }
+        }
+
         setLog(["Game loaded from auto-save. Welcome back, Hunter!"]);
       } catch (error) {
         console.error("Failed to load auto-save:", error);
@@ -5725,6 +5777,41 @@ export default function HuntersPath() {
                 className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 font-bold"
               >
                 Confirm Rebirth
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Offline Progress Modal */}
+      {offlineGains?.show && (
+        <Dialog open={true} onOpenChange={() => setOfflineGains(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>⏰ Welcome Back!</DialogTitle>
+              <DialogDescription>
+                You were away for {offlineGains.hours >= 1
+                  ? `${offlineGains.hours.toFixed(1)} hours`
+                  : `${Math.round(offlineGains.hours * 60)} minutes`}.
+                Your spirits kept training while you were gone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-4">
+              <div className="bg-green-900/20 border border-green-500/30 p-4 rounded-lg text-center">
+                <p className="text-green-300 mb-2">Offline earnings:</p>
+                <p className="text-2xl font-bold text-blue-400">+{fmt(offlineGains.exp)} EXP</p>
+                <p className="text-2xl font-bold text-yellow-400">+{fmt(offlineGains.gold)} ₲</p>
+              </div>
+              <p className="text-xs text-zinc-400 text-center">
+                Offline progress is capped at 8 hours.
+              </p>
+            </div>
+            <DialogFooter>
+              <button
+                onClick={() => setOfflineGains(null)}
+                className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-bold w-full"
+              >
+                Claim & Continue!
               </button>
             </DialogFooter>
           </DialogContent>
