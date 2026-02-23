@@ -367,6 +367,13 @@ const SPIRIT_ABILITIES: Record<string, SpiritAbility[]> = {
       effect: "damage_reduction",
     },
     {
+      id: "ethereal_shield",
+      name: "Ethereal Shield",
+      description: "15% chance to block boss attacks entirely",
+      type: "passive",
+      effect: "block_chance",
+    },
+    {
       id: "taunt",
       name: "Taunt",
       description: "Forces enemies to attack this spirit",
@@ -382,6 +389,13 @@ const SPIRIT_ABILITIES: Record<string, SpiritAbility[]> = {
       description: "Heals all allies for 10% of max HP each turn",
       type: "passive",
       effect: "heal_aura",
+    },
+    {
+      id: "vitality_aura",
+      name: "Vitality Aura",
+      description: "Restores 2 HP per combat tick",
+      type: "passive",
+      effect: "hp_regen",
     },
     {
       id: "blessing",
@@ -1418,21 +1432,59 @@ export default function HuntersPath() {
         if (!prev) return prev;
         let { boss, hpEnemy, tick } = prev;
 
-        // Player attack - increased base damage
+        // Apply spirit passive abilities
+        let spiritDmgBonus = 0;
+        let spiritBlockChance = 0;
+        let spiritHealPerTick = 0;
+
+        for (const spirit of player.spirits) {
+          for (const ability of (spirit.abilities || [])) {
+            if (ability.type !== "passive") continue;
+            switch (ability.id) {
+              case "berserker_rage":
+                if (player.hp < player.maxHp * 0.5) spiritDmgBonus += 0.25;
+                break;
+              case "ethereal_shield":
+                spiritBlockChance += 0.15;
+                break;
+              case "shadow_step":
+                if (tick % 3 === 0) spiritDmgBonus += 0.10;
+                break;
+              case "vitality_aura":
+                spiritHealPerTick += 2;
+                break;
+              case "mana_shield":
+                // Converts some mana damage to reduced physical: handled implicitly by MP upkeep
+                break;
+            }
+          }
+        }
+
+        // Player attack - increased base damage (with spirit bonuses)
         const dmgPlayer = Math.max(
           1,
-          Math.floor(pPower * 1.2 - boss.def * 0.3 + rand(0, 6))
+          Math.floor(pPower * 1.2 * (1 + spiritDmgBonus) - boss.def * 0.3 + rand(0, 6))
         );
         const oldHpEnemy = hpEnemy;
         hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
 
-        // Boss attack - slightly reduced boss damage
-        const dmgBoss = Math.max(
+        // Boss attack - slightly reduced boss damage (with spirit block chance)
+        const blocked = spiritBlockChance > 0 && Math.random() < spiritBlockChance;
+        const dmgBoss = blocked ? 0 : Math.max(
           0,
           Math.floor(boss.atk * 0.8 - player.stats.VIT * 0.7 + rand(0, 3))
         );
         const oldHp = player.hp;
-        const newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
+        let newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
+
+        // Spirit healing
+        if (spiritHealPerTick > 0 && newHp > 0) {
+          const healAmount = Math.min(spiritHealPerTick, player.maxHp - newHp);
+          if (healAmount > 0) {
+            newHp = Math.min(newHp + healAmount, player.maxHp);
+            addDamageNumber(healAmount, "heal", "player");
+          }
+        }
 
         // Trigger visual effects, sounds, haptics, particles, and floating damage numbers
         if (dmgPlayer > 0) {
@@ -1489,6 +1541,17 @@ export default function HuntersPath() {
           // Critical hits
           if (dmgPlayer > pPower * 1.5) {
             newEntries.push("Critical hit! 💥");
+          }
+
+          // Spirit ability procs (throttled to avoid spam)
+          if (spiritDmgBonus > 0 && tick % 3 === 0) {
+            newEntries.push(`✨ Spirit power enhanced your attack! (+${Math.round(spiritDmgBonus * 100)}%)`);
+          }
+          if (blocked) {
+            newEntries.push(`🛡️ Spirit shield blocked the boss attack!`);
+          }
+          if (spiritHealPerTick > 0 && tick % 3 === 0) {
+            newEntries.push(`💚 Spirit healing restored ${spiritHealPerTick} HP`);
           }
 
           // Keep only last 8 entries
@@ -5785,6 +5848,48 @@ export default function HuntersPath() {
                 >
                   Generate All Ranks (E-S)
                 </button>
+              </div>
+
+              {/* Add Spirits */}
+              <div className="bg-zinc-800 p-4 rounded border border-zinc-600">
+                <h3 className="text-lg font-bold text-zinc-100 mb-2">
+                  Add Test Spirits
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {(["warrior", "mage", "rogue", "tank", "support"] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        const abilities = SPIRIT_ABILITIES[type] || [];
+                        const newSpirit: Spirit = {
+                          id: `debug_${type}_${Date.now()}`,
+                          name: `Debug ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+                          power: 50,
+                          rarity: "rare",
+                          abilities,
+                          level: 1,
+                          exp: 0,
+                          expToNext: 100,
+                          type,
+                          description: SPIRIT_DESCRIPTIONS[type] || "",
+                        };
+                        setPlayer((pp) => ({ ...pp, spirits: [...pp.spirits, newSpirit] }));
+                      }}
+                      className="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded text-sm capitalize"
+                    >
+                      +{type}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPlayer((pp) => ({ ...pp, spirits: [] }))}
+                    className="px-3 py-1 bg-zinc-600 hover:bg-zinc-500 rounded text-sm"
+                  >
+                    Clear Spirits
+                  </button>
+                </div>
+                <div className="text-xs text-zinc-400 mt-2">
+                  Spirits: {player.spirits.length} bound
+                </div>
               </div>
 
               {/* Clear Data */}
