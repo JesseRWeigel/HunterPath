@@ -1267,6 +1267,25 @@ export default function HuntersPath() {
     }[]
   >([]);
 
+  // Daily login streak state
+  const [loginStreak, setLoginStreak] = useState<{
+    streak: number;
+    lastLogin: string;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem("hunters-path-login-streak");
+      return saved ? JSON.parse(saved) : { streak: 0, lastLogin: "" };
+    } catch { return { streak: 0, lastLogin: "" }; }
+  });
+
+  const [loginReward, setLoginReward] = useState<{
+    show: boolean;
+    gold: number;
+    exp: number;
+    streak: number;
+    bonus?: string;
+  } | null>(null);
+
   // Global error handler for mobile PWA compatibility
   useEffect(() => {
     const handleError = (error: ErrorEvent) => {
@@ -1292,6 +1311,74 @@ export default function HuntersPath() {
       );
     };
   }, []);
+
+  // Daily login reward — runs once on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const today = new Date().toDateString();
+      const saved = localStorage.getItem("hunters-path-login-streak");
+      const streakData = saved ? JSON.parse(saved) : { streak: 0, lastLogin: "" };
+
+      if (streakData.lastLogin === today) return; // already claimed today
+
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      const isConsecutive = streakData.lastLogin === yesterday;
+      const newStreak = isConsecutive ? streakData.streak + 1 : 1;
+
+      const gold = 50 + newStreak * 25;
+      const exp = 100 + newStreak * 50;
+      let bonus: string | undefined;
+
+      // Apply milestone bonus items
+      if (newStreak >= 30) {
+        bonus = "+5 Prestige Points!";
+        setPlayer(p => ({ ...p, prestigePoints: p.prestigePoints + 5 }));
+      } else if (newStreak >= 14) {
+        bonus = "Epic gear drop!";
+        const epicItem: Item = {
+          id: uid(), name: "Champion's Relic", type: "equipment",
+          rarity: "epic", quality: 90, description: "A powerful artifact earned through dedication",
+          stats: { STR: 5, AGI: 5, INT: 5, VIT: 5, LUCK: 5 },
+          equipmentSlot: "accessory", sellValue: 500,
+        };
+        setPlayer(p => ({ ...p, inv: [...p.inv, epicItem] }));
+      } else if (newStreak >= 7) {
+        bonus = "Rare rune!";
+        const rareRune: Item = {
+          id: uid(), name: "Rune of Power", type: "rune",
+          rarity: "rare", quality: 75, description: "A rare rune filled with magical energy",
+          stats: { STR: 3, AGI: 3, INT: 3 }, sellValue: 150,
+        };
+        setPlayer(p => ({ ...p, inv: [...p.inv, rareRune] }));
+      } else if (newStreak >= 3) {
+        bonus = "Instant Dungeon Key!";
+        setPlayer(p => ({ ...p, keys: p.keys + 1 }));
+      }
+
+      // Apply EXP and gold
+      setGold(g => g + gold);
+      setPlayer(p => {
+        let newExp = p.exp + exp;
+        let level = p.level; let expNext = p.expNext;
+        let points = p.points; let maxHp = p.maxHp; let maxMp = p.maxMp;
+        while (newExp >= expNext) {
+          newExp -= expNext; level += 1;
+          expNext = Math.floor(expNext * 1.35); points += 5; maxHp += 10; maxMp += 5;
+        }
+        return { ...p, exp: newExp, level, expNext, points, maxHp, maxMp };
+      });
+
+      // Update streak in state and localStorage
+      const newStreakData = { streak: newStreak, lastLogin: today };
+      setLoginStreak(newStreakData);
+      localStorage.setItem("hunters-path-login-streak", JSON.stringify(newStreakData));
+
+      // Show modal
+      setLoginReward({ show: true, gold, exp, streak: newStreak, bonus });
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []); // Only run once on mount
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -5992,6 +6079,74 @@ export default function HuntersPath() {
                 className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-bold w-full"
               >
                 Claim & Continue!
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Daily Login Reward Modal */}
+      {loginReward?.show && (
+        <Dialog open={true} onOpenChange={() => setLoginReward(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Daily Login Reward</DialogTitle>
+              <DialogDescription>
+                Day {loginReward.streak} streak!{" "}
+                {loginReward.streak >= 30 ? "Incredible dedication!" :
+                 loginReward.streak >= 14 ? "Two weeks strong!" :
+                 loginReward.streak >= 7 ? "One week streak!" :
+                 loginReward.streak >= 3 ? "Keep it up!" :
+                 "Welcome back, Hunter!"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-yellow-900/20 border border-yellow-500/30 p-4 rounded-lg text-center">
+                <p className="text-2xl font-bold text-yellow-400">+{fmt(loginReward.gold)} &#x20B2;</p>
+                <p className="text-xl font-bold text-blue-400">+{fmt(loginReward.exp)} EXP</p>
+                {loginReward.bonus && (
+                  <p className="text-lg font-bold text-green-400 mt-2">{loginReward.bonus}</p>
+                )}
+              </div>
+
+              {/* 7-day streak tracker */}
+              <div>
+                <p className="text-xs text-zinc-400 mb-2 text-center">Weekly streak</p>
+                <div className="flex justify-center gap-1.5">
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const day = i + 1;
+                    const filled = day <= (loginReward.streak % 7 || (loginReward.streak > 0 ? 7 : 0));
+                    return (
+                      <div
+                        key={day}
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold border ${
+                          filled
+                            ? "bg-yellow-600 border-yellow-400 text-white"
+                            : "bg-zinc-800 border-zinc-600 text-zinc-500"
+                        }`}
+                      >
+                        {day}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-zinc-400 mt-2 text-center">
+                  Total: {loginReward.streak} day{loginReward.streak !== 1 ? "s" : ""}
+                  {" \u2022 "}Next milestone:{" "}
+                  {loginReward.streak < 3 ? "Day 3 (Key)" :
+                   loginReward.streak < 7 ? "Day 7 (Rune)" :
+                   loginReward.streak < 14 ? "Day 14 (Epic Gear)" :
+                   loginReward.streak < 30 ? "Day 30 (Prestige Points)" :
+                   "Max milestone reached!"}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <button
+                onClick={() => setLoginReward(null)}
+                className="px-6 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded font-bold w-full"
+              >
+                Claim!
               </button>
             </DialogFooter>
           </DialogContent>
