@@ -64,6 +64,16 @@ interface Boss {
   def: number;
 }
 
+interface DungeonModifier {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  type: "buff" | "debuff" | "neutral";
+  applyToRewards: (expMult: number, goldMult: number) => { expMult: number; goldMult: number };
+  applyToCombat: (playerDmgMult: number, bossDmgMult: number) => { playerDmgMult: number; bossDmgMult: number };
+}
+
 interface Gate {
   id: string;
   name: string;
@@ -233,16 +243,6 @@ const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: "fatigue_resist", name: "Ironwill", description: "-5% fatigue accumulation per level", costPer: 75, maxLevel: 5 },
   { id: "bind_chance", name: "Spirit Whisperer", description: "+3% spirit bind chance per level", costPer: 150, maxLevel: 5 },
 ];
-
-interface DungeonModifier {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  type: "buff" | "debuff" | "neutral";
-  applyToRewards: (expMult: number, goldMult: number) => { expMult: number; goldMult: number };
-  applyToCombat: (playerDmgMult: number, bossDmgMult: number) => { playerDmgMult: number; bossDmgMult: number };
-}
 
 const DUNGEON_MODIFIERS: DungeonModifier[] = [
   {
