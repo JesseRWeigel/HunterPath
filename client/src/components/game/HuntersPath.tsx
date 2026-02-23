@@ -30,7 +30,7 @@ const rand = (min: number, max: number) =>
 const uid = () => Math.random().toString(36).slice(2, 9);
 const fmt = (n: number) => new Intl.NumberFormat().format(Math.floor(n));
 
-const RANKS = ["E", "D", "C", "B", "A", "S"];
+const RANKS = ["E", "D", "C", "B", "A", "S"] as const;
 
 const RANK_COLORS = {
   E: "bg-green-600",
