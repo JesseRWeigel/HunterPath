@@ -3711,21 +3711,6 @@ export default function HuntersPath() {
                     Reset
                   </Btn>
                   {player.level >= 50 && (
-                    <button
-                      onClick={() => setRebirthModalOpen(true)}
-                      className="flex items-center space-x-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded text-white text-sm font-bold"
-                      title="Rebirth (Level 50+)"
-                    >
-                      <i className="fas fa-bolt"></i>
-                      <span>Rebirth</span>
-                      {player.rebirths > 0 && (
-                        <span className="bg-purple-800 px-2 py-0.5 rounded text-xs">
-                          +{player.rebirths * 15}%
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  {player.level >= 50 && (
                     <Btn
                       onClick={() => setRebirthModalOpen(true)}
                       theme="purple"
