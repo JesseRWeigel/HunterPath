@@ -1459,6 +1459,11 @@ export default function HuntersPath() {
           }
         }
 
+        // Cap combined block chance at 75% max
+        spiritBlockChance = Math.min(spiritBlockChance, 0.75);
+        // Cap spirit damage bonus at 100% max
+        spiritDmgBonus = Math.min(spiritDmgBonus, 1.0);
+
         // Player attack - increased base damage (with spirit bonuses)
         const dmgPlayer = Math.max(
           1,
@@ -1692,7 +1697,7 @@ export default function HuntersPath() {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, [inRun, pPower, player.stats.VIT, player.maxHp, player.mp, player.hp]);
+  }, [inRun, pPower, player.stats.VIT, player.maxHp, player.mp, player.hp, player.spirits]);
 
   function handleLevelGain(addExp: number) {
     setPlayer((p) => {
