@@ -53,8 +53,8 @@ export const gateRuns = pgTable("gate_runs", {
   playerLevel: integer("player_level").notNull(),
   playerStats: jsonb("player_stats").notNull(),
   drops: jsonb("drops").notNull(), // array of items
-  shadowExtracted: boolean("shadow_extracted").default(false),
-  shadowName: text("shadow_name"),
+  spiritBound: boolean("spirit_bound").default(false),
+  spiritName: text("spirit_name"),
   combatLog: jsonb("combat_log").notNull(), // array of strings
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -85,7 +85,7 @@ export const playerStats = pgTable("player_stats", {
   totalGoldGained: integer("total_gold_gained").default(0),
   totalDamageDealt: integer("total_damage_dealt").default(0),
   totalDamageTaken: integer("total_damage_taken").default(0),
-  totalShadowsExtracted: integer("total_shadows_extracted").default(0),
+  totalSpiritsBound: integer("total_spirits_bound").default(0),
   highestGateRank: text("highest_gate_rank").default("E"),
   longestCombat: integer("longest_combat").default(0),
   fastestVictory: integer("fastest_victory"),
