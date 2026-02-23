@@ -1,6 +1,6 @@
 export function BossE({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" className={className} aria-label="Goblin Warrior">
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" className={className} aria-label="Goblin Warrior">
       <defs>
         <filter id="be-red">
           <feGaussianBlur stdDeviation="2.5" result="blur" />
