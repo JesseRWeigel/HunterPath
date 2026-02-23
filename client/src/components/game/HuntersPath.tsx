@@ -2896,11 +2896,14 @@ export default function HuntersPath() {
 
   // Auto-dungeon logic: after each run ends (or combatResult appears), queue next run
   useEffect(() => {
-    if (!autoDungeon || inRun || player.fatigue > 80 || player.hp < player.maxHp * 0.2) return;
+    if (!autoDungeon || inRun || player.fatigue > 80) return;
+    if (player.hp < player.maxHp * 0.2) {
+      logPush("Auto-dungeon paused: HP too low. Recover first!");
+      return;
+    }
 
     const timer = setTimeout(() => {
       if (!autoDungeonRef.current) return; // user turned it off during delay
-      if (inRun) return; // run started during delay
 
       // Auto-dismiss combat result if one is showing
       if (combatResult) setCombatResult(null);
