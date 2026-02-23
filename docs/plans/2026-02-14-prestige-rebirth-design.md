@@ -58,14 +58,14 @@ interface Player {
 
 ## Acceptance Criteria
 
-1. [ ] Rebirth button appears at Level 50+
-2. [ ] Clicking shows confirmation modal
-3. [ ] Confirming resets gold/keys/gates/fatigue
-4. [ ] Confirming keeps level/stats/spirits
-5. [ ] Prestige points calculated and awarded
-6. [ ] Power multiplier applied to combat
-7. [ ] Prestige points displayed in UI
-8. [ ] Persists across save/load
+1. [x] Rebirth button appears at Level 50+
+2. [x] Clicking shows confirmation modal
+3. [x] Confirming resets gold/keys/gates/fatigue
+4. [x] Confirming keeps level/stats/spirits
+5. [x] Prestige points calculated and awarded
+6. [x] Power multiplier applied to combat
+7. [x] Prestige points displayed in UI
+8. [x] Persists across save/load
 
 ## Timeline
 - Implementation: ~2-3 hours

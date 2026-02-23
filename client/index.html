@@ -51,6 +51,27 @@
     />
   </head>
   <body>
+    <!-- Prevent flash of unstyled content -->
+    <style>
+      html, body, #root {
+        background-color: #0f0f0f;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      /* Loading state while JS loads */
+      #root:empty::after {
+        content: "Loading Hunter's Path...";
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #a78bfa;
+        font-family: system-ui, sans-serif;
+        font-size: 1.25rem;
+      }
+    </style>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->

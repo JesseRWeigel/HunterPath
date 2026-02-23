@@ -513,7 +513,8 @@ function playerPower(p: Player) {
   const base = STR * 3 + AGI * 2 + INT * 1.5 + VIT * 0.5;
   const spiritBonus = p.spirits.reduce((a, s) => a + s.power, 0);
   const fatiguePenalty = 1 - Math.min(0.4, p.fatigue / 250); // reduced penalty, up to -40%
-  return Math.max(1, (base + spiritBonus) * fatiguePenalty);
+  const rebirthMultiplier = 1 + (p.rebirths || 0) * 0.15; // +15% power per rebirth
+  return Math.max(1, (base + spiritBonus) * fatiguePenalty * rebirthMultiplier);
 }
 
 function spiritUpkeep(p: Player) {

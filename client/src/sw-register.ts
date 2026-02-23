@@ -2,8 +2,10 @@
 export function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      const swPath =
-        process.env.NODE_ENV === "production" ? "/HunterPath/sw.js" : "/sw.js";
+      // Use correct path for GitHub Pages subdirectory
+      const isProd = process.env.NODE_ENV === "production";
+      const swPath = isProd ? "/HunterPath/sw.js" : "/sw.js";
+
       navigator.serviceWorker
         .register(swPath)
         .then((registration) => {

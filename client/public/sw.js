@@ -1,14 +1,11 @@
-const CACHE_NAME = "hunters-path-v1";
+const CACHE_NAME = "hunters-path-v2";
 const BASE_PATH = "/HunterPath/";
+
+// Cache built assets - these are the actual files served by the server
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + "index.html",
   BASE_PATH + "manifest.json",
-  BASE_PATH + "icon-192x192.png",
-  BASE_PATH + "icon-512x512.png",
-  BASE_PATH + "src/main.tsx",
-  BASE_PATH + "src/App.tsx",
-  BASE_PATH + "src/index.css",
 ];
 
 // Install event - cache resources
@@ -21,45 +18,38 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Fetch event - serve from cache if available
+// Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
+  // Skip non-GET requests
+  if (event.request.method !== "GET") {
+    return;
+  }
+
   event.respondWith(
-    caches
-      .match(event.request)
+    fetch(event.request)
       .then((response) => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
-        }
-
-        // Clone the request because it's a stream and can only be consumed once
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then((response) => {
-          // Check if we received a valid response
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type !== "basic"
-          ) {
-            return response;
-          }
-
-          // Clone the response because it's a stream and can only be consumed once
+        // Clone and cache successful responses
+        if (response && response.status === 200 && response.type === "basic") {
           const responseToCache = response.clone();
-
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
-
-          return response;
-        });
+        }
+        return response;
       })
       .catch(() => {
-        // Return offline page if both cache and network fail
-        if (event.request.destination === "document") {
-          return caches.match(BASE_PATH + "index.html");
-        }
+        // Network failed, try cache
+        return caches.match(event.request).then((response) => {
+          if (response) {
+            return response;
+          }
+          // Return index.html for navigation requests (PWA routing)
+          if (event.request.mode === "navigate") {
+            return caches.match(BASE_PATH + "index.html");
+          }
+          // Return a basic error response for other requests
+          return new Response("Offline", { status: 503 });
+        });
       })
   );
 });
