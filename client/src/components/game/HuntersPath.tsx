@@ -1122,7 +1122,8 @@ const MONSTER_DATA = {
   },
 };
 
-const BOSS_COMPONENTS: Record<string, React.ComponentType<{ className?: string }>> = {
+type BossRank = (typeof RANKS)[number];
+const BOSS_COMPONENTS: Record<BossRank, React.ComponentType<{ className?: string }>> = {
   E: BossE,
   D: BossD,
   C: BossC,
@@ -4018,6 +4019,8 @@ export default function HuntersPath() {
     }
   }
 
+  const BossComp = running ? BOSS_COMPONENTS[running.gate.rank as BossRank] : null;
+
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -4899,16 +4902,11 @@ export default function HuntersPath() {
                           }
                           transition={{ duration: 0.3 }}
                         >
-                          {(() => {
-                            const BossComp = running
-                              ? BOSS_COMPONENTS[running.gate.rank]
-                              : null;
-                            return BossComp ? (
-                              <BossComp className="w-16 h-16" />
-                            ) : (
-                              <i className="fas fa-dragon text-white text-xl" />
-                            );
-                          })()}
+                          {BossComp ? (
+                            <BossComp className="w-16 h-16" />
+                          ) : (
+                            <i className="fas fa-dragon text-white text-xl" />
+                          )}
                         </motion.div>
                         <h5 className="font-bold text-red-300 font-display">
                           {running?.boss.name || combatResult?.boss.name}
