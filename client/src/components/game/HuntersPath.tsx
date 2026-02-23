@@ -72,6 +72,7 @@ interface Gate {
   recommended: number;
   power: number;
   boss: Boss;
+  modifiers: DungeonModifier[];
 }
 
 interface Spirit {
@@ -233,6 +234,73 @@ const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: "bind_chance", name: "Spirit Whisperer", description: "+3% spirit bind chance per level", costPer: 150, maxLevel: 5 },
 ];
 
+interface DungeonModifier {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  type: "buff" | "debuff" | "neutral";
+  applyToRewards: (expMult: number, goldMult: number) => { expMult: number; goldMult: number };
+  applyToCombat: (playerDmgMult: number, bossDmgMult: number) => { playerDmgMult: number; bossDmgMult: number };
+}
+
+const DUNGEON_MODIFIERS: DungeonModifier[] = [
+  {
+    id: "double_exp",
+    name: "Double EXP",
+    description: "2× EXP reward from this gate",
+    icon: "📚",
+    type: "buff",
+    applyToRewards: (e, g) => ({ expMult: e * 2, goldMult: g }),
+    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b }),
+  },
+  {
+    id: "treasure_vault",
+    name: "Treasure Vault",
+    description: "2× gold reward",
+    icon: "💰",
+    type: "buff",
+    applyToRewards: (e, g) => ({ expMult: e, goldMult: g * 2 }),
+    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b }),
+  },
+  {
+    id: "empowered_boss",
+    name: "Empowered Boss",
+    description: "Boss deals 40% more damage",
+    icon: "💀",
+    type: "debuff",
+    applyToRewards: (e, g) => ({ expMult: e, goldMult: g }),
+    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b * 1.4 }),
+  },
+  {
+    id: "cursed_ground",
+    name: "Cursed Ground",
+    description: "You deal 25% less damage",
+    icon: "☠️",
+    type: "debuff",
+    applyToRewards: (e, g) => ({ expMult: e, goldMult: g }),
+    applyToCombat: (p, b) => ({ playerDmgMult: p * 0.75, bossDmgMult: b }),
+  },
+  {
+    id: "heroic",
+    name: "Heroic",
+    description: "Boss is stronger, but rewards are doubled",
+    icon: "⚔️",
+    type: "neutral",
+    applyToRewards: (e, g) => ({ expMult: e * 2, goldMult: g * 2 }),
+    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b * 1.5 }),
+  },
+  {
+    id: "weakened_boss",
+    name: "Weakened Boss",
+    description: "Boss deals 30% less damage",
+    icon: "🤕",
+    type: "buff",
+    applyToRewards: (e, g) => ({ expMult: e, goldMult: g }),
+    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b * 0.7 }),
+  },
+];
+
 function gatePowerForRank(rankIdx: number) {
   // More balanced scaling - significantly reduced S-rank difficulty spike
   if (rankIdx === 5) {
@@ -248,6 +316,14 @@ function makeGate(rankIdx: number): Gate {
   const rec = gatePowerForRank(rankIdx);
   const variance = rand(-20, 20);
   const power = Math.max(10, rec + variance);
+
+  // Roll 0-2 modifiers (higher rank = more modifiers)
+  const modifierCount = Math.random() < 0.25 + rankIdx * 0.08
+    ? (Math.random() < 0.35 ? 2 : 1)
+    : 0;
+  const shuffled = [...DUNGEON_MODIFIERS].sort(() => Math.random() - 0.5);
+  const modifiers = shuffled.slice(0, modifierCount);
+
   return {
     id,
     name: `${rank}-Rank Gate ${id.slice(0, 3).toUpperCase()}`,
@@ -256,6 +332,7 @@ function makeGate(rankIdx: number): Gate {
     recommended: rec,
     power,
     boss: makeBoss(rankIdx),
+    modifiers,
   };
 }
 
@@ -1516,19 +1593,28 @@ export default function HuntersPath() {
         // Cap spirit damage bonus at 100% max
         spiritDmgBonus = Math.min(spiritDmgBonus, 1.0);
 
-        // Player attack - increased base damage (with spirit bonuses)
+        // Apply dungeon modifiers to combat
+        let playerDmgMult = 1 + spiritDmgBonus;
+        let bossDmgMult = 1;
+        for (const mod of (prev.gate.modifiers || [])) {
+          const result = mod.applyToCombat(playerDmgMult, bossDmgMult);
+          playerDmgMult = result.playerDmgMult;
+          bossDmgMult = result.bossDmgMult;
+        }
+
+        // Player attack - increased base damage (with spirit bonuses and dungeon modifiers)
         const dmgPlayer = Math.max(
           1,
-          Math.floor(pPower * 1.2 * (1 + spiritDmgBonus) - boss.def * 0.3 + rand(0, 6))
+          Math.floor(pPower * 1.2 * playerDmgMult - boss.def * 0.3 + rand(0, 6))
         );
         const oldHpEnemy = hpEnemy;
         hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
 
-        // Boss attack - slightly reduced boss damage (with spirit block chance)
+        // Boss attack - slightly reduced boss damage (with spirit block chance and dungeon modifiers)
         const blocked = spiritBlockChance > 0 && Math.random() < spiritBlockChance;
         const dmgBoss = blocked ? 0 : Math.max(
           0,
-          Math.floor(boss.atk * 0.8 - player.stats.VIT * 0.7 + rand(0, 3))
+          Math.floor(boss.atk * 0.8 * bossDmgMult - player.stats.VIT * 0.7 + rand(0, 3))
         );
         const oldHp = player.hp;
         let newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
@@ -1631,8 +1717,17 @@ export default function HuntersPath() {
           const { exp: rawExp, gold: rawGold } = gainExpGoldFromGate(prev.gate);
           const expBoost = 1 + (prestigeUpgrades["exp_boost"] || 0) * 0.05;
           const goldBoostMult = 1 + (prestigeUpgrades["gold_boost"] || 0) * 0.05;
-          const exp = Math.floor(rawExp * expBoost);
-          const goldGain = Math.floor(rawGold * goldBoostMult);
+
+          // Apply dungeon modifiers to rewards
+          let expMult = expBoost;
+          let goldMult = goldBoostMult;
+          for (const mod of (prev.gate.modifiers || [])) {
+            const result = mod.applyToRewards(expMult, goldMult);
+            expMult = result.expMult;
+            goldMult = result.goldMult;
+          }
+          const exp = Math.floor(rawExp * expMult);
+          const goldGain = Math.floor(rawGold * goldMult);
           const drop = rollDrop(prev.gate);
           const drops = drop ? [drop] : [];
 
@@ -4987,6 +5082,25 @@ export default function HuntersPath() {
                           Recommended: {fmt(g.recommended)}{" "}
                           {tooHard && "(Too Dangerous!)"}
                         </div>
+                        {(g.modifiers || []).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {(g.modifiers || []).map(mod => (
+                              <span
+                                key={mod.id}
+                                title={mod.description}
+                                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                  mod.type === "buff"
+                                    ? "bg-green-900/60 text-green-300 border border-green-500/40"
+                                    : mod.type === "debuff"
+                                    ? "bg-red-900/60 text-red-300 border border-red-500/40"
+                                    : "bg-yellow-900/60 text-yellow-300 border border-yellow-500/40"
+                                }`}
+                              >
+                                {mod.icon} {mod.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-zinc-500">
                             Gate ID: {g.id.slice(0, 3).toUpperCase()}
