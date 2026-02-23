@@ -216,6 +216,23 @@ interface Achievement {
   unlockedAt: string;
 }
 
+interface PrestigeUpgrade {
+  id: string;
+  name: string;
+  description: string;
+  costPer: number;
+  maxLevel: number;
+}
+
+const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
+  { id: "exp_boost", name: "Eternal Scholar", description: "+5% EXP gain per level", costPer: 50, maxLevel: 10 },
+  { id: "gold_boost", name: "Fortune's Heir", description: "+5% gold gain per level", costPer: 50, maxLevel: 10 },
+  { id: "spirit_power", name: "Legion Master", description: "+2% spirit power bonus per level", costPer: 100, maxLevel: 10 },
+  { id: "start_gold", name: "Head Start", description: "+100 starting gold per rebirth level", costPer: 75, maxLevel: 5 },
+  { id: "fatigue_resist", name: "Ironwill", description: "-5% fatigue accumulation per level", costPer: 75, maxLevel: 5 },
+  { id: "bind_chance", name: "Spirit Whisperer", description: "+3% spirit bind chance per level", costPer: 150, maxLevel: 5 },
+];
+
 function gatePowerForRank(rankIdx: number) {
   // More balanced scaling - significantly reduced S-rank difficulty spike
   if (rankIdx === 5) {
@@ -507,11 +524,12 @@ function initialPlayer(): Player {
   };
 }
 
-function playerPower(p: Player) {
+function playerPower(p: Player, spiritPowerBoostLevel: number = 0) {
   const { STR, AGI, INT, VIT } = p.stats;
   // More balanced power calculation - each stat matters more
   const base = STR * 3 + AGI * 2 + INT * 1.5 + VIT * 0.5;
-  const spiritBonus = p.spirits.reduce((a, s) => a + s.power, 0);
+  const spiritPowerMult = 1 + spiritPowerBoostLevel * 0.02;
+  const spiritBonus = p.spirits.reduce((a, s) => a + s.power, 0) * spiritPowerMult;
   const fatiguePenalty = 1 - Math.min(0.4, p.fatigue / 250); // reduced penalty, up to -40%
   const rebirthMultiplier = 1 + (p.rebirths || 0) * 0.15; // +15% power per rebirth
   return Math.max(1, (base + spiritBonus) * fatiguePenalty * rebirthMultiplier);
@@ -1102,10 +1120,19 @@ export default function HuntersPath() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [showStats, setShowStats] = useState(false);
 
+  const [prestigeUpgrades, setPrestigeUpgrades] = useState<Record<string, number>>(
+    () => {
+      try {
+        const saved = localStorage.getItem("hunters-path-prestige-upgrades");
+        return saved ? JSON.parse(saved) : {};
+      } catch { return {}; }
+    }
+  );
+
   const tickRef = useRef<NodeJS.Timeout | null>(null);
   const timeRef = useRef<NodeJS.Timeout | null>(null);
 
-  const pPower = useMemo(() => playerPower(player), [player]);
+  const pPower = useMemo(() => playerPower(player, prestigeUpgrades["spirit_power"] || 0), [player, prestigeUpgrades]);
 
   const inRun = Boolean(running);
 
@@ -1190,10 +1217,13 @@ export default function HuntersPath() {
         lastSaved: new Date().toISOString(),
       };
       localStorage.setItem("hunters-path-stats", JSON.stringify(statsData));
+
+      // Save prestige upgrades
+      localStorage.setItem("hunters-path-prestige-upgrades", JSON.stringify(prestigeUpgrades));
     }, 30000);
 
     return () => clearInterval(autoSaveInterval);
-  }, [player, gates, gold, gameTime, daily, playerStats, achievements]);
+  }, [player, gates, gold, gameTime, daily, playerStats, achievements, prestigeUpgrades]);
 
   // Auto-trigger stat allocation after level-up celebration
   useEffect(() => {
@@ -1437,7 +1467,8 @@ export default function HuntersPath() {
         const newMp = clamp(player.mp - upkeep, 0, player.maxMp);
 
         // Fatigue gain
-        const newFatigue = clamp(player.fatigue + 0.5, 0, 100);
+        const fatigueGainMult = 1 - (prestigeUpgrades["fatigue_resist"] || 0) * 0.05;
+        const newFatigue = clamp(player.fatigue + 0.5 * fatigueGainMult, 0, 100);
 
         // Add combat log entries
         setCombatLog((log) => {
@@ -1478,7 +1509,11 @@ export default function HuntersPath() {
           playMusic("victory_music", false);
           hapticSuccess();
 
-          const { exp, gold: goldGain } = gainExpGoldFromGate(prev.gate);
+          const { exp: rawExp, gold: rawGold } = gainExpGoldFromGate(prev.gate);
+          const expBoost = 1 + (prestigeUpgrades["exp_boost"] || 0) * 0.05;
+          const goldBoostMult = 1 + (prestigeUpgrades["gold_boost"] || 0) * 0.05;
+          const exp = Math.floor(rawExp * expBoost);
+          const goldGain = Math.floor(rawGold * goldBoostMult);
           const drop = rollDrop(prev.gate);
           const drops = drop ? [drop] : [];
 
@@ -1524,10 +1559,11 @@ export default function HuntersPath() {
           checkAchievements();
 
           // Automatically attempt spirit binding with visual sequence
+          const bindBoost = (prestigeUpgrades["bind_chance"] || 0) * 0.03;
           const extractionChance = calcExtractionChance(
             player,
             prev.gate.rankIdx
-          );
+          ) + bindBoost;
           if (Math.random() < extractionChance) {
             // Start the visual extraction sequence
             startSpiritBindingSequence(
@@ -1697,13 +1733,36 @@ export default function HuntersPath() {
       rebirths: player.rebirths + 1,
       prestigePoints: player.prestigePoints + earnedPoints,
     });
-    setGold(50);
+    const startGold = 50 + (prestigeUpgrades["start_gold"] || 0) * 100;
+    setGold(startGold);
     setGates(generateGatePool(player.level));
     setRebirthModalOpen(false);
     setLog((prev) => [
       `⚡ REBIRTH ${player.rebirths + 1}! +${earnedPoints} Prestige Points. Power bonus: +${(player.rebirths + 1) * 15}%`,
       ...prev,
     ]);
+  }
+
+  function buyPrestigeUpgrade(upgradeId: string) {
+    const upgrade = PRESTIGE_UPGRADES.find(u => u.id === upgradeId);
+    if (!upgrade) return;
+    const currentLevel = prestigeUpgrades[upgradeId] || 0;
+    if (currentLevel >= upgrade.maxLevel) {
+      logPush(`${upgrade.name} is already at max level!`);
+      return;
+    }
+    const cost = upgrade.costPer * (currentLevel + 1);
+    if (player.prestigePoints < cost) {
+      logPush(`Not enough Prestige Points. Need ${cost} PP.`);
+      return;
+    }
+    setPlayer(p => ({ ...p, prestigePoints: p.prestigePoints - cost }));
+    setPrestigeUpgrades(prev => {
+      const next = { ...prev, [upgradeId]: (prev[upgradeId] || 0) + 1 };
+      localStorage.setItem("hunters-path-prestige-upgrades", JSON.stringify(next));
+      return next;
+    });
+    logPush(`Upgraded ${upgrade.name} to level ${currentLevel + 1}!`);
   }
 
   // Simple statistics tracking functions
@@ -3960,6 +4019,55 @@ export default function HuntersPath() {
                 </AccordionItem>
               </Accordion>
             </Card>
+
+            {/* Prestige Shop */}
+            {(player.rebirths > 0 || player.prestigePoints > 0 || Object.keys(prestigeUpgrades).length > 0) && (
+              <Card>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="prestige-shop">
+                    <AccordionTrigger className="text-lg font-bold text-purple-300 hover:no-underline">
+                      <i className="fas fa-star mr-2"></i>
+                      Prestige Shop
+                      <span className="ml-2 text-sm font-normal text-purple-400">({player.prestigePoints} PP available)</span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2">
+                        {PRESTIGE_UPGRADES.map(upgrade => {
+                          const level = prestigeUpgrades[upgrade.id] || 0;
+                          const cost = level < upgrade.maxLevel ? upgrade.costPer * (level + 1) : 0;
+                          const maxed = level >= upgrade.maxLevel;
+                          const canAfford = player.prestigePoints >= cost;
+                          return (
+                            <div key={upgrade.id} className="bg-purple-900/20 border border-purple-500/30 p-3 rounded-lg flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-purple-200 text-sm">
+                                  {upgrade.name}
+                                  <span className="ml-2 text-xs text-purple-400">Lv {level}/{upgrade.maxLevel}</span>
+                                </p>
+                                <p className="text-xs text-purple-300">{upgrade.description}</p>
+                              </div>
+                              <button
+                                disabled={maxed || !canAfford}
+                                onClick={() => buyPrestigeUpgrade(upgrade.id)}
+                                className={`flex-shrink-0 px-3 py-1 rounded text-sm font-bold transition-colors ${
+                                  maxed
+                                    ? 'bg-zinc-600 text-zinc-400 cursor-not-allowed'
+                                    : canAfford
+                                    ? 'bg-purple-600 hover:bg-purple-500 text-white'
+                                    : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+                                }`}
+                              >
+                                {maxed ? 'MAX' : `${cost} PP`}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </Card>
+            )}
 
             {/* Shop */}
             <Card>
