@@ -7,4 +7,3 @@ export { Inventory } from "./Inventory";
 export { ActivityLog } from "./ActivityLog";
 export { Lore } from "./Lore";
 export { RebirthModal } from "./RebirthModal";
-export { RebirthModal } from "./RebirthModal";

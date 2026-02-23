@@ -1677,19 +1677,31 @@ export default function HuntersPath() {
     const earnedPoints = Math.floor(
       player.level * 10 * (1 + player.rebirths * 0.5)
     );
-    setPlayer((prev) => ({
-      ...initialPlayer(),
-      ...prev,
-      level: prev.level,
-      stats: prev.stats,
-      spirits: prev.spirits,
-      inventory: prev.inv,
-      rebirths: prev.rebirths + 1,
-      prestigePoints: prev.prestigePoints + earnedPoints,
-    }));
+    const fresh = initialPlayer();
+    setPlayer({
+      ...fresh,
+      level: player.level,
+      exp: 0,
+      expNext: player.expNext,
+      stats: { ...player.stats },
+      spirits: [...player.spirits],
+      equipment: { ...player.equipment },
+      inv: [],
+      keys: 0,
+      fatigue: 0,
+      hp: fresh.maxHp,
+      maxHp: fresh.maxHp,
+      mp: fresh.maxMp,
+      maxMp: fresh.maxMp,
+      points: player.points,
+      rebirths: player.rebirths + 1,
+      prestigePoints: player.prestigePoints + earnedPoints,
+    });
+    setGold(50);
+    setGates(generateGatePool(player.level));
     setRebirthModalOpen(false);
     setLog((prev) => [
-      `⚡ REBIRTH! You are now stronger! (+${earnedPoints} Prestige Points)`,
+      `⚡ REBIRTH ${player.rebirths + 1}! +${earnedPoints} Prestige Points. Power bonus: +${(player.rebirths + 1) * 15}%`,
       ...prev,
     ]);
   }
@@ -5639,7 +5651,7 @@ export default function HuntersPath() {
                   Set Player Level
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {[1, 5, 10, 15, 20, 25].map((level) => (
+                  {[1, 5, 10, 15, 20, 25, 50].map((level) => (
                     <button
                       key={level}
                       onClick={() => setDebugPlayerLevel(level)}

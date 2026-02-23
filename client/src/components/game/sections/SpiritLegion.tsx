@@ -24,7 +24,7 @@ interface Spirit {
 }
 
 interface Player {
-  shadows: Spirit[];
+  spirits: Spirit[];
 }
 
 interface SpiritLegionProps {
@@ -63,7 +63,7 @@ export function SpiritLegion({
             )}
 
             <div className="space-y-3 mb-4">
-              {player.spirits.map((s) => (
+              {player.spirits.map((s: Spirit) => (
                 <div
                   key={s.id}
                   className={`bg-zinc-800/30 border ${getRarityBorder(
@@ -111,7 +111,7 @@ export function SpiritLegion({
                     <div className="text-xs font-semibold text-zinc-300 mb-1">
                       Abilities:
                     </div>
-                    {(s.abilities || []).map((ability) => (
+                    {(s.abilities || []).map((ability: { id: string; name: string; type: string }) => (
                       <div
                         key={ability.id}
                         className="flex items-center space-x-2"
@@ -154,7 +154,7 @@ export function SpiritLegion({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-purple-300">Total Legion Power:</span>
                   <span className="font-bold text-purple-400">
-                    +{player.spirits.reduce((a, s) => a + s.power, 0)}
+                    +{player.spirits.reduce((a: number, s: Spirit) => a + s.power, 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
