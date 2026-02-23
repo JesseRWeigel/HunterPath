@@ -1,4 +1,4 @@
-const CACHE_NAME = "hunters-path-v2";
+const CACHE_NAME = "hunters-path-v3";
 const BASE_PATH = "/HunterPath/";
 
 // Cache built assets - these are the actual files served by the server
