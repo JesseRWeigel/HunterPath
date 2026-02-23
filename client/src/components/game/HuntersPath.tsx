@@ -620,7 +620,7 @@ function playerPower(p: Player, spiritPowerBoostLevel: number = 0) {
   // More balanced power calculation - each stat matters more
   const base = STR * 3 + AGI * 2 + INT * 1.5 + VIT * 0.5;
   const spiritPowerMult = 1 + spiritPowerBoostLevel * 0.02;
-  const spiritBonus = p.spirits.reduce((a, s) => a + s.power, 0) * spiritPowerMult;
+  const spiritBonus = (p.spirits || []).reduce((a, s) => a + s.power, 0) * spiritPowerMult;
   const fatiguePenalty = 1 - Math.min(0.4, p.fatigue / 250); // reduced penalty, up to -40%
   const rebirthMultiplier = 1 + (p.rebirths || 0) * 0.15; // +15% power per rebirth
   return Math.max(1, (base + spiritBonus) * fatiguePenalty * rebirthMultiplier);
@@ -629,7 +629,7 @@ function playerPower(p: Player, spiritPowerBoostLevel: number = 0) {
 function spiritUpkeep(p: Player) {
   // MP upkeep per tick when in dungeon
   return Math.floor(
-    p.spirits.length * 1 + p.spirits.reduce((a, s) => a + s.power * 0.02, 0)
+    (p.spirits || []).length * 1 + (p.spirits || []).reduce((a, s) => a + s.power * 0.02, 0)
   );
 }
 
@@ -1462,36 +1462,34 @@ export default function HuntersPath() {
       try {
         const gameState = JSON.parse(saved);
 
-        // Migrate old spirits to new format
-        if (gameState.player.spirits) {
-          gameState.player.spirits = gameState.player.spirits.map(
-            (spirit: any) => {
-              // If spirit already has new format, return as is
-              if (spirit.rarity && spirit.abilities && spirit.type) {
-                return spirit;
-              }
-
-              // Migrate old spirit format to new format
-              const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
-              const rarity = "common"; // Default to common for old spirits
-              const availableAbilities = SPIRIT_ABILITIES[type];
-              const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
-
-              return {
-                id: spirit.id,
-                name: spirit.name,
-                power: spirit.power,
-                rarity,
-                abilities,
-                level: 1,
-                exp: 0,
-                expToNext: 100,
-                type,
-                description: SPIRIT_DESCRIPTIONS[type],
-              };
+        // Migrate old spirits to new format (also initialise missing field)
+        gameState.player.spirits = (gameState.player.spirits || []).map(
+          (spirit: any) => {
+            // If spirit already has new format, return as is
+            if (spirit.rarity && spirit.abilities && spirit.type) {
+              return spirit;
             }
-          );
-        }
+
+            // Migrate old spirit format to new format
+            const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
+            const rarity = "common"; // Default to common for old spirits
+            const availableAbilities = SPIRIT_ABILITIES[type];
+            const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
+
+            return {
+              id: spirit.id,
+              name: spirit.name,
+              power: spirit.power,
+              rarity,
+              abilities,
+              level: 1,
+              exp: 0,
+              expToNext: 100,
+              type,
+              description: SPIRIT_DESCRIPTIONS[type],
+            };
+          }
+        );
 
         setPlayer(gameState.player);
         setGates(
@@ -2903,36 +2901,34 @@ export default function HuntersPath() {
         }
       }
 
-      // Migrate old spirits to new format
-      if (gameState.player.spirits) {
-        gameState.player.spirits = gameState.player.spirits.map(
-          (spirit: any) => {
-            // If spirit already has new format, return as is
-            if (spirit.rarity && spirit.abilities && spirit.type) {
-              return spirit;
-            }
-
-            // Migrate old spirit format to new format
-            const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
-            const rarity = "common"; // Default to common for old spirits
-            const availableAbilities = SPIRIT_ABILITIES[type];
-            const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
-
-            return {
-              id: spirit.id,
-              name: spirit.name,
-              power: spirit.power,
-              rarity,
-              abilities,
-              level: 1,
-              exp: 0,
-              expToNext: 100,
-              type,
-              description: SPIRIT_DESCRIPTIONS[type],
-            };
+      // Migrate old spirits to new format (also initialise missing field)
+      gameState.player.spirits = (gameState.player.spirits || []).map(
+        (spirit: any) => {
+          // If spirit already has new format, return as is
+          if (spirit.rarity && spirit.abilities && spirit.type) {
+            return spirit;
           }
-        );
-      }
+
+          // Migrate old spirit format to new format
+          const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
+          const rarity = "common"; // Default to common for old spirits
+          const availableAbilities = SPIRIT_ABILITIES[type];
+          const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
+
+          return {
+            id: spirit.id,
+            name: spirit.name,
+            power: spirit.power,
+            rarity,
+            abilities,
+            level: 1,
+            exp: 0,
+            expToNext: 100,
+            type,
+            description: SPIRIT_DESCRIPTIONS[type],
+          };
+        }
+      );
 
       setPlayer(gameState.player);
       setGates(gameState.gates);
