@@ -345,10 +345,9 @@ const SPIRIT_ABILITIES: Record<string, SpiritAbility[]> = {
     {
       id: "shadow_step",
       name: "Shadow Step",
-      description: "Next attack has 100% critical chance",
-      type: "active",
-      effect: "guaranteed_crit",
-      cooldown: 4,
+      description: "Every 3rd attack is enhanced (+10% damage)",
+      type: "passive",
+      effect: "damage_boost",
     },
     {
       id: "poison_blade",
