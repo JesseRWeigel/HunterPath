@@ -4021,7 +4021,7 @@ export default function HuntersPath() {
             </Card>
 
             {/* Prestige Shop */}
-            {(player.rebirths > 0 || player.prestigePoints > 0 || Object.keys(prestigeUpgrades).length > 0) && (
+            {(player.rebirths > 0 || player.prestigePoints > 0) && (
               <Card>
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="prestige-shop">
