@@ -1,6 +1,6 @@
 export function BossS({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" className={className} aria-label="Void Lord">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" className={className} aria-label="Void Lord">
       <defs>
         <radialGradient id="bs-eye" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#ffffff" />

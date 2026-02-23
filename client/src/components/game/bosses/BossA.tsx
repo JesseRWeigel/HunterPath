@@ -1,6 +1,6 @@
 export function BossA({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" className={className} aria-label="Dragon Knight">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" className={className} aria-label="Dragon Knight">
       <defs>
         <linearGradient id="ba-flame" x1="0%" y1="100%" x2="0%" y2="0%">
           <stop offset="0%" stopColor="#0044ff" />

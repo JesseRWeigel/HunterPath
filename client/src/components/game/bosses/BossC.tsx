@@ -1,6 +1,6 @@
 export function BossC({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" className={className} aria-label="Dark Elf Assassin">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" className={className} aria-label="Dark Elf Assassin">
       <defs>
         <radialGradient id="bc-purple" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#dd44ff" />

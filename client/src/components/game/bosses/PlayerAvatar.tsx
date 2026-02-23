@@ -6,6 +6,7 @@ export function PlayerAvatar({ className }: { className?: string }) {
       height="128"
       viewBox="0 0 128 128"
       className={className}
+      role="img"
       aria-label="Hunter"
     >
       <defs>

@@ -1,6 +1,6 @@
 export function BossB({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" className={className} aria-label="Troll Chieftain">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" className={className} aria-label="Troll Chieftain">
       <defs>
         <filter id="bb-lava">
           <feGaussianBlur stdDeviation="1.5" result="blur" />

@@ -1050,7 +1050,6 @@ const MONSTER_DATA = {
     description:
       "A small but fierce goblin with crude weapons. Though weak individually, they fight with surprising ferocity.",
     icon: "fas fa-user-ninja",
-    image: "./assets/bosses/boss_e.svg",
     color: "text-green-400",
     bgColor: "bg-green-900/30",
     borderColor: "border-green-500/30",
@@ -1063,7 +1062,6 @@ const MONSTER_DATA = {
     description:
       "A muscular orc warrior with blood-red eyes. Their rage makes them unpredictable and dangerous.",
     icon: "fas fa-user-shield",
-    image: "./assets/bosses/boss_d.svg",
     color: "text-blue-400",
     bgColor: "bg-blue-900/30",
     borderColor: "border-blue-500/30",
@@ -1075,7 +1073,6 @@ const MONSTER_DATA = {
     description:
       "A shadowy figure with deadly precision. Their movements are like liquid darkness.",
     icon: "fas fa-user-secret",
-    image: "./assets/bosses/boss_c.svg",
     color: "text-purple-400",
     bgColor: "bg-purple-900/30",
     borderColor: "border-purple-500/30",
@@ -1088,7 +1085,6 @@ const MONSTER_DATA = {
     description:
       "A massive troll with stone-like skin. Their club can crush bones with a single swing.",
     icon: "fas fa-user-graduate",
-    image: "./assets/bosses/boss_b.svg",
     color: "text-red-400",
     bgColor: "bg-red-900/30",
     borderColor: "border-red-500/30",
@@ -1100,7 +1096,6 @@ const MONSTER_DATA = {
     description:
       "A legendary warrior clad in dragon-scale armor. Their sword burns with ancient fire.",
     icon: "fas fa-user-crown",
-    image: "./assets/bosses/boss_a.svg",
     color: "text-orange-400",
     bgColor: "bg-orange-900/30",
     borderColor: "border-orange-500/30",
@@ -1112,7 +1107,6 @@ const MONSTER_DATA = {
     description:
       "A being of pure darkness and malice. Their very presence corrupts the air around them.",
     icon: "fas fa-user-tie",
-    image: "./assets/bosses/boss_s.svg",
     color: "text-yellow-400",
     bgColor: "bg-yellow-900/30",
     borderColor: "border-yellow-500/30",
@@ -2222,7 +2216,7 @@ export default function HuntersPath() {
 
       // After 3 seconds, determine success/failure
       setTimeout(() => {
-        const chance = calcExtractionChance(player, RANKS.indexOf(bossRank));
+        const chance = calcExtractionChance(player, RANKS.indexOf(bossRank as BossRank));
         const success = Math.random() < chance;
 
         setSpiritBindingState((prev) => ({
@@ -2240,7 +2234,7 @@ export default function HuntersPath() {
           // Create the spirit and update player state
           const spiritBound = createSpirit(
             gatePower,
-            RANKS.indexOf(bossRank)
+            RANKS.indexOf(bossRank as BossRank)
           );
 
           setPlayer((pp) => ({
@@ -2647,7 +2641,7 @@ export default function HuntersPath() {
     }
 
     const rank = rankMatch[1];
-    const rankIdx = RANKS.indexOf(rank);
+    const rankIdx = RANKS.indexOf(rank as BossRank);
     if (rankIdx === -1) {
       logPush("Unknown rune rank. Cannot use this rune.");
       return;
