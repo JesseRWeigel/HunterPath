@@ -8,6 +8,7 @@ import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, h
 import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
 import { RebirthModal } from "./sections/RebirthModal";
+import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -1119,6 +1120,15 @@ const MONSTER_DATA = {
       "A void of absolute darkness where reality itself seems to bend.",
     sound: "The fabric of space itself seems to tear...",
   },
+};
+
+const BOSS_COMPONENTS: Record<string, React.ComponentType<{ className?: string }>> = {
+  E: BossE,
+  D: BossD,
+  C: BossC,
+  B: BossB,
+  A: BossA,
+  S: BossS,
 };
 
 export default function HuntersPath() {
@@ -4224,11 +4234,7 @@ export default function HuntersPath() {
           <section className="lg:col-span-1 space-y-6">
             <Card>
               <div className="flex items-center space-x-4 mb-6">
-                <img
-                  src="./assets/ui/player.svg"
-                  alt="Hunter"
-                  className="w-16 h-16 rounded-full object-cover"
-                />
+                <PlayerAvatar className="w-16 h-16 rounded-full" />
                 <div>
                   <h2 className="text-xl font-bold text-zinc-100">Hunter</h2>
                   <div className="flex items-center space-x-2">
@@ -4852,11 +4858,7 @@ export default function HuntersPath() {
                       </AnimatePresence>
 
                       <div className="text-center mb-4 relative z-10">
-                        <img
-                          src="./assets/ui/player.svg"
-                          alt="Hunter"
-                          className="w-16 h-16 rounded-full object-cover mx-auto mb-2 shadow-lg shadow-purple-500/30"
-                        />
+                        <PlayerAvatar className="w-16 h-16 rounded-full mx-auto mb-2 shadow-lg shadow-purple-500/30" />
                         <h5 className="font-bold text-purple-300 font-display">Hunter</h5>
                         <p className="text-xs text-zinc-400">
                           Level {player.level}
@@ -4897,24 +4899,16 @@ export default function HuntersPath() {
                           }
                           transition={{ duration: 0.3 }}
                         >
-                          {running && MONSTER_DATA[running.gate.rank as keyof typeof MONSTER_DATA]?.image ? (
-                            <img
-                              src={MONSTER_DATA[running.gate.rank as keyof typeof MONSTER_DATA]?.image}
-                              alt="Boss"
-                              className="w-16 h-16 object-contain"
-                            />
-                          ) : (
-                            <i
-                              className={`fas ${
-                                running
-                                  ? MONSTER_DATA[
-                                      running.gate
-                                        .rank as keyof typeof MONSTER_DATA
-                                    ]?.icon
-                                  : "fa-dragon"
-                              } text-white text-xl`}
-                            ></i>
-                          )}
+                          {(() => {
+                            const BossComp = running
+                              ? BOSS_COMPONENTS[running.gate.rank]
+                              : null;
+                            return BossComp ? (
+                              <BossComp className="w-16 h-16" />
+                            ) : (
+                              <i className="fas fa-dragon text-white text-xl" />
+                            );
+                          })()}
                         </motion.div>
                         <h5 className="font-bold text-red-300 font-display">
                           {running?.boss.name || combatResult?.boss.name}
