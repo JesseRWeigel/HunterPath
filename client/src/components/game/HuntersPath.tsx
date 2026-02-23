@@ -1227,6 +1227,8 @@ export default function HuntersPath() {
 
   const tickRef = useRef<NodeJS.Timeout | null>(null);
   const timeRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoDungeon, setAutoDungeon] = useState(false);
+  const autoDungeonRef = useRef<boolean>(false);
 
   const pPower = useMemo(() => playerPower(player, prestigeUpgrades["spirit_power"] || 0), [player, prestigeUpgrades]);
 
@@ -1594,10 +1596,13 @@ export default function HuntersPath() {
         spiritDmgBonus = Math.min(spiritDmgBonus, 1.0);
 
         // Apply dungeon modifiers to combat
+        // Re-look up modifier by ID to restore functions lost during serialization
         let playerDmgMult = 1 + spiritDmgBonus;
         let bossDmgMult = 1;
         for (const mod of (prev.gate.modifiers || [])) {
-          const result = mod.applyToCombat(playerDmgMult, bossDmgMult);
+          const liveMod = DUNGEON_MODIFIERS.find(m => m.id === mod.id) ?? mod;
+          if (typeof liveMod.applyToCombat !== "function") continue;
+          const result = liveMod.applyToCombat(playerDmgMult, bossDmgMult);
           playerDmgMult = result.playerDmgMult;
           bossDmgMult = result.bossDmgMult;
         }
@@ -1719,10 +1724,13 @@ export default function HuntersPath() {
           const goldBoostMult = 1 + (prestigeUpgrades["gold_boost"] || 0) * 0.05;
 
           // Apply dungeon modifiers to rewards
+          // Re-look up modifier by ID to restore functions lost during serialization
           let expMult = expBoost;
           let goldMult = goldBoostMult;
           for (const mod of (prev.gate.modifiers || [])) {
-            const result = mod.applyToRewards(expMult, goldMult);
+            const liveMod = DUNGEON_MODIFIERS.find(m => m.id === mod.id) ?? mod;
+            if (typeof liveMod.applyToRewards !== "function") continue;
+            const result = liveMod.applyToRewards(expMult, goldMult);
             expMult = result.expMult;
             goldMult = result.goldMult;
           }
@@ -2881,6 +2889,48 @@ export default function HuntersPath() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inRun]);
 
+  // Keep autoDungeonRef in sync with autoDungeon state (for stale closure safety)
+  useEffect(() => {
+    autoDungeonRef.current = autoDungeon;
+  }, [autoDungeon]);
+
+  // Auto-dungeon logic: after each run ends (or combatResult appears), queue next run
+  useEffect(() => {
+    if (!autoDungeon || inRun || player.fatigue > 80 || player.hp < player.maxHp * 0.2) return;
+
+    const timer = setTimeout(() => {
+      if (!autoDungeonRef.current) return; // user turned it off during delay
+      if (inRun) return; // run started during delay
+
+      // Auto-dismiss combat result if one is showing
+      if (combatResult) setCombatResult(null);
+
+      // Pick the best gate the player can handle (power >= 70% of gate recommended)
+      const clearable = gates.filter(g => pPower >= g.recommended * 0.7);
+      if (clearable.length === 0) {
+        logPush("Auto-dungeon: No suitable gates found. Disabling.");
+        setAutoDungeon(false);
+        return;
+      }
+
+      // Pick highest rank available
+      const target = clearable.sort((a, b) => b.rankIdx - a.rankIdx)[0];
+      startGate(target);
+    }, 3000); // 3 second pause between runs
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDungeon, inRun, gates, pPower, player.fatigue, player.hp, player.maxHp, combatResult]);
+
+  // Auto-disable when fatigue > 80
+  useEffect(() => {
+    if (player.fatigue > 80 && autoDungeon) {
+      setAutoDungeon(false);
+      logPush("Auto-dungeon disabled: too fatigued. Rest first!");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.fatigue, autoDungeon]);
+
   // Sound management — thin wrappers around audioManager singleton
   function playSound(soundName: string, volumeOverride?: number) {
     audioManager.playSound(soundName as SoundName, volumeOverride);
@@ -3939,6 +3989,19 @@ export default function HuntersPath() {
                       )}
                     </Btn>
                   )}
+                  <button
+                    onClick={() => setAutoDungeon(prev => !prev)}
+                    disabled={player.fatigue > 80 && !autoDungeon}
+                    className={`flex items-center space-x-1 px-3 py-2 rounded text-sm font-bold transition-colors ${
+                      autoDungeon
+                        ? 'bg-green-600 hover:bg-green-500 text-white'
+                        : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200'
+                    }`}
+                    title={player.fatigue > 80 ? "Too fatigued for auto-dungeon (fatigue > 80)" : autoDungeon ? "Auto-dungeon: ON (click to stop)" : "Auto-dungeon: OFF (click to start)"}
+                  >
+                    <i className={`fas ${autoDungeon ? 'fa-stop-circle' : 'fa-play-circle'} mr-1`}></i>
+                    {autoDungeon ? 'Auto: ON' : 'Auto'}
+                  </button>
                   {process.env.NODE_ENV === "development" && (
                     <Btn
                       onClick={() => setShowDebugPanel(!showDebugPanel)}
