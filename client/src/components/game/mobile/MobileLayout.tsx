@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BottomTabBar, MobileTab } from "./BottomTabBar";
 import { CombatTab } from "./CombatTab";
+import { ManageTab } from "./ManageTab";
 
 // Full props interface — using loose types here so we can build incrementally
 // will be tightened in a later task
@@ -31,6 +32,8 @@ export interface MobileLayoutProps {
   onSave: () => void;
   onLoad: () => void;
   onToggleAuto: () => void;
+  onTrain: (type: string) => void;
+  onBuyItem: (itemId: string) => void;
   onSetSoundEnabled: (v: boolean) => void;
   onSetMusicEnabled: (v: boolean) => void;
   onSetVolume: (v: number) => void;
@@ -88,7 +91,26 @@ export function MobileLayout(props: MobileLayoutProps) {
             onDismissResult={props.onDismissResult}
           />
         )}
-        {activeTab === "manage"  && <div className="p-4 text-zinc-400 text-sm">Manage tab — coming soon</div>}
+        {activeTab === "manage" && (
+          <ManageTab
+            player={props.player}
+            gold={props.gold}
+            prestigeUpgrades={props.prestigeUpgrades}
+            soundEnabled={props.soundEnabled}
+            musicEnabled={props.musicEnabled}
+            volume={props.volume}
+            onAllocateStat={props.onAllocateStat}
+            onTrain={props.onTrain}
+            onBuyItem={props.onBuyItem}
+            onSave={props.onSave}
+            onLoad={props.onLoad}
+            onRebirth={props.onRebirth}
+            onReset={props.onReset}
+            onSetSoundEnabled={props.onSetSoundEnabled}
+            onSetMusicEnabled={props.onSetMusicEnabled}
+            onSetVolume={props.onSetVolume}
+          />
+        )}
         {activeTab === "spirits" && <div className="p-4 text-zinc-400 text-sm">Spirits tab — coming soon</div>}
         {activeTab === "log"     && <div className="p-4 text-zinc-400 text-sm">Log tab — coming soon</div>}
       </main>

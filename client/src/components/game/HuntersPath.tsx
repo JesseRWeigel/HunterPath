@@ -4054,6 +4054,14 @@ export default function HuntersPath() {
         onSave={saveGame}
         onLoad={loadGame}
         onToggleAuto={() => setAutoDungeon(a => !a)}
+        onTrain={(type) => {
+          if (type === "work") doWork();
+          else doTraining(type as "physical" | "mental" | "meditation");
+        }}
+        onBuyItem={(itemId) => {
+          if (itemId === "potion") buyPotion();
+          else buyUpgrade(itemId as "weapon" | "armor" | "accessory");
+        }}
         onSetSoundEnabled={setSoundEnabled}
         onSetMusicEnabled={setMusicEnabled}
         onSetVolume={setVolume}
