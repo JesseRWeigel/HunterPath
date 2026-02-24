@@ -3022,6 +3022,21 @@ export default function HuntersPath() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.fatigue, autoDungeon]);
 
+  // Autosave every 60 seconds + whenever user switches apps / closes PWA
+  useEffect(() => {
+    const doSave = () => {
+      saveGame();
+      logPush("Game auto-saved.");
+    };
+    const interval = setInterval(doSave, 60_000);
+    const onHide = () => { if (document.visibilityState === "hidden") doSave(); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [player, gates, gold, daily]);
+
   // Sound management — thin wrappers around audioManager singleton
   function playSound(soundName: string, volumeOverride?: number) {
     audioManager.playSound(soundName as SoundName, volumeOverride);
