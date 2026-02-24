@@ -34,7 +34,7 @@ const fmt = (n: number) => new Intl.NumberFormat().format(Math.floor(n));
 
 const RANKS = ["E", "D", "C", "B", "A", "S"] as const;
 
-const RANK_COLORS = {
+export const RANK_COLORS = {
   E: "bg-green-600",
   D: "bg-blue-600",
   C: "bg-purple-600",

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BottomTabBar, MobileTab } from "./BottomTabBar";
+import { CombatTab } from "./CombatTab";
 
 // Full props interface — using loose types here so we can build incrementally
 // will be tightened in a later task
@@ -70,7 +71,23 @@ export function MobileLayout(props: MobileLayoutProps) {
 
       {/* Tab content */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden">
-        {activeTab === "combat"  && <div className="p-4 text-zinc-400 text-sm">Combat tab — coming soon</div>}
+        {activeTab === "combat" && (
+          <CombatTab
+            player={props.player}
+            gates={props.gates}
+            running={props.running}
+            combatResult={props.combatResult}
+            combatLog={props.combatLog}
+            autoDungeon={props.autoDungeon}
+            onToggleAuto={props.onToggleAuto}
+            onStartGate={props.onStartGate}
+            onRest={props.onRest}
+            onUseKey={props.onUseKey}
+            onRefreshGates={props.onRefreshGates}
+            onUsePotion={props.onUsePotion}
+            onDismissResult={props.onDismissResult}
+          />
+        )}
         {activeTab === "manage"  && <div className="p-4 text-zinc-400 text-sm">Manage tab — coming soon</div>}
         {activeTab === "spirits" && <div className="p-4 text-zinc-400 text-sm">Spirits tab — coming soon</div>}
         {activeTab === "log"     && <div className="p-4 text-zinc-400 text-sm">Log tab — coming soon</div>}
