@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BottomTabBar, MobileTab } from "./BottomTabBar";
 import { CombatTab } from "./CombatTab";
 import { ManageTab } from "./ManageTab";
@@ -46,6 +46,8 @@ export interface MobileLayoutProps {
   onSetRebirthModalOpen: (v: boolean) => void;
   // extra
   prestigeUpgrades: Record<string, number>;
+  // modal overlays
+  modalOverlay?: React.ReactNode;
 }
 
 export function MobileLayout(props: MobileLayoutProps) {
@@ -130,6 +132,9 @@ export function MobileLayout(props: MobileLayoutProps) {
         statPointBadge={statPointBadge}
         dailyCompleteBadge={dailyCompleteBadge}
       />
+
+      {/* Modal overlays — rendered on top of the mobile layout */}
+      {props.modalOverlay}
     </div>
   );
 }

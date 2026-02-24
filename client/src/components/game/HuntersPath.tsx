@@ -4070,6 +4070,279 @@ export default function HuntersPath() {
         rebirthModalOpen={rebirthModalOpen}
         onSetRebirthModalOpen={setRebirthModalOpen}
         prestigeUpgrades={prestigeUpgrades}
+        modalOverlay={
+          <>
+            {/* Spirit Binding Sequence Modal */}
+            {spiritBindingState.isActive && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <div className="absolute inset-0">
+                    <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-pulse opacity-60"></div>
+                    <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-blue-400 rounded-full animate-pulse opacity-40"></div>
+                    <div className="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse opacity-50"></div>
+                    <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
+                    <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-red-400 rounded-full animate-pulse opacity-70"></div>
+                    <div
+                      className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-purple-500/30 rounded-full animate-shadow-ripple ${
+                        spiritBindingState.phase === "extracting" ? "opacity-100" : "opacity-0"
+                      }`}
+                    ></div>
+                    <div
+                      className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-purple-400/20 rounded-full animate-pulse ${
+                        spiritBindingState.phase === "extracting" ? "opacity-100" : "opacity-0"
+                      }`}
+                    ></div>
+                  </div>
+                  <div className="relative z-10 text-center max-w-2xl mx-4">
+                    <div
+                      className={`mb-8 p-8 rounded-lg border-2 transition-all duration-500 ${
+                        spiritBindingState.phase === "preparing"
+                          ? "bg-blue-900/30 border-blue-500/50"
+                          : spiritBindingState.phase === "extracting"
+                          ? "bg-purple-900/30 border-purple-500/50"
+                          : spiritBindingState.phase === "success"
+                          ? "bg-green-900/30 border-green-500/50"
+                          : spiritBindingState.phase === "failure"
+                          ? "bg-red-900/30 border-red-500/50"
+                          : "bg-zinc-900/30 border-zinc-500/50"
+                      }`}
+                    >
+                      <div
+                        className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-500 ${
+                          spiritBindingState.phase === "preparing"
+                            ? "bg-blue-600 animate-shadow-pulse"
+                            : spiritBindingState.phase === "extracting"
+                            ? "bg-purple-600 animate-shadow-spin animate-shadow-glow"
+                            : spiritBindingState.phase === "success"
+                            ? "bg-green-600 animate-shadow-bounce"
+                            : spiritBindingState.phase === "failure"
+                            ? "bg-red-600 animate-shadow-pulse"
+                            : "bg-zinc-600"
+                        }`}
+                      >
+                        <i
+                          className={`text-3xl text-white ${
+                            spiritBindingState.phase === "preparing"
+                              ? "fas fa-magic"
+                              : spiritBindingState.phase === "extracting"
+                              ? "fas fa-ghost"
+                              : spiritBindingState.phase === "success"
+                              ? "fas fa-check"
+                              : spiritBindingState.phase === "failure"
+                              ? "fas fa-times"
+                              : "fas fa-question"
+                          }`}
+                        ></i>
+                      </div>
+                      {(() => {
+                        const text = getExtractionSequenceText();
+                        return (
+                          <>
+                            <h2
+                              className={`text-3xl font-bold mb-4 transition-all duration-500 ${
+                                spiritBindingState.phase === "preparing"
+                                  ? "text-blue-300"
+                                  : spiritBindingState.phase === "extracting"
+                                  ? "text-purple-300"
+                                  : spiritBindingState.phase === "success"
+                                  ? "text-green-300"
+                                  : spiritBindingState.phase === "failure"
+                                  ? "text-red-300"
+                                  : "text-zinc-300"
+                              }`}
+                            >
+                              {text.title}
+                            </h2>
+                            <p className="text-xl text-zinc-200 mb-3">{text.subtitle}</p>
+                            <p className="text-zinc-400 mb-6">{text.description}</p>
+                            {spiritBindingState.phase === "extracting" && (
+                              <div className="w-full bg-zinc-700 rounded-full h-4 mb-4 overflow-hidden">
+                                <div
+                                  className="bg-gradient-to-r from-purple-500 to-purple-400 h-4 rounded-full transition-all duration-300 ease-out"
+                                  style={{ width: `${spiritBindingState.progress}%` }}
+                                ></div>
+                              </div>
+                            )}
+                            <div className="text-sm text-zinc-500">
+                              Target: {spiritBindingState.bossName} ({spiritBindingState.bossRank}-Rank)
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {spiritBindingState.phase === "extracting" && (
+                      <div className="text-center">
+                        <div className="text-purple-400 text-sm animate-pulse">
+                          <i className="fas fa-magic mr-2"></i>
+                          Channeling magical energy...
+                        </div>
+                      </div>
+                    )}
+                    {spiritBindingState.phase === "success" && (
+                      <div className="text-center">
+                        <div className="text-green-400 text-lg font-bold animate-bounce">
+                          🎉 Spirit Binding Complete! 🎉
+                        </div>
+                      </div>
+                    )}
+                    {spiritBindingState.phase === "failure" && (
+                      <div className="text-center">
+                        <div className="text-red-400 text-lg font-bold animate-pulse">
+                          💀 Extraction Failed 💀
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Level-Up Celebration Modal */}
+            {levelUpState.isActive && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <div className="absolute inset-0">
+                    <div className="absolute top-1/4 left-1/4 w-3 h-3 bg-yellow-400 rounded-full animate-bounce opacity-80"></div>
+                    <div
+                      className="absolute top-1/3 right-1/3 w-2 h-2 bg-orange-400 rounded-full animate-bounce opacity-60"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
+                    <div
+                      className="absolute bottom-1/4 left-1/3 w-2.5 h-2.5 bg-red-400 rounded-full animate-bounce opacity-70"
+                      style={{ animationDelay: "0.4s" }}
+                    ></div>
+                    <div
+                      className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce opacity-50"
+                      style={{ animationDelay: "0.6s" }}
+                    ></div>
+                    <div
+                      className="absolute top-1/2 left-1/2 w-4 h-4 bg-purple-400 rounded-full animate-bounce opacity-90"
+                      style={{ animationDelay: "0.8s" }}
+                    ></div>
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 border-4 border-yellow-500/40 rounded-full animate-pulse"></div>
+                    <div
+                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-2 border-orange-400/30 rounded-full animate-pulse"
+                      style={{ animationDelay: "0.5s" }}
+                    ></div>
+                  </div>
+                  <div className="relative z-10 text-center max-w-2xl mx-4">
+                    <div className="mb-8 p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
+                      <div className="w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-2xl">
+                        <i className="fas fa-star text-6xl text-white animate-spin"></i>
+                      </div>
+                      <h2 className="text-5xl font-bold mb-4 text-yellow-300 animate-celebration-bounce">
+                        LEVEL UP!
+                      </h2>
+                      <div className="text-3xl font-bold text-orange-300 mb-4">
+                        Level {levelUpState.newLevel}
+                      </div>
+                      <div className="text-xl text-yellow-200 mb-6">
+                        +{levelUpState.statPointsGained} Stat Points Available!
+                      </div>
+                      {levelUpState.showStatAllocation && (
+                        <div className="mt-8 p-6 bg-zinc-800/50 rounded-lg border border-yellow-500/30">
+                          <h3 className="text-xl font-bold text-yellow-300 mb-4">
+                            Allocate Your Stat Points
+                          </h3>
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                            {Object.entries(player.stats).map(([stat, value]) => (
+                              <div key={stat} className="text-center">
+                                <div className="text-sm text-zinc-400 mb-1">{stat}</div>
+                                <div className="text-lg font-bold text-white mb-2">{value as number}</div>
+                                <button
+                                  onClick={() =>
+                                    allocateStatWithFeedback(stat as keyof Player["stats"])
+                                  }
+                                  disabled={player.points <= 0}
+                                  className="w-8 h-8 bg-yellow-600 hover:bg-yellow-500 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-full transition-colors font-bold"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-zinc-400 mb-2">
+                              Points Remaining:{" "}
+                              <span className="text-yellow-400 font-bold">{player.points}</span>
+                            </div>
+                            <button
+                              onClick={completeLevelUp}
+                              className="bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg font-bold transition-colors"
+                            >
+                              Continue Adventure
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {!levelUpState.showStatAllocation && (
+                        <div className="text-center">
+                          <div className="text-yellow-200 text-lg animate-pulse">
+                            Preparing stat allocation...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rebirth Modal */}
+            {rebirthModalOpen && (
+              <Dialog open={rebirthModalOpen} onOpenChange={setRebirthModalOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>⚡ Rebirth</DialogTitle>
+                    <DialogDescription>
+                      Reset your progress to gain permanent bonuses!
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="bg-red-900/20 border border-red-500/30 p-3 rounded-lg">
+                      <p className="text-red-400 font-bold">⚠️ This will reset:</p>
+                      <ul className="text-red-300 text-sm mt-2 space-y-1">
+                        <li>• All gold (₲)</li>
+                        <li>• All keys</li>
+                        <li>• All gates cleared</li>
+                        <li>• Fatigue</li>
+                      </ul>
+                    </div>
+                    <div className="bg-green-900/20 border border-green-500/30 p-3 rounded-lg">
+                      <p className="text-green-400 font-bold">✅ You will keep:</p>
+                      <ul className="text-green-300 text-sm mt-2 space-y-1">
+                        <li>• Your level ({player.level})</li>
+                        <li>• All allocated stats</li>
+                        <li>• Your Spirit Legion</li>
+                      </ul>
+                    </div>
+                    <div className="bg-purple-900/20 border border-purple-500/30 p-3 rounded-lg text-center">
+                      <p className="text-purple-400 font-bold">🎁 You will gain:</p>
+                      <p className="text-2xl font-bold text-purple-300">
+                        +{Math.floor(player.level * 10 * (1 + player.rebirths * 0.5))} Prestige Points
+                      </p>
+                      <p className="text-purple-400">+{(player.rebirths + 1) * 15}% Power Bonus</p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <button
+                      onClick={() => setRebirthModalOpen(false)}
+                      className="px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleRebirth}
+                      className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-500 font-bold"
+                    >
+                      Confirm Rebirth
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </>
+        }
       />
     );
   }
