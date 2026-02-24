@@ -9,6 +9,8 @@ import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
 import { RebirthModal } from "./sections/RebirthModal";
 import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses";
+import { useIsMobile } from "../../hooks/useIsMobile";
+import { MobileLayout } from "./mobile/MobileLayout";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -1129,6 +1131,7 @@ const BOSS_COMPONENTS: Record<BossRank, React.ComponentType<{ className?: string
 export default function HuntersPath() {
   // Particle effects system
   const { trigger: triggerParticles, bursts, removeBurst } = useParticles();
+  const isMobile = useIsMobile();
 
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [rebirthModalOpen, setRebirthModalOpen] = useState(false);
@@ -4022,6 +4025,46 @@ export default function HuntersPath() {
   }
 
   const BossComp = running ? BOSS_COMPONENTS[running.gate.rank as BossRank] : null;
+
+  if (isMobile) {
+    return (
+      <MobileLayout
+        player={player}
+        gates={gates}
+        gold={gold}
+        daily={daily}
+        log={log}
+        running={running}
+        combatResult={combatResult}
+        combatLog={combatLog}
+        autoDungeon={autoDungeon}
+        soundEnabled={soundEnabled}
+        musicEnabled={musicEnabled}
+        volume={volume}
+        onStartGate={startGate}
+        onRest={rest}
+        onUseKey={useKey}
+        onRefreshGates={refreshGates}
+        onUsePotion={usePotion}
+        onDismissResult={dismissCombatResult}
+        onAllocateStat={allocate}
+        onForfeitDaily={forfeitDaily}
+        onRebirth={handleRebirth}
+        onReset={resetGame}
+        onSave={saveGame}
+        onLoad={loadGame}
+        onToggleAuto={() => setAutoDungeon(a => !a)}
+        onSetSoundEnabled={setSoundEnabled}
+        onSetMusicEnabled={setMusicEnabled}
+        onSetVolume={setVolume}
+        spiritBindingState={spiritBindingState}
+        levelUpState={levelUpState}
+        rebirthModalOpen={rebirthModalOpen}
+        onSetRebirthModalOpen={setRebirthModalOpen}
+        prestigeUpgrades={prestigeUpgrades}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
