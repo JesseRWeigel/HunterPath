@@ -12,6 +12,8 @@ interface ManageTabProps {
   onAllocateStat: (stat: string) => void;
   onTrain: (type: string) => void;
   onBuyItem: (itemId: string) => void;
+  onEquipItem: (itemId: string) => void;
+  onUnequipItem: (slot: string) => void;
   onSave: () => void;
   onLoad: () => void;
   onRebirth: () => void;
@@ -42,10 +44,25 @@ function Accordion({ title, badge, defaultOpen = false, children }: {
   );
 }
 
+const RARITY_COLOR: Record<string, string> = {
+  common: "text-zinc-400",
+  uncommon: "text-green-400",
+  rare: "text-blue-400",
+  epic: "text-purple-400",
+  legendary: "text-yellow-400",
+};
+
+const SLOT_LABEL: Record<string, string> = {
+  weapon: "Weapon",
+  armor: "Armor",
+  accessory: "Accessory",
+};
+
 export function ManageTab({
   player, gold, prestigeUpgrades,
   soundEnabled, musicEnabled, volume,
   onAllocateStat, onTrain, onBuyItem,
+  onEquipItem, onUnequipItem,
   onSave, onLoad, onRebirth, onReset,
   onSetSoundEnabled, onSetMusicEnabled, onSetVolume,
 }: ManageTabProps) {
@@ -99,6 +116,75 @@ export function ManageTab({
           {player.points ?? 0} point{(player.points ?? 0) !== 1 ? "s" : ""} remaining
         </div>
       </Accordion>
+
+      {/* Equipment */}
+      <Accordion title="Equipment">
+        <div className="space-y-2">
+          {(["weapon", "armor", "accessory"] as const).map((slot) => {
+            const item = player.equipment?.[slot];
+            return (
+              <div key={slot} className="flex items-center justify-between bg-zinc-900 rounded-lg px-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="text-xs text-zinc-500 uppercase tracking-wide">{SLOT_LABEL[slot]}</div>
+                  {item ? (
+                    <div className={`text-sm font-medium ${RARITY_COLOR[item.rarity] ?? "text-zinc-300"}`}>
+                      {item.name}
+                      {item.stats && (
+                        <span className="text-xs text-zinc-500 ml-1">
+                          ({Object.entries(item.stats).map(([k, v]) => `+${v} ${k}`).join(", ")})
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-zinc-600 italic">Empty</div>
+                  )}
+                </div>
+                {item && (
+                  <button
+                    onClick={() => onUnequipItem(slot)}
+                    className="shrink-0 ml-2 px-2.5 py-1.5 rounded-lg bg-zinc-800 text-xs text-zinc-400 active:bg-zinc-700"
+                  >
+                    Unequip
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Accordion>
+
+      {/* Inventory */}
+      {(player.inv ?? []).length > 0 && (
+        <Accordion title={`Inventory (${player.inv.length})`}>
+          <div className="space-y-1.5">
+            {(player.inv ?? []).map((item: any) => (
+              <div key={item.id} className="flex items-center justify-between bg-zinc-900 rounded-lg px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <div className={`text-sm font-medium ${RARITY_COLOR[item.rarity] ?? "text-zinc-300"}`}>
+                    {item.name}
+                  </div>
+                  <div className="text-xs text-zinc-500">
+                    {item.type}
+                    {item.stats && (
+                      <span className="ml-1">
+                        ({Object.entries(item.stats).map(([k, v]) => `+${v} ${k}`).join(", ")})
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {item.type === "equipment" && item.equipmentSlot && (
+                  <button
+                    onClick={() => onEquipItem(item.id)}
+                    className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-violet-600 text-xs text-white font-semibold active:bg-violet-500"
+                  >
+                    Equip
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Accordion>
+      )}
 
       {/* Training */}
       <Accordion title="Training">

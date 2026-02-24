@@ -9,6 +9,7 @@ import { LogTab } from "./LogTab";
 // will be tightened in a later task
 export interface MobileLayoutProps {
   player: any;
+  playerPower: number;
   gates: any[];
   gold: number;
   daily: any;
@@ -36,6 +37,8 @@ export interface MobileLayoutProps {
   onToggleAuto: () => void;
   onTrain: (type: string) => void;
   onBuyItem: (itemId: string) => void;
+  onEquipItem: (itemId: string) => void;
+  onUnequipItem: (slot: string) => void;
   onSetSoundEnabled: (v: boolean) => void;
   onSetMusicEnabled: (v: boolean) => void;
   onSetVolume: (v: number) => void;
@@ -81,6 +84,7 @@ export function MobileLayout(props: MobileLayoutProps) {
         {activeTab === "combat" && (
           <CombatTab
             player={props.player}
+            playerPower={props.playerPower}
             gates={props.gates}
             running={props.running}
             combatResult={props.combatResult}
@@ -106,6 +110,8 @@ export function MobileLayout(props: MobileLayoutProps) {
             onAllocateStat={props.onAllocateStat}
             onTrain={props.onTrain}
             onBuyItem={props.onBuyItem}
+            onEquipItem={props.onEquipItem}
+            onUnequipItem={props.onUnequipItem}
             onSave={props.onSave}
             onLoad={props.onLoad}
             onRebirth={props.onRebirth}

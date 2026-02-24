@@ -12,6 +12,7 @@ const RANK_LABEL: Record<string, string> = {
 
 interface CombatTabProps {
   player: any;
+  playerPower: number;
   gates: any[];
   running: any;
   combatResult: any;
@@ -39,7 +40,7 @@ function HpBar({ current, max, color }: { current: number; max: number; color: s
 }
 
 export function CombatTab({
-  player, gates, running, combatResult, combatLog,
+  player, playerPower, gates, running, combatResult, combatLog,
   autoDungeon, onToggleAuto, onStartGate, onRest, onUseKey,
   onRefreshGates, onUsePotion, onDismissResult,
 }: CombatTabProps) {
@@ -55,7 +56,7 @@ export function CombatTab({
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-zinc-100">Hunter  Lv{player.level}</span>
-              <span className="text-xs text-zinc-400">PWR {Math.floor(player.power ?? 0)}</span>
+              <span className="text-xs text-zinc-400">PWR {Math.floor(playerPower)}</span>
             </div>
             <div className="flex gap-1 mt-1">
               <div className="flex-1">
@@ -83,7 +84,7 @@ export function CombatTab({
             onDismissResult={onDismissResult}
           />
         ) : (
-          <GateList gates={gates} player={player} onStartGate={onStartGate} />
+          <GateList gates={gates} playerPower={playerPower} onStartGate={onStartGate} />
         )}
       </div>
 
@@ -135,23 +136,23 @@ export function CombatTab({
 
 function GateList({
   gates,
-  player,
+  playerPower,
   onStartGate,
 }: {
   gates: any[];
-  player: any;
+  playerPower: number;
   onStartGate: (g: any) => void;
 }) {
   return (
     <div className="p-3 space-y-2">
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-semibold text-zinc-300">Gates ({gates.length})</span>
-        <span className="text-xs text-zinc-500">Your PWR {Math.floor(player.power ?? 0)}</span>
+        <span className="text-xs text-zinc-500">Your PWR {Math.floor(playerPower)}</span>
       </div>
       {gates.map((gate) => {
         // recommended is the difficulty baseline; power is the boss's actual power
         const rec = gate.recommended ?? gate.power;
-        const danger = (player.power ?? 0) < rec * 0.8;
+        const danger = playerPower < rec * 0.8;
         const rankBg = RANK_COLORS[gate.rank as keyof typeof RANK_COLORS] ?? "bg-zinc-600";
         // EXP is computed dynamically on completion; show an estimate from recommended
         const estExp = Math.floor(rec * 1.1 + 25);

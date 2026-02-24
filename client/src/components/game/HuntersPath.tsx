@@ -1388,36 +1388,18 @@ export default function HuntersPath() {
     return () => clearTimeout(timer);
   }, []); // Only run once on mount
 
-  // Auto-save every 30 seconds
+  // Periodic save for ancillary data (daily quests, statistics, prestige)
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
-      const gameState = {
-        player,
-        gates,
-        gold,
-        gameTime,
-        daily,
-        lastSaved: new Date().toISOString(),
-      };
-      localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
-
-      // Also save daily state separately for persistence across days
       localStorage.setItem("hunters-path-daily", JSON.stringify(daily));
-
-      // Also save statistics
-      const statsData = {
-        playerStats,
-        achievements,
-        lastSaved: new Date().toISOString(),
-      };
-      localStorage.setItem("hunters-path-stats", JSON.stringify(statsData));
-
-      // Save prestige upgrades
+      localStorage.setItem("hunters-path-stats", JSON.stringify({
+        playerStats, achievements, lastSaved: new Date().toISOString(),
+      }));
       localStorage.setItem("hunters-path-prestige-upgrades", JSON.stringify(prestigeUpgrades));
     }, 30000);
 
     return () => clearInterval(autoSaveInterval);
-  }, [player, gates, gold, gameTime, daily, playerStats, achievements, prestigeUpgrades]);
+  }, [daily, playerStats, achievements, prestigeUpgrades]);
 
   // Auto-trigger stat allocation after level-up celebration
   useEffect(() => {
@@ -2858,16 +2840,23 @@ export default function HuntersPath() {
     logPush(`Gates refreshed! (-${cost}₲)`);
   }
 
-  // Save/Load functions
-  function saveGame() {
+  // Silent auto-save (no log message) — call after important mutations
+  function silentSave() {
     const gameState = {
       player,
       gates,
       gold,
       gameTime,
       daily,
+      lastSaved: new Date().toISOString(),
     };
+    localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
     localStorage.setItem("hunters-path-save", JSON.stringify(gameState));
+  }
+
+  // Save/Load functions
+  function saveGame() {
+    silentSave();
     logPush("Game saved successfully!");
   }
 
@@ -3025,16 +3014,27 @@ export default function HuntersPath() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.fatigue, autoDungeon]);
 
-  // Autosave every 60 seconds + whenever user switches apps / closes PWA
+  // Debounced auto-save: persists within 1s of any state change.
+  // Catches spirit binding, equipping, level-ups, etc. before a pull-to-refresh.
   useEffect(() => {
-    const doSave = () => saveGame();
-    const interval = setInterval(doSave, 60_000);
-    const onHide = () => { if (document.visibilityState === "hidden") doSave(); };
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onHide);
+    const timer = setTimeout(() => {
+      const gameState = {
+        player, gates, gold, gameTime, daily,
+        lastSaved: new Date().toISOString(),
+      };
+      localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
+      localStorage.setItem("hunters-path-save", JSON.stringify(gameState));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [player, gates, gold, daily, gameTime]);
+
+  // Also save immediately when user switches away or closes the PWA
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") saveGame();
     };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
   }, [player, gates, gold, daily, gameTime]);
 
   // Sound management — thin wrappers around audioManager singleton
@@ -4030,6 +4030,7 @@ export default function HuntersPath() {
     return (
       <MobileLayout
         player={player}
+        playerPower={pPower}
         gates={gates}
         gold={gold}
         daily={daily}
@@ -4047,7 +4048,7 @@ export default function HuntersPath() {
         onRefreshGates={refreshGates}
         onUsePotion={usePotion}
         onDismissResult={dismissCombatResult}
-        onAllocateStat={allocate}
+        onAllocateStat={(stat) => allocate(stat as keyof Player["stats"])}
         onForfeitDaily={forfeitDaily}
         onRebirth={handleRebirth}
         onReset={resetGame}
@@ -4062,6 +4063,8 @@ export default function HuntersPath() {
           if (itemId === "potion") buyPotion();
           else buyUpgrade(itemId as "weapon" | "armor" | "accessory");
         }}
+        onEquipItem={equipItem}
+        onUnequipItem={(slot: string) => unequipItem(slot as keyof Equipment)}
         onSetSoundEnabled={setSoundEnabled}
         onSetMusicEnabled={setMusicEnabled}
         onSetVolume={setVolume}
