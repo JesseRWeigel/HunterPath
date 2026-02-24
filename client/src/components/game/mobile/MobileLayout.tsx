@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { BottomTabBar, MobileTab } from "./BottomTabBar";
 import { CombatTab } from "./CombatTab";
 import { ManageTab } from "./ManageTab";
+import { SpiritsTab } from "./SpiritsTab";
+import { LogTab } from "./LogTab";
 
 // Full props interface — using loose types here so we can build incrementally
 // will be tightened in a later task
@@ -111,8 +113,15 @@ export function MobileLayout(props: MobileLayoutProps) {
             onSetVolume={props.onSetVolume}
           />
         )}
-        {activeTab === "spirits" && <div className="p-4 text-zinc-400 text-sm">Spirits tab — coming soon</div>}
-        {activeTab === "log"     && <div className="p-4 text-zinc-400 text-sm">Log tab — coming soon</div>}
+        {activeTab === "spirits" && <SpiritsTab player={props.player} />}
+        {activeTab === "log" && (
+          <LogTab
+            daily={props.daily}
+            log={props.log}
+            player={props.player}
+            onForfeitDaily={props.onForfeitDaily}
+          />
+        )}
       </main>
 
       <BottomTabBar
