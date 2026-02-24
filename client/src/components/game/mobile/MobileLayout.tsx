@@ -45,10 +45,11 @@ export interface MobileLayoutProps {
 export function MobileLayout(props: MobileLayoutProps) {
   const [activeTab, setActiveTab] = useState<MobileTab>("combat");
 
+  const isRunning = Boolean(props.running);
   // Auto-switch to Combat when a run starts
   useEffect(() => {
-    if (props.running) setActiveTab("combat");
-  }, [Boolean(props.running)]);
+    if (isRunning) setActiveTab("combat");
+  }, [isRunning]);
 
   const statPointBadge = (props.player?.points ?? 0) > 0;
   const dailyCompleteBadge = props.daily?.completed === true;

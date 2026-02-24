@@ -26,6 +26,7 @@ export function BottomTabBar({ activeTab, onTabChange, statPointBadge, dailyComp
           <button
             key={id}
             onClick={() => onTabChange(id)}
+            aria-current={active ? "page" : undefined}
             className={`relative flex flex-1 flex-col items-center justify-center py-3 gap-0.5 text-xs font-medium transition-colors ${
               active ? "text-violet-400" : "text-zinc-500"
             }`}
@@ -33,7 +34,10 @@ export function BottomTabBar({ activeTab, onTabChange, statPointBadge, dailyComp
             <Icon size={20} />
             <span>{label}</span>
             {badge && (
-              <span className={`absolute top-2 right-1/4 w-2 h-2 rounded-full ${id === "manage" ? "bg-red-500" : "bg-yellow-400"}`} />
+              <span
+                aria-label={id === "manage" ? "Stat points available" : "Daily quest complete"}
+                className={`absolute top-2 right-1/4 w-2 h-2 rounded-full ${id === "manage" ? "bg-red-500" : "bg-yellow-400"}`}
+              />
             )}
           </button>
         );
