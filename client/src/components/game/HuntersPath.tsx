@@ -3024,10 +3024,7 @@ export default function HuntersPath() {
 
   // Autosave every 60 seconds + whenever user switches apps / closes PWA
   useEffect(() => {
-    const doSave = () => {
-      saveGame();
-      logPush("Game auto-saved.");
-    };
+    const doSave = () => saveGame();
     const interval = setInterval(doSave, 60_000);
     const onHide = () => { if (document.visibilityState === "hidden") doSave(); };
     document.addEventListener("visibilitychange", onHide);
@@ -3035,7 +3032,7 @@ export default function HuntersPath() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onHide);
     };
-  }, [player, gates, gold, daily]);
+  }, [player, gates, gold, daily, gameTime]);
 
   // Sound management — thin wrappers around audioManager singleton
   function playSound(soundName: string, volumeOverride?: number) {
