@@ -58,9 +58,11 @@ export function CombatTab({
             <div className="flex gap-1 mt-1">
               <div className="flex-1">
                 <HpBar current={player.hp} max={player.maxHp} color="bg-red-500" />
+                <div className="text-[10px] text-zinc-500 mt-0.5">{player.hp}/{player.maxHp}</div>
               </div>
               <div className="flex-1">
                 <HpBar current={player.mp} max={player.maxMp} color="bg-blue-500" />
+                <div className="text-[10px] text-zinc-500 mt-0.5">{player.mp}/{player.maxMp}</div>
               </div>
             </div>
           </div>

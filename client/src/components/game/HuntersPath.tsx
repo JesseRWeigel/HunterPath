@@ -712,7 +712,7 @@ function rollDrop(gate: Gate) {
   if (r < 0.55) {
     const rarity = getRarity(gate.rankIdx);
     const quality = getQuality(rarity);
-    const healAmount = Math.floor((quality / 100) * 50 + 25);
+    const healAmount = Math.floor((quality / 100) * 50 + 25 + gate.rankIdx * 15);
 
     return {
       id: uid(),
@@ -2777,10 +2777,14 @@ export default function HuntersPath() {
     const oldHp = player.hp;
     const oldMp = player.mp;
 
+    // Use the potion's own HP stat if available; fall back to 50% maxHp
+    const hpHeal = item.stats?.HP ?? Math.floor(player.maxHp * 0.5);
+    const mpHeal = Math.floor(player.maxMp * 0.3);
+
     setPlayer((p) => ({
       ...p,
-      hp: clamp(p.hp + Math.floor(p.maxHp * 0.5), 0, p.maxHp),
-      mp: clamp(p.mp + Math.floor(p.maxMp * 0.3), 0, p.maxMp),
+      hp: clamp(p.hp + hpHeal, 0, p.maxHp),
+      mp: clamp(p.mp + mpHeal, 0, p.maxMp),
       inv: p.inv.filter((i: Item) => i.id !== itemId),
     }));
 
@@ -2791,11 +2795,9 @@ export default function HuntersPath() {
 
     // Add combat log entry if in combat
     if (inRun && running) {
-      const hpGain = Math.floor(player.maxHp * 0.5);
-      const mpGain = Math.floor(player.maxMp * 0.3);
       setCombatLog((log) => [
         ...log.slice(-7),
-        `Hunter uses a potion! +${hpGain} HP, +${mpGain} MP`,
+        `Hunter uses a potion! +${hpHeal} HP, +${mpHeal} MP`,
       ]);
     }
 
@@ -2972,7 +2974,9 @@ export default function HuntersPath() {
     }
 
     const quality = rand(40, 60);
-    const healAmount = Math.floor((quality / 100) * 50 + 25);
+    // Shop potions scale with player level so they stay useful
+    const levelBonus = Math.floor((player.level ?? 1) * 1.5);
+    const healAmount = Math.floor((quality / 100) * 50 + 25 + levelBonus);
 
     setGold((g) => g - cost);
     setPlayer((p) => ({

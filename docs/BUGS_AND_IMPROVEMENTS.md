@@ -79,29 +79,44 @@ Inventory section appeared in both Log tab and Manage > Inventory accordion.
 ### 17. ~~Rune "Use" button missing on mobile~~ FIXED
 Rune items had no interaction button on mobile Manage > Inventory.
 
-### 18. CRITICAL: maxHp/maxMp not recalculated on save load
-**File:** `HuntersPath.tsx` save loading code
-Level 57 player has maxHp 170 (should be 660) and maxMp 85 (should be 330). Corrupted
-by older leveling code that didn't track maxHp properly. Makes the game unwinnable at
-higher levels since bosses one-shot the player.
-**Fix:** On load, recalculate `maxHp = 100 + (level-1)*10` and `maxMp = 50 + (level-1)*5`
-if current values are lower than expected.
+### 18. ~~CRITICAL: maxHp/maxMp not recalculated on save load~~ FIXED
+Level 57 player had maxHp 170 (should be 660). On load, now recalculates expected values
+and corrects if too low.
 
-### 19. Spirit type appended to name without separator
+### 19. Spirit type appended to name without separator — NOT A BUG
 **File:** `SpiritsTab.tsx`
-Spirit cards show "Ater-844mage" and "Umbra-419warrior" — the type string is concatenated
-directly to the name with no space.
-**Fix:** Add a space or display type separately.
+Accessibility tree shows "Ater-844mage" but visual rendering is correct — name and type
+are in separate `<span>` elements with `ml-2` spacing. No fix needed.
 
-### 21. Auto-dungeon picks gates it can't win
-**File:** `HuntersPath.tsx` auto-dungeon logic
-Auto was using `g.recommended * 0.9` to filter clearable gates, which allowed picking
-gates with actual power significantly above the player's. Player repeatedly entered
-A-rank gates at PWR 330+ when their own PWR was 320, dying in every attempt.
-**Fix:** Use `g.power` (actual gate power including variance) instead of `g.recommended * 0.9`.
+### 21. ~~Auto-dungeon picks gates it can't win~~ FIXED
+Auto now filters by actual gate power (`g.power`) instead of `g.recommended * 0.9`.
 
-### 20. Duplicate gate names in gate list
-**File:** `HuntersPath.tsx` `makeGate()`
-Only 8 names per rank, but up to 14 gates visible. Duplicates common ("Magma Cavern" x2,
-"Oblivion Core" x2, "Twilight Gorge" x2).
-**Fix:** Use shuffle-without-replacement, or append a numeral suffix to duplicates.
+### 20. ~~Duplicate gate names in gate list~~ FIXED
+`makeGate()` now tracks used names and avoids duplicates via shuffle-without-replacement.
+
+---
+
+## Round 3 (found 2026-02-25)
+
+### 22. ~~Potion heal doesn't scale with gate rank~~ FIXED
+**File:** `HuntersPath.tsx` `rollDrop()`
+Heal formula was `(quality/100) * 50 + 25` — purely rarity-based. An S-grade Potion could
+heal +42 HP while an E-grade healed +43 HP. Gate rank was only used for the name label.
+**Fix:** Added `gate.rankIdx * 15` to heal formula. Now E-grade heals ~35-75, S-grade ~100-150.
+
+### 23. ~~usePotion ignores potion's stats, always heals 50% maxHp~~ FIXED
+**File:** `HuntersPath.tsx` `usePotion()`
+All potions healed `Math.floor(maxHp * 0.5)` regardless of their displayed stats. The
+`stats.HP` field was purely cosmetic.
+**Fix:** `usePotion()` now reads `item.stats.HP` for the heal amount (falls back to 50% maxHp
+for legacy potions without stats).
+
+### 24. ~~Shop potions don't scale with player level~~ FIXED
+**File:** `HuntersPath.tsx` `buyPotion()`
+Shop potions used a fixed quality formula giving ~45-55 HP. At level 57 (660 maxHp) this
+heals only 7-8%, making shop potions useless at higher levels.
+**Fix:** Added `player.level * 1.5` bonus to shop potion heal amount.
+
+### 25. ~~Player strip HP/MP bars have no numeric labels~~ FIXED
+**File:** `CombatTab.tsx:58-65`
+Added `text-[10px]` HP/MP labels under each bar in the player strip.
