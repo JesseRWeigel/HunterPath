@@ -166,7 +166,7 @@ function GateList({
                 >
                   {gate.rank}
                 </span>
-                <span className="text-sm text-zinc-200">{gate.rank}-Rank Gate</span>
+                <span className="text-sm text-zinc-200">{gate.name ?? `${gate.rank}-Rank Gate`}</span>
                 {gate.modifiers?.length > 0 && (
                   <span className="text-xs text-zinc-500">
                     {gate.modifiers.length} mod{gate.modifiers.length !== 1 ? "s" : ""}
@@ -178,7 +178,7 @@ function GateList({
               </span>
             </div>
             <div className="flex justify-between text-xs text-zinc-500">
-              <span>{gate.id}</span>
+              <span>{gate.rank}-Rank</span>
               <span className="text-violet-400">~{estExp} EXP</span>
             </div>
             {danger && <div className="text-xs text-red-400 mt-1">Too Dangerous!</div>}
@@ -241,7 +241,7 @@ function ActiveCombat({
 
       {/* Gate info */}
       <div className="text-xs text-zinc-500 text-center">
-        {running?.gate?.rank}-Rank Gate {running?.gate?.id}
+        {running?.gate?.name ?? `${running?.gate?.rank}-Rank Gate`}
         {running?.tick != null && <span className="ml-2">Tick {running.tick}</span>}
       </div>
 

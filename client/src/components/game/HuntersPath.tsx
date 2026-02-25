@@ -323,9 +323,11 @@ function makeGate(rankIdx: number): Gate {
   const shuffled = [...DUNGEON_MODIFIERS].sort(() => Math.random() - 0.5);
   const modifiers = shuffled.slice(0, modifierCount);
 
+  const namePool = GATE_NAMES[rank] ?? GATE_NAMES["E"];
+  const gateName = namePool[Math.floor(Math.random() * namePool.length)];
   return {
     id,
-    name: `${rank}-Rank Gate ${id.slice(0, 3).toUpperCase()}`,
+    name: gateName,
     rank,
     rankIdx,
     recommended: rec,
@@ -1110,6 +1112,34 @@ const MONSTER_DATA = {
   },
 };
 
+// Thematic gate names by rank
+const GATE_NAMES: Record<string, string[]> = {
+  E: [
+    "Goblin Burrow", "Mushroom Grotto", "Rat Warren", "Slime Pit",
+    "Mossy Tunnel", "Abandoned Mine", "Shallow Cave", "Dusty Cellar",
+  ],
+  D: [
+    "Orc Stronghold", "Cursed Mines", "Swamp Depths", "Iron Crypt",
+    "Bandit Hideout", "Troll Bridge", "Dark Hollow", "Bone Quarry",
+  ],
+  C: [
+    "Shadow Forest", "Moonlit Ruins", "Phantom Keep", "Crimson Marsh",
+    "Spider Nest", "Haunted Chapel", "Witch's Glade", "Twilight Gorge",
+  ],
+  B: [
+    "Troll Citadel", "Thunder Peak", "Frozen Fortress", "Magma Cavern",
+    "War Bastion", "Storm Spire", "Obsidian Vault", "Siege Grounds",
+  ],
+  A: [
+    "Dragon's Lair", "Inferno Sanctum", "Sky Fortress", "Ashen Throne",
+    "Blazing Halls", "Wyrm's Den", "Phoenix Roost", "Flame Citadel",
+  ],
+  S: [
+    "Void Nexus", "Abyssal Gate", "Reality Fracture", "Chaos Rift",
+    "World's Edge", "Dimensional Tear", "Oblivion Core", "Shattered Plane",
+  ],
+};
+
 // Combat log flavor text
 const PLAYER_ATTACK_MSGS = [
   (dmg: number) => `Hunter strikes for ${dmg} damage!`,
@@ -1549,9 +1579,15 @@ export default function HuntersPath() {
         );
 
         setPlayer(gameState.player);
-        setGates(
-          gameState.gates || generateGatePool(gameState.player?.level || 1)
-        );
+        // Migrate old gate names to thematic names
+        const loadedGates = gameState.gates || generateGatePool(gameState.player?.level || 1);
+        for (const g of loadedGates) {
+          if (/^[A-Z]-Rank Gate/.test(g.name)) {
+            const pool = GATE_NAMES[g.rank] ?? GATE_NAMES["E"];
+            g.name = pool[Math.floor(Math.random() * pool.length)];
+          }
+        }
+        setGates(loadedGates);
         setGold(gameState.gold || 50);
         setGameTime(gameState.gameTime || initialGameTime());
         // Load daily state - the daily state initialization will handle the real-time reset logic
@@ -5643,7 +5679,7 @@ export default function HuntersPath() {
                               {g.rank}
                             </div>
                             <span className="font-bold text-zinc-100">
-                              {g.rank}-Rank Gate
+                              {g.name}
                             </span>
                             {tooHard && (
                               <i className="fas fa-exclamation-triangle text-red-400 text-sm"></i>
