@@ -1110,6 +1110,86 @@ const MONSTER_DATA = {
   },
 };
 
+// Combat log flavor text
+const PLAYER_ATTACK_MSGS = [
+  (dmg: number) => `Hunter strikes for ${dmg} damage!`,
+  (dmg: number) => `Hunter lands a solid blow — ${dmg} damage!`,
+  (dmg: number) => `Hunter slashes through for ${dmg} damage!`,
+  (dmg: number) => `Hunter charges in — ${dmg} damage dealt!`,
+  (dmg: number) => `A swift strike connects — ${dmg} damage!`,
+  (dmg: number) => `Hunter finds an opening — ${dmg} damage!`,
+];
+const BOSS_ATTACK_MSGS: Record<string, ((name: string, dmg: number) => string)[]> = {
+  E: [
+    (n, d) => `${n} swings wildly — ${d} damage!`,
+    (n, d) => `${n} lunges with a crude blade — ${d} damage!`,
+  ],
+  D: [
+    (n, d) => `${n} roars and smashes down — ${d} damage!`,
+    (n, d) => `${n} charges with brute force — ${d} damage!`,
+  ],
+  C: [
+    (n, d) => `${n} strikes from the shadows — ${d} damage!`,
+    (n, d) => `${n} vanishes and reappears — ${d} damage!`,
+  ],
+  B: [
+    (n, d) => `${n} slams their weapon down — ${d} damage!`,
+    (n, d) => `${n} hurls a massive blow — ${d} damage!`,
+  ],
+  A: [
+    (n, d) => `${n} unleashes dragonfire — ${d} damage!`,
+    (n, d) => `${n} swings a blazing sword — ${d} damage!`,
+  ],
+  S: [
+    (n, d) => `${n} tears through reality — ${d} damage!`,
+    (n, d) => `${n} channels the void — ${d} damage!`,
+  ],
+};
+const BOSS_BLOCK_MSGS = [
+  (name: string) => `${name}'s attack is deflected!`,
+  (name: string) => `Hunter dodges ${name}'s strike!`,
+  (name: string) => `${name}'s blow glances off!`,
+];
+const CRIT_MSGS = [
+  (dmg: number) => `💥 Critical hit! ${dmg} damage!`,
+  (dmg: number) => `💥 Devastating blow — ${dmg} damage!`,
+  (dmg: number) => `💥 Hunter finds a weak spot — ${dmg} critical damage!`,
+];
+const SPIRIT_ABILITY_MSGS: Record<string, string[]> = {
+  berserker_rage: [
+    "⚔️ Berserker Rage surges — damage increased!",
+    "⚔️ Rage takes hold — striking harder!",
+  ],
+  shadow_step: [
+    "🌑 Shadow Step — enhanced strike!",
+    "🌑 Slipping through shadows for a precise hit!",
+  ],
+  ethereal_shield: [
+    "🛡️ Ethereal Shield shimmers into place!",
+  ],
+  vitality_aura: [
+    "💚 Vitality Aura pulses with healing energy",
+  ],
+  mana_shield: [
+    "🔮 Mana Shield absorbs incoming damage",
+  ],
+};
+const BOSS_PHASE_MSGS: Record<string, string[]> = {
+  "75": [
+    "The boss staggers but fights on!",
+    "Blood drips — the boss grows desperate!",
+  ],
+  "50": [
+    "The boss is wounded — halfway down!",
+    "⚠️ The boss enters a frenzy!",
+  ],
+  "25": [
+    "The boss is near death — finish it!",
+    "💀 The boss makes a last stand!",
+  ],
+};
+function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+
 type BossRank = (typeof RANKS)[number];
 const BOSS_COMPONENTS: Record<BossRank, React.ComponentType<{ className?: string }>> = {
   E: BossE,
@@ -1737,35 +1817,59 @@ export default function HuntersPath() {
         const newFatigue = clamp(player.fatigue + 0.5 * fatigueGainMult, 0, 100);
 
         // Add combat log entries
+        const rank = prev.gate?.rank ?? "E";
+        const oldBossHpPct = boss.maxHp > 0 ? (oldHpEnemy / boss.maxHp) * 100 : 0;
+        const newBossHpPct = boss.maxHp > 0 ? (hpEnemy / boss.maxHp) * 100 : 0;
         setCombatLog((log) => {
-          const newEntries = [];
+          const newEntries: string[] = [];
+          const isCrit = dmgPlayer > pPower * 1.5;
 
           // Player attack
           if (dmgPlayer > 0) {
-            newEntries.push(`Hunter attacks for ${dmgPlayer} damage!`);
+            if (isCrit) {
+              newEntries.push(pick(CRIT_MSGS)(dmgPlayer));
+            } else {
+              newEntries.push(pick(PLAYER_ATTACK_MSGS)(dmgPlayer));
+            }
           }
 
           // Boss attack
           if (dmgBoss > 0) {
-            newEntries.push(`${boss.name} attacks for ${dmgBoss} damage!`);
+            const rankMsgs = BOSS_ATTACK_MSGS[rank] ?? BOSS_ATTACK_MSGS["E"];
+            newEntries.push(pick(rankMsgs)(boss.name, dmgBoss));
           } else {
-            newEntries.push(`${boss.name}'s attack is blocked!`);
+            newEntries.push(pick(BOSS_BLOCK_MSGS)(boss.name));
           }
 
-          // Critical hits
-          if (dmgPlayer > pPower * 1.5) {
-            newEntries.push("Critical hit! 💥");
+          // Boss HP phase transitions
+          for (const threshold of [75, 50, 25]) {
+            if (oldBossHpPct > threshold && newBossHpPct <= threshold) {
+              newEntries.push(pick(BOSS_PHASE_MSGS[String(threshold)]));
+            }
           }
 
           // Spirit ability procs (throttled to avoid spam)
           if (spiritDmgBonus > 0 && tick % 3 === 0) {
-            newEntries.push(`✨ Spirit power enhanced your attack! (+${Math.round(spiritDmgBonus * 100)}%)`);
+            // Find which spirit abilities are active for flavor
+            for (const spirit of player.spirits) {
+              for (const ab of (spirit.abilities || [])) {
+                if (ab.type !== "passive") continue;
+                if (ab.id === "berserker_rage" && player.hp < player.maxHp * 0.5) {
+                  newEntries.push(pick(SPIRIT_ABILITY_MSGS["berserker_rage"]));
+                  break;
+                }
+                if (ab.id === "shadow_step" && tick % 3 === 0) {
+                  newEntries.push(pick(SPIRIT_ABILITY_MSGS["shadow_step"]));
+                  break;
+                }
+              }
+            }
           }
           if (blocked) {
-            newEntries.push(`🛡️ Spirit shield blocked the boss attack!`);
+            newEntries.push(pick(SPIRIT_ABILITY_MSGS["ethereal_shield"]));
           }
           if (spiritHealPerTick > 0 && tick % 3 === 0) {
-            newEntries.push(`💚 Spirit healing restored ${spiritHealPerTick} HP`);
+            newEntries.push(pick(SPIRIT_ABILITY_MSGS["vitality_aura"]));
           }
 
           // Keep only last 8 entries
