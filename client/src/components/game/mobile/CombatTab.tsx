@@ -6,9 +6,6 @@ const BOSS_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   E: BossE, D: BossD, C: BossC, B: BossB, A: BossA, S: BossS,
 };
 
-const RANK_LABEL: Record<string, string> = {
-  E: "Goblin", D: "Orc", C: "Dark Elf", B: "Troll", A: "Dragon Knight", S: "Void Lord",
-};
 
 interface CombatTabProps {
   player: any;
@@ -230,7 +227,10 @@ function ActiveCombat({
             <div className="w-14 h-14 mx-auto mb-1 bg-zinc-800 rounded-full" />
           )}
           <div className="text-xs font-semibold text-red-400 mb-1">
-            {RANK_LABEL[running?.gate?.rank] ?? running?.gate?.rank}-Rank Boss
+            {running?.boss?.name ?? "Boss"}
+          </div>
+          <div className="text-[10px] text-zinc-500">
+            {running?.gate?.rank}-Rank Boss
           </div>
           <HpBar current={bossHp} max={bossMaxHp} color="bg-orange-500" />
           <div className="text-xs text-zinc-500 mt-0.5">
