@@ -305,12 +305,8 @@ const DUNGEON_MODIFIERS: DungeonModifier[] = [
 ];
 
 function gatePowerForRank(rankIdx: number) {
-  // More balanced scaling - significantly reduced S-rank difficulty spike
-  if (rankIdx === 5) {
-    // S-rank - much more manageable
-    return Math.pow(1.4, rankIdx) * 20 + rankIdx * 10; // Significantly reduced scaling for S-rank
-  }
-  return Math.pow(1.8, rankIdx) * 30 + rankIdx * 15;
+  // Consistent exponential scaling: E=30, D=69, C=127, B=220, A=375, S=600
+  return Math.pow(1.7, rankIdx) * 30 + rankIdx * 20;
 }
 
 function makeGate(rankIdx: number): Gate {
@@ -344,12 +340,7 @@ function makeBoss(rankIdx: number): Boss {
   const rank = RANKS[rankIdx];
   const monsterData = MONSTER_DATA[rank as keyof typeof MONSTER_DATA];
 
-  // Reduce S-rank boss damage significantly
-  let atkMultiplier = 0.8;
-  if (rankIdx === 5) {
-    // S-rank
-    atkMultiplier = 0.4; // Much lower attack for S-rank
-  }
+  const atkMultiplier = 0.8;
 
   const hp = Math.floor(base * 8 + rand(-25, 25));
   return {
