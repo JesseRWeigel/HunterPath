@@ -6413,8 +6413,8 @@ export default function HuntersPath() {
         </Dialog>
       )}
 
-      {/* Daily Login Reward Modal */}
-      {loginReward?.show && (
+      {/* Daily Login Reward Modal — only show after offline gains modal is dismissed */}
+      {loginReward?.show && !offlineGains?.show && (
         <Dialog open={true} onOpenChange={() => setLoginReward(null)}>
           <DialogContent>
             <DialogHeader>
