@@ -2977,9 +2977,16 @@ export default function HuntersPath() {
   // Auto-dungeon logic: after each run ends (or combatResult appears), queue next run
   useEffect(() => {
     if (!autoDungeon || inRun || player.fatigue > 80) return;
-    if (player.hp < player.maxHp * 0.2) {
-      logPush("Auto-dungeon paused: HP too low. Recover first!");
-      return;
+
+    // Auto-rest if HP is low before entering next gate
+    if (player.hp < player.maxHp * 0.5) {
+      const timer = setTimeout(() => {
+        if (!autoDungeonRef.current) return;
+        if (combatResult) setCombatResult(null);
+        rest();
+        logPush("Auto-dungeon: Resting before next gate...");
+      }, 1500);
+      return () => clearTimeout(timer);
     }
 
     const timer = setTimeout(() => {
@@ -2988,8 +2995,8 @@ export default function HuntersPath() {
       // Auto-dismiss combat result if one is showing
       if (combatResult) setCombatResult(null);
 
-      // Pick the best gate the player can handle (power >= 70% of gate recommended)
-      const clearable = gates.filter(g => pPower >= g.recommended * 0.7);
+      // Pick the best gate the player can comfortably clear (power >= 90% of recommended)
+      const clearable = gates.filter(g => pPower >= g.recommended * 0.9);
       if (clearable.length === 0) {
         logPush("Auto-dungeon: No suitable gates found. Disabling.");
         setAutoDungeon(false);
