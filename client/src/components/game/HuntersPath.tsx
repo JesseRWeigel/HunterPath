@@ -3202,8 +3202,8 @@ export default function HuntersPath() {
       // Auto-dismiss combat result if one is showing
       if (combatResult) setCombatResult(null);
 
-      // Pick the best gate the player can comfortably clear (power >= 90% of recommended)
-      const clearable = gates.filter(g => pPower >= g.recommended * 0.9);
+      // Pick gates the player can comfortably clear (power >= actual gate power)
+      const clearable = gates.filter(g => pPower >= g.power);
       if (clearable.length === 0) {
         logPush("Auto-dungeon: No suitable gates found. Disabling.");
         setAutoDungeon(false);

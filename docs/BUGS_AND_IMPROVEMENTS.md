@@ -93,6 +93,13 @@ Spirit cards show "Ater-844mage" and "Umbra-419warrior" — the type string is c
 directly to the name with no space.
 **Fix:** Add a space or display type separately.
 
+### 21. Auto-dungeon picks gates it can't win
+**File:** `HuntersPath.tsx` auto-dungeon logic
+Auto was using `g.recommended * 0.9` to filter clearable gates, which allowed picking
+gates with actual power significantly above the player's. Player repeatedly entered
+A-rank gates at PWR 330+ when their own PWR was 320, dying in every attempt.
+**Fix:** Use `g.power` (actual gate power including variance) instead of `g.recommended * 0.9`.
+
 ### 20. Duplicate gate names in gate list
 **File:** `HuntersPath.tsx` `makeGate()`
 Only 8 names per rank, but up to 14 gates visible. Duplicates common ("Magma Cavern" x2,
