@@ -177,7 +177,7 @@ function GateList({
                 )}
               </div>
               <span className={`text-xs font-bold ${danger ? "text-red-400" : "text-emerald-400"}`}>
-                PWR {gate.power}
+                PWR {Math.round(gate.power)}
               </span>
             </div>
             <div className="flex justify-between text-xs text-zinc-500">

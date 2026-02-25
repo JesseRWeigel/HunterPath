@@ -306,7 +306,7 @@ const DUNGEON_MODIFIERS: DungeonModifier[] = [
 
 function gatePowerForRank(rankIdx: number) {
   // Consistent exponential scaling: E=30, D=69, C=127, B=220, A=375, S=600
-  return Math.pow(1.7, rankIdx) * 30 + rankIdx * 20;
+  return Math.round(Math.pow(1.7, rankIdx) * 30 + rankIdx * 20);
 }
 
 function makeGate(rankIdx: number): Gate {
@@ -314,7 +314,7 @@ function makeGate(rankIdx: number): Gate {
   const rank = RANKS[rankIdx];
   const rec = gatePowerForRank(rankIdx);
   const variance = rand(-20, 20);
-  const power = Math.max(10, rec + variance);
+  const power = Math.round(Math.max(10, rec + variance));
 
   // Roll 0-2 modifiers (higher rank = more modifiers)
   const modifierCount = Math.random() < 0.25 + rankIdx * 0.08
