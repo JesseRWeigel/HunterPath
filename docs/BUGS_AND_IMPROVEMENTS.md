@@ -104,3 +104,24 @@ heals only 7-8%, making shop potions useless at higher levels.
 ### 25. ~~Player strip HP/MP bars have no numeric labels~~ FIXED
 **File:** `CombatTab.tsx:58-65`
 Added `text-[10px]` HP/MP labels under each bar in the player strip.
+
+---
+
+## Story Integration (2026-02-25)
+
+### 26. Boss Intro Sequence — DONE
+**File:** `HuntersPath.tsx` `startGate()` / `beginCombat()`
+Before combat starts, a cinematic boss encounter screen shows the boss art, name, rank,
+and dialogue line. Auto-proceeds after 2.5s or tap to skip. Skipped during auto-dungeon.
+
+### 27. Story Event Modals — DONE
+**File:** `HuntersPath.tsx` `handleLevelGain()` / `queueStoryEvent()`
+Rank milestones (Lv 1/3/6/10/20/35/50) now show a full-screen cinematic modal instead of
+just logging text. Events queue properly — they wait for level-up and spirit binding modals
+to finish before appearing.
+
+### 28. First-Clear Celebrations — DONE
+**File:** `HuntersPath.tsx` victory handler
+First time clearing each gate rank (E/D/C/B/A/S) triggers a story event with unique
+narrative text. Tracked via `player.clearedRanks` in save data. Each rank has its own
+celebration text (e.g., "D-Rank Conquered", "A-Rank Conquered!", "S-Rank — The Impossible").

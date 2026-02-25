@@ -159,6 +159,7 @@ interface Player {
   equipment: Equipment;
   rebirths: number;        // Number of times rebirthing
   prestigePoints: number;  // Total prestige points earned
+  clearedRanks?: string[]; // Ranks cleared for first time (E, D, C, B, A, S)
 }
 
 interface DailyTask {
@@ -1214,15 +1215,25 @@ const BOSS_PHASE_MSGS: Record<string, string[]> = {
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // Story progression — rank-up milestones (triggered on level-up)
-const RANK_MILESTONES: { level: number; title: string; message: string }[] = [
-  { level: 1,  title: "The Awakening",           message: "You awaken to find a shimmering gate before you. A strange instinct compels you forward. Your journey as a Hunter begins." },
-  { level: 3,  title: "D-Rank Certified",         message: "The Hunter's Guild acknowledges your skill. D-Rank gates now open to you. The creatures within are fiercer — prepare yourself." },
-  { level: 6,  title: "C-Rank Hunter",            message: "Your reputation grows. Shadows in C-Rank gates whisper of a Hunter who fights without fear. Darker dungeons beckon." },
-  { level: 10, title: "B-Rank Breakthrough",       message: "Few Hunters reach B-Rank. The Guild Commander nods with respect. \"The gates are getting worse,\" she warns. \"Something stirs beyond them.\"" },
-  { level: 20, title: "A-Rank — Elite Hunter",     message: "A-Rank. The world watches. Dragons and ancient knights guard these gates. You stand among the strongest Hunters alive." },
-  { level: 35, title: "S-Rank — Legend",           message: "S-Rank gates tear at the fabric of reality itself. You are one of the few who dares enter. The void beyond these gates holds secrets older than the world." },
-  { level: 50, title: "Transcendence",            message: "You have reached the pinnacle. The gates themselves seem to respond to your power. Perhaps it is time to be reborn — stronger than before." },
+const RANK_MILESTONES: { level: number; title: string; message: string; color: string }[] = [
+  { level: 1,  title: "The Awakening",           message: "You awaken to find a shimmering gate before you. A strange instinct compels you forward. Your journey as a Hunter begins.", color: "violet" },
+  { level: 3,  title: "D-Rank Certified",         message: "The Hunter's Guild acknowledges your skill. D-Rank gates now open to you. The creatures within are fiercer — prepare yourself.", color: "green" },
+  { level: 6,  title: "C-Rank Hunter",            message: "Your reputation grows. Shadows in C-Rank gates whisper of a Hunter who fights without fear. Darker dungeons beckon.", color: "blue" },
+  { level: 10, title: "B-Rank Breakthrough",       message: "Few Hunters reach B-Rank. The Guild Commander nods with respect. \"The gates are getting worse,\" she warns. \"Something stirs beyond them.\"", color: "orange" },
+  { level: 20, title: "A-Rank — Elite Hunter",     message: "A-Rank. The world watches. Dragons and ancient knights guard these gates. You stand among the strongest Hunters alive.", color: "red" },
+  { level: 35, title: "S-Rank — Legend",           message: "S-Rank gates tear at the fabric of reality itself. You are one of the few who dares enter. The void beyond these gates holds secrets older than the world.", color: "purple" },
+  { level: 50, title: "Transcendence",            message: "You have reached the pinnacle. The gates themselves seem to respond to your power. Perhaps it is time to be reborn — stronger than before.", color: "amber" },
 ];
+
+// First-clear celebration text per rank
+const FIRST_CLEAR_TEXT: Record<string, { title: string; message: string }> = {
+  E: { title: "First Gate Cleared", message: "You emerge from your first gate, shaking but alive. The Hunter's Guild takes notice — a new Hunter has begun their journey." },
+  D: { title: "D-Rank Conquered", message: "The shadows of D-Rank gates no longer frighten you. You've proven you can handle what lurks in the dark. The Guild marks your file: 'Promising.'" },
+  C: { title: "C-Rank Vanquished", message: "C-Rank bosses fall before you. Other Hunters whisper your name in the guild halls. The path ahead grows darker — but so does your resolve." },
+  B: { title: "B-Rank Breakthrough!", message: "You've done what most Hunters never will — cleared a B-Rank gate. The Guild Commander summons you personally. \"We need Hunters like you. The worst is yet to come.\"" },
+  A: { title: "A-Rank Conquered!", message: "Dragons and ancient knights — the guardians of A-Rank gates — have fallen to your blade. The world trembles. You stand among the elite, the chosen few who dare face the abyss." },
+  S: { title: "S-Rank — The Impossible", message: "Reality itself bends around you as you emerge from an S-Rank gate. No one believed it possible. The fabric of dimensions whispers your name. You are legend." },
+};
 
 // Boss dialogue shown at combat start
 const BOSS_DIALOGUE: Record<string, string[]> = {
@@ -1410,6 +1421,38 @@ export default function HuntersPath() {
     statPointsGained: 0,
     showStatAllocation: false,
   });
+
+  // Story event modal — shown for rank milestones & first clears
+  const [storyEvent, setStoryEvent] = useState<{
+    title: string;
+    message: string;
+    rankColor?: string;
+  } | null>(null);
+  const pendingStoryEvents = useRef<{ title: string; message: string; rankColor?: string }[]>([]);
+  const [storyQueueTrigger, setStoryQueueTrigger] = useState(0);
+
+  function queueStoryEvent(event: { title: string; message: string; rankColor?: string }) {
+    pendingStoryEvents.current.push(event);
+    setStoryQueueTrigger(n => n + 1);
+  }
+
+  // Show pending story events when level-up and spirit binding are both done
+  useEffect(() => {
+    if (levelUpState.isActive || spiritBindingState.isActive || storyEvent) return;
+    if (pendingStoryEvents.current.length > 0) {
+      const next = pendingStoryEvents.current.shift()!;
+      // Small delay so it doesn't flash immediately during transitions
+      const timer = setTimeout(() => setStoryEvent(next), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [levelUpState.isActive, spiritBindingState.isActive, storyEvent, storyQueueTrigger]);
+
+  // Boss intro sequence — shown before combat starts
+  const [bossIntro, setBossIntro] = useState<{
+    gate: Gate;
+    boss: Boss;
+    dialogue: string;
+  } | null>(null);
 
   // Stat progression tracking
   const [statHistory, setStatHistory] = useState<
@@ -2051,6 +2094,20 @@ export default function HuntersPath() {
             mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.3), pp.maxMp),
           }));
 
+          // First-clear celebration — queue story modal for new rank clears
+          const rank = prev.gate.rank;
+          const alreadyCleared = player.clearedRanks ?? [];
+          if (!alreadyCleared.includes(rank)) {
+            setPlayer((pp) => ({
+              ...pp,
+              clearedRanks: [...(pp.clearedRanks ?? []), rank],
+            }));
+            const firstClear = FIRST_CLEAR_TEXT[rank];
+            if (firstClear) {
+              queueStoryEvent({ title: firstClear.title, message: firstClear.message });
+            }
+          }
+
           // Update statistics
           updateStats(true, exp, goldGain, prev.gate.rank);
           checkAchievements();
@@ -2156,11 +2213,12 @@ export default function HuntersPath() {
         hapticHeavy();
         triggerParticles("level-up", "50%", "50%");
 
-        // Check for rank milestone story event
+        // Check for rank milestone story event — queue modal to show after level-up
         const milestone = RANK_MILESTONES.find(m => m.level === level);
         if (milestone) {
           logPush(`--- ${milestone.title} ---`);
           logPush(milestone.message);
+          queueStoryEvent({ title: milestone.title, message: milestone.message, rankColor: milestone.color });
         }
       }
 
@@ -2537,10 +2595,40 @@ export default function HuntersPath() {
   }
 
   function startGate(g: Gate) {
-    if (inRun) return;
+    if (inRun || bossIntro) return;
 
     // Track gate entry for exploration quests
     trackQuestProgress("gate_entered");
+
+    const dialogue = BOSS_DIALOGUE[g.rank];
+    const line = dialogue ? pick(dialogue) : "";
+
+    // Play gate entry sound + haptic rumble
+    playSound("gate_enter");
+    hapticRumble();
+    logPush(`Entered ${g.name} (${g.rank}-Rank)`);
+
+    // Skip boss intro during auto-dungeon — go straight to combat
+    if (autoDungeonRef.current) {
+      beginCombat(g, line);
+      return;
+    }
+
+    // Show boss intro sequence first
+    setBossIntro({ gate: g, boss: g.boss, dialogue: line });
+
+    // Auto-proceed to combat after 2.5s
+    setTimeout(() => {
+      beginCombat(g, line);
+    }, 2500);
+  }
+
+  const beginCombatRef = useRef(false);
+  function beginCombat(g: Gate, dialogueLine: string) {
+    // Guard against double-call (timeout + tap)
+    if (beginCombatRef.current) return;
+    beginCombatRef.current = true;
+    setBossIntro(null);
 
     setRunning({
       gate: g,
@@ -2548,9 +2636,7 @@ export default function HuntersPath() {
       hpEnemy: g.boss.hp,
       tick: 0,
     });
-    // Initialize combat log with boss dialogue
-    const dialogue = BOSS_DIALOGUE[g.rank];
-    const initLog = dialogue ? [pick(dialogue)] : [];
+    const initLog = dialogueLine ? [dialogueLine] : [];
     setCombatLog(initLog);
     setCombatResult(null);
 
@@ -2563,11 +2649,13 @@ export default function HuntersPath() {
       bossRank: "",
     });
 
-    // Play gate entry sound + haptic rumble
-    playSound("gate_enter");
-    hapticRumble();
+    // Reset guard after a tick
+    setTimeout(() => { beginCombatRef.current = false; }, 100);
+  }
 
-    logPush(`Entered ${g.name} (${g.rank}-Rank)`);
+  function skipBossIntro() {
+    if (!bossIntro) return;
+    beginCombat(bossIntro.gate, bossIntro.dialogue);
   }
 
   function rest() {
@@ -4514,6 +4602,86 @@ export default function HuntersPath() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Story Event Modal — milestones & first clears */}
+            {storyEvent && (
+              <div
+                className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-pointer"
+                onClick={() => setStoryEvent(null)}
+              >
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                  {/* Atmospheric particles */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-1/4 left-1/5 w-1 h-1 bg-violet-400 rounded-full animate-pulse opacity-40" />
+                    <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse opacity-30" style={{ animationDelay: "0.3s" }} />
+                    <div className="absolute bottom-1/3 left-1/3 w-1 h-1 bg-purple-400 rounded-full animate-pulse opacity-50" style={{ animationDelay: "0.6s" }} />
+                    <div className="absolute bottom-1/4 right-1/3 w-2 h-2 bg-violet-300 rounded-full animate-pulse opacity-20" style={{ animationDelay: "0.9s" }} />
+                  </div>
+                  {/* Content */}
+                  <div className="relative z-10 text-center max-w-lg mx-6 animate-fade-in">
+                    <div className="mb-3 text-xs uppercase tracking-[0.3em] text-violet-400/70 font-semibold">
+                      Story Event
+                    </div>
+                    <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-violet-500 to-transparent mx-auto mb-6" />
+                    <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-violet-200 leading-tight">
+                      {storyEvent.title}
+                    </h2>
+                    <p className="text-lg text-zinc-300 leading-relaxed mb-8 font-light">
+                      {storyEvent.message}
+                    </p>
+                    <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-violet-500 to-transparent mx-auto mb-6" />
+                    <div className="text-sm text-zinc-500 animate-pulse">
+                      Tap to continue
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Boss Intro Sequence — shown before combat starts */}
+            {bossIntro && (
+              <div
+                className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-pointer"
+                onClick={skipBossIntro}
+              >
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                  {/* Dramatic radial glow */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-red-900/20 blur-3xl animate-pulse" />
+                  </div>
+                  {/* Content */}
+                  <div className="relative z-10 text-center max-w-md mx-6">
+                    <div className="mb-2 text-xs uppercase tracking-[0.3em] text-red-400/70 font-semibold">
+                      {bossIntro.gate.name}
+                    </div>
+                    <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto mb-5" />
+                    {/* Boss art */}
+                    {(() => {
+                      const BossComp = BOSS_COMPONENTS[bossIntro.gate.rank as BossRank];
+                      return BossComp ? (
+                        <BossComp className="w-24 h-24 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.4)]" />
+                      ) : (
+                        <div className="w-24 h-24 mx-auto mb-4 bg-zinc-800 rounded-full" />
+                      );
+                    })()}
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-1 text-red-200">
+                      {bossIntro.boss.name}
+                    </h2>
+                    <div className="text-sm text-zinc-500 mb-5">
+                      {bossIntro.gate.rank}-Rank Boss
+                    </div>
+                    {bossIntro.dialogue && (
+                      <p className="text-lg text-zinc-300 italic leading-relaxed mb-6">
+                        {bossIntro.dialogue}
+                      </p>
+                    )}
+                    <div className="text-sm text-zinc-600 animate-pulse">
+                      Tap to skip
                     </div>
                   </div>
                 </div>
@@ -6541,6 +6709,80 @@ export default function HuntersPath() {
       </div>
 
       {/* Audio managed by audioManager singleton — no DOM elements needed */}
+
+      {/* Story Event Modal (desktop) */}
+      {storyEvent && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-pointer"
+          onClick={() => setStoryEvent(null)}
+        >
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/4 left-1/5 w-1 h-1 bg-violet-400 rounded-full animate-pulse opacity-40" />
+              <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse opacity-30" style={{ animationDelay: "0.3s" }} />
+              <div className="absolute bottom-1/3 left-1/3 w-1 h-1 bg-purple-400 rounded-full animate-pulse opacity-50" style={{ animationDelay: "0.6s" }} />
+            </div>
+            <div className="relative z-10 text-center max-w-lg mx-6">
+              <div className="mb-3 text-xs uppercase tracking-[0.3em] text-violet-400/70 font-semibold">
+                Story Event
+              </div>
+              <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-violet-500 to-transparent mx-auto mb-6" />
+              <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-violet-200 leading-tight">
+                {storyEvent.title}
+              </h2>
+              <p className="text-lg text-zinc-300 leading-relaxed mb-8 font-light">
+                {storyEvent.message}
+              </p>
+              <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-violet-500 to-transparent mx-auto mb-6" />
+              <div className="text-sm text-zinc-500 animate-pulse">
+                Click to continue
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Boss Intro Sequence (desktop) */}
+      {bossIntro && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-pointer"
+          onClick={skipBossIntro}
+        >
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-red-900/20 blur-3xl animate-pulse" />
+            </div>
+            <div className="relative z-10 text-center max-w-md mx-6">
+              <div className="mb-2 text-xs uppercase tracking-[0.3em] text-red-400/70 font-semibold">
+                {bossIntro.gate.name}
+              </div>
+              <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto mb-5" />
+              {(() => {
+                const BossComp = BOSS_COMPONENTS[bossIntro.gate.rank as BossRank];
+                return BossComp ? (
+                  <BossComp className="w-24 h-24 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.4)]" />
+                ) : (
+                  <div className="w-24 h-24 mx-auto mb-4 bg-zinc-800 rounded-full" />
+                );
+              })()}
+              <h2 className="text-2xl sm:text-3xl font-bold mb-1 text-red-200">
+                {bossIntro.boss.name}
+              </h2>
+              <div className="text-sm text-zinc-500 mb-5">
+                {bossIntro.gate.rank}-Rank Boss
+              </div>
+              {bossIntro.dialogue && (
+                <p className="text-lg text-zinc-300 italic leading-relaxed mb-6">
+                  {bossIntro.dialogue}
+                </p>
+              )}
+              <div className="text-sm text-zinc-600 animate-pulse">
+                Click to skip
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rebirth Modal */}
       {rebirthModalOpen && (
