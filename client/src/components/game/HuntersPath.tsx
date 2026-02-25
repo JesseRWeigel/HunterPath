@@ -1843,6 +1843,13 @@ export default function HuntersPath() {
             setLog((l) => [`Found: ${drop.name}`, ...l]);
           }
 
+          // Heal to full on victory
+          setPlayer((pp) => ({
+            ...pp,
+            hp: pp.maxHp,
+            mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.3), pp.maxMp),
+          }));
+
           // Update statistics
           updateStats(true, exp, goldGain, prev.gate.rank);
           checkAchievements();
@@ -1898,11 +1905,12 @@ export default function HuntersPath() {
             `You were defeated in ${prev.gate.name}. Rest and try again.`,
             ...l,
           ]);
-          // defeat penalty: lose some gold and gain fatigue
+          // defeat penalty: lose some gold; recover to 30% HP
           setGold((g) => Math.max(0, g - 10));
           setPlayer((pp) => ({
             ...pp,
-            hp: Math.max(5, Math.floor(pp.maxHp * 0.2)),
+            hp: Math.max(5, Math.floor(pp.maxHp * 0.3)),
+            mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.2), pp.maxMp),
           }));
 
           // Update statistics
@@ -2353,7 +2361,7 @@ export default function HuntersPath() {
 
   function rest() {
     if (inRun) return;
-    const heal = Math.floor(player.maxHp * 0.4);
+    const heal = Math.floor(player.maxHp * 0.6);
     const mp = Math.floor(player.maxMp * 0.5);
     setPlayer((p) => ({
       ...p,
