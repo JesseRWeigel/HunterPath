@@ -68,3 +68,33 @@ Combat ends too fast. Show proper victory screen with rewards.
 Add a progression narrative with rank-up milestones, boss dialogue, and lore entries.
 Keep it original - focus on "Hunters clearing dimensional gates" as a generic fantasy premise.
 Avoid any specific Solo Leveling elements (shadow army, necromancer powers, system messages).
+
+---
+
+## Round 2 (found 2026-02-25)
+
+### 16. ~~Inventory duplicated in mobile Log tab~~ FIXED
+Inventory section appeared in both Log tab and Manage > Inventory accordion.
+
+### 17. ~~Rune "Use" button missing on mobile~~ FIXED
+Rune items had no interaction button on mobile Manage > Inventory.
+
+### 18. CRITICAL: maxHp/maxMp not recalculated on save load
+**File:** `HuntersPath.tsx` save loading code
+Level 57 player has maxHp 170 (should be 660) and maxMp 85 (should be 330). Corrupted
+by older leveling code that didn't track maxHp properly. Makes the game unwinnable at
+higher levels since bosses one-shot the player.
+**Fix:** On load, recalculate `maxHp = 100 + (level-1)*10` and `maxMp = 50 + (level-1)*5`
+if current values are lower than expected.
+
+### 19. Spirit type appended to name without separator
+**File:** `SpiritsTab.tsx`
+Spirit cards show "Ater-844mage" and "Umbra-419warrior" — the type string is concatenated
+directly to the name with no space.
+**Fix:** Add a space or display type separately.
+
+### 20. Duplicate gate names in gate list
+**File:** `HuntersPath.tsx` `makeGate()`
+Only 8 names per rank, but up to 14 gates visible. Duplicates common ("Magma Cavern" x2,
+"Oblivion Core" x2, "Twilight Gorge" x2).
+**Fix:** Use shuffle-without-replacement, or append a numeral suffix to duplicates.

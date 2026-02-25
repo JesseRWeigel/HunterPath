@@ -309,7 +309,7 @@ function gatePowerForRank(rankIdx: number) {
   return Math.round(Math.pow(1.7, rankIdx) * 30 + rankIdx * 20);
 }
 
-function makeGate(rankIdx: number): Gate {
+function makeGate(rankIdx: number, usedNames?: Set<string>): Gate {
   const id = uid();
   const rank = RANKS[rankIdx];
   const rec = gatePowerForRank(rankIdx);
@@ -324,7 +324,9 @@ function makeGate(rankIdx: number): Gate {
   const modifiers = shuffled.slice(0, modifierCount);
 
   const namePool = GATE_NAMES[rank] ?? GATE_NAMES["E"];
-  const gateName = namePool[Math.floor(Math.random() * namePool.length)];
+  const unused = namePool.filter(n => !usedNames || !usedNames.has(n));
+  const source = unused.length > 0 ? unused : namePool;
+  const gateName = source[Math.floor(Math.random() * source.length)];
   return {
     id,
     name: gateName,
@@ -974,66 +976,57 @@ function DamageNumber({
 
 function generateGatePool(playerLevel: number): Gate[] {
   const gates: Gate[] = [];
+  const usedNames = new Set<string>();
+
+  function addGate(rankIdx: number) {
+    const gate = makeGate(rankIdx, usedNames);
+    usedNames.add(gate.name);
+    gates.push(gate);
+  }
 
   // Always have multiple E-rank gates available (2-4)
   const eGateCount = rand(2, 4);
   for (let i = 0; i < eGateCount; i++) {
-    gates.push(makeGate(0));
+    addGate(0);
   }
 
   // Add D-rank gates if player level >= 3
   if (playerLevel >= 3) {
     const dGateCount = rand(2, 4);
-    for (let i = 0; i < dGateCount; i++) {
-      gates.push(makeGate(1));
-    }
+    for (let i = 0; i < dGateCount; i++) addGate(1);
   }
 
   // Add C-rank gates if player level >= 6
   if (playerLevel >= 6) {
     const cGateCount = rand(2, 4);
-    for (let i = 0; i < cGateCount; i++) {
-      gates.push(makeGate(2));
-    }
+    for (let i = 0; i < cGateCount; i++) addGate(2);
   }
 
   // Add B-rank gates if player level >= 10
   if (playerLevel >= 10) {
     const bGateCount = rand(2, 4);
-    for (let i = 0; i < bGateCount; i++) {
-      gates.push(makeGate(3));
-    }
+    for (let i = 0; i < bGateCount; i++) addGate(3);
   }
 
   // Add A-rank gates if player level >= 15 (increased count)
   if (playerLevel >= 15) {
-    const aGateCount = rand(2, 4); // Increased from 1-2 to 2-4
-    for (let i = 0; i < aGateCount; i++) {
-      gates.push(makeGate(4));
-    }
+    const aGateCount = rand(2, 4);
+    for (let i = 0; i < aGateCount; i++) addGate(4);
   }
 
   // Add S-rank gates if player level >= 18 (lowered from 20)
   if (playerLevel >= 18) {
-    const sGateCount = rand(1, 2); // Allow 1-2 S-rank gates
-    for (let i = 0; i < sGateCount; i++) {
-      gates.push(makeGate(5));
-    }
+    const sGateCount = rand(1, 2);
+    for (let i = 0; i < sGateCount; i++) addGate(5);
   }
 
   // For very high levels, add even more high-rank gates
   if (playerLevel >= 25) {
-    // Add extra A-rank gates
     const extraAGateCount = rand(1, 2);
-    for (let i = 0; i < extraAGateCount; i++) {
-      gates.push(makeGate(4));
-    }
+    for (let i = 0; i < extraAGateCount; i++) addGate(4);
 
-    // Add extra S-rank gates
     const extraSGateCount = rand(1, 2);
-    for (let i = 0; i < extraSGateCount; i++) {
-      gates.push(makeGate(5));
-    }
+    for (let i = 0; i < extraSGateCount; i++) addGate(5);
   }
 
   return gates;
@@ -1628,6 +1621,18 @@ export default function HuntersPath() {
             };
           }
         );
+
+        // Fix maxHp/maxMp if they're lower than expected for the player's level
+        const expectedMaxHp = 100 + ((gameState.player.level || 1) - 1) * 10;
+        const expectedMaxMp = 50 + ((gameState.player.level || 1) - 1) * 5;
+        if ((gameState.player.maxHp || 0) < expectedMaxHp) {
+          gameState.player.maxHp = expectedMaxHp;
+          gameState.player.hp = Math.min(gameState.player.hp ?? expectedMaxHp, expectedMaxHp);
+        }
+        if ((gameState.player.maxMp || 0) < expectedMaxMp) {
+          gameState.player.maxMp = expectedMaxMp;
+          gameState.player.mp = Math.min(gameState.player.mp ?? expectedMaxMp, expectedMaxMp);
+        }
 
         setPlayer(gameState.player);
         // Migrate old gate names to thematic names
