@@ -1220,6 +1220,57 @@ const BOSS_PHASE_MSGS: Record<string, string[]> = {
 };
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// Story progression — rank-up milestones (triggered on level-up)
+const RANK_MILESTONES: { level: number; title: string; message: string }[] = [
+  { level: 1,  title: "The Awakening",           message: "You awaken to find a shimmering gate before you. A strange instinct compels you forward. Your journey as a Hunter begins." },
+  { level: 3,  title: "D-Rank Certified",         message: "The Hunter's Guild acknowledges your skill. D-Rank gates now open to you. The creatures within are fiercer — prepare yourself." },
+  { level: 6,  title: "C-Rank Hunter",            message: "Your reputation grows. Shadows in C-Rank gates whisper of a Hunter who fights without fear. Darker dungeons beckon." },
+  { level: 10, title: "B-Rank Breakthrough",       message: "Few Hunters reach B-Rank. The Guild Commander nods with respect. \"The gates are getting worse,\" she warns. \"Something stirs beyond them.\"" },
+  { level: 20, title: "A-Rank — Elite Hunter",     message: "A-Rank. The world watches. Dragons and ancient knights guard these gates. You stand among the strongest Hunters alive." },
+  { level: 35, title: "S-Rank — Legend",           message: "S-Rank gates tear at the fabric of reality itself. You are one of the few who dares enter. The void beyond these gates holds secrets older than the world." },
+  { level: 50, title: "Transcendence",            message: "You have reached the pinnacle. The gates themselves seem to respond to your power. Perhaps it is time to be reborn — stronger than before." },
+];
+
+// Boss dialogue shown at combat start
+const BOSS_DIALOGUE: Record<string, string[]> = {
+  E: [
+    "\"You dare enter my burrow? You'll regret this!\"",
+    "\"Another Hunter? They never learn...\"",
+  ],
+  D: [
+    "\"I've crushed a dozen Hunters. You're next!\"",
+    "\"This dungeon is MY territory!\"",
+  ],
+  C: [
+    "\"You can feel it, can't you? The darkness here is alive.\"",
+    "\"Most Hunters flee at this point. Will you?\"",
+  ],
+  B: [
+    "\"I've been waiting for a real challenge. Step forward.\"",
+    "\"The mountain itself trembles at my rage.\"",
+  ],
+  A: [
+    "\"Few mortals have stood before me and lived.\"",
+    "\"The dragon's flame burns eternal. Can you endure it?\"",
+  ],
+  S: [
+    "\"You stand at the edge of oblivion. Turn back.\"",
+    "\"Reality bends. Time fractures. And still you come.\"",
+  ],
+};
+
+// Unlockable lore entries keyed by player level
+const LORE_ENTRIES: { level: number; title: string; text: string }[] = [
+  { level: 1,  title: "What Are Gates?",            text: "Dimensional rifts that appeared across the world without warning. Inside lie monsters, treasure, and mysteries. Hunters are those brave enough to enter." },
+  { level: 5,  title: "The Hunter's Guild",          text: "Formed to organize Hunters and manage gate clearance. They rank both Hunters and gates from E (weakest) to S (catastrophic). Guild support keeps cities safe." },
+  { level: 10, title: "Spirit Binding",              text: "Some Hunters develop the ability to bind the essence of defeated bosses, creating spirit allies that fight alongside them. The mechanism is poorly understood." },
+  { level: 15, title: "The Fatigue Problem",         text: "Prolonged exposure to gate energy causes fatigue — a dulling of the senses that weakens even the strongest Hunters. Rest is not optional; it is survival." },
+  { level: 20, title: "Gate Ranks Explained",        text: "E-Rank gates are manageable. D through C require real skill. B-Rank gates have leveled entire city blocks when left unchecked. A and S-Rank gates are existential threats." },
+  { level: 30, title: "The Origin of Gates",         text: "No one knows why gates appeared. Some theories suggest a weakening barrier between dimensions. Others point to an ancient experiment gone wrong. The truth remains buried." },
+  { level: 40, title: "Rebirth",                    text: "A handful of Hunters have discovered a way to shed their accumulated power and start anew — emerging stronger each time. They call it Rebirth. The cost is everything you've built." },
+  { level: 50, title: "Beyond S-Rank",               text: "Rumors persist of gates beyond S-Rank — tears in reality so vast they could swallow nations. If they exist, only a reborn Hunter could hope to survive them." },
+];
+
 type BossRank = (typeof RANKS)[number];
 const BOSS_COMPONENTS: Record<BossRank, React.ComponentType<{ className?: string }>> = {
   E: BossE,
@@ -2094,6 +2145,13 @@ export default function HuntersPath() {
         playSound("level_up");
         hapticHeavy();
         triggerParticles("level-up", "50%", "50%");
+
+        // Check for rank milestone story event
+        const milestone = RANK_MILESTONES.find(m => m.level === level);
+        if (milestone) {
+          logPush(`--- ${milestone.title} ---`);
+          logPush(milestone.message);
+        }
       }
 
       // If player leveled up, refresh gates to unlock new tiers
@@ -2480,7 +2538,10 @@ export default function HuntersPath() {
       hpEnemy: g.boss.hp,
       tick: 0,
     });
-    setCombatLog([]);
+    // Initialize combat log with boss dialogue
+    const dialogue = BOSS_DIALOGUE[g.rank];
+    const initLog = dialogue ? [pick(dialogue)] : [];
+    setCombatLog(initLog);
     setCombatResult(null);
 
     // Clear any existing spirit binding state

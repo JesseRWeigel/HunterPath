@@ -1,3 +1,14 @@
+const MOBILE_LORE = [
+  { level: 1,  title: "What Are Gates?",            text: "Dimensional rifts that appeared across the world without warning. Inside lie monsters, treasure, and mysteries. Hunters are those brave enough to enter." },
+  { level: 5,  title: "The Hunter's Guild",          text: "Formed to organize Hunters and manage gate clearance. They rank both Hunters and gates from E (weakest) to S (catastrophic). Guild support keeps cities safe." },
+  { level: 10, title: "Spirit Binding",              text: "Some Hunters develop the ability to bind the essence of defeated bosses, creating spirit allies that fight alongside them. The mechanism is poorly understood." },
+  { level: 15, title: "The Fatigue Problem",         text: "Prolonged exposure to gate energy causes fatigue — a dulling of the senses that weakens even the strongest Hunters. Rest is not optional; it is survival." },
+  { level: 20, title: "Gate Ranks Explained",        text: "E-Rank gates are manageable. D through C require real skill. B-Rank gates have leveled entire city blocks when left unchecked. A and S-Rank gates are existential threats." },
+  { level: 30, title: "The Origin of Gates",         text: "No one knows why gates appeared. Some theories suggest a weakening barrier between dimensions. Others point to an ancient experiment gone wrong. The truth remains buried." },
+  { level: 40, title: "Rebirth",                    text: "A handful of Hunters have discovered a way to shed their accumulated power and start anew — emerging stronger each time. They call it Rebirth. The cost is everything you've built." },
+  { level: 50, title: "Beyond S-Rank",               text: "Rumors persist of gates beyond S-Rank — tears in reality so vast they could swallow nations. If they exist, only a reborn Hunter could hope to survive them." },
+];
+
 const DIFFICULTY_STYLE: Record<string, string> = {
   easy:   "bg-green-900/50 text-green-400 border-green-800",
   medium: "bg-yellow-900/50 text-yellow-400 border-yellow-800",
@@ -172,20 +183,24 @@ export function LogTab({ daily, log, player, onForfeitDaily }: LogTabProps) {
         </div>
       </div>
 
-      {/* Lore collapsible */}
+      {/* Lore & Story */}
       <details className="bg-zinc-900 rounded-xl border border-zinc-800">
         <summary className="px-4 py-3 text-sm font-semibold text-zinc-400 cursor-pointer select-none list-none flex justify-between">
-          <span>Lore &amp; Mechanics</span>
+          <span>Lore &amp; Story</span>
           <span className="text-zinc-600 text-xs">tap to expand</span>
         </summary>
-        <div className="px-4 pb-4 pt-1 text-xs text-zinc-500 space-y-2 border-t border-zinc-800">
-          <div>Enter Gates to battle bosses and earn EXP &amp; gold.</div>
-          <div>Allocate stat points after leveling up — check Manage tab.</div>
-          <div>Defeat bosses to bind their spirits for bonus power.</div>
-          <div>High fatigue reduces your power. Rest regularly.</div>
-          <div>Dungeon Keys let you run bonus gates with instant results.</div>
-          <div>Complete daily quests before midnight for reputation bonuses.</div>
-          <div>Reach level 50 to Rebirth — resets progress but multiplies power +15%.</div>
+        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-zinc-800">
+          {MOBILE_LORE.filter(e => (player.level ?? 1) >= e.level).map((entry, i) => (
+            <div key={i}>
+              <div className="text-xs font-semibold text-violet-400 mb-0.5">{entry.title}</div>
+              <div className="text-xs text-zinc-500 leading-relaxed">{entry.text}</div>
+            </div>
+          ))}
+          {MOBILE_LORE.some(e => (player.level ?? 1) < e.level) && (
+            <div className="text-xs text-zinc-600 italic text-center pt-1">
+              More lore unlocks as you level up...
+            </div>
+          )}
         </div>
       </details>
     </div>
