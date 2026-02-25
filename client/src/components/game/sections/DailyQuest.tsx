@@ -39,9 +39,9 @@ export function DailyQuest({
   getDifficultyColor,
 }: DailyQuestProps) {
   const questIcons = {
-    combat: "fas fa-sword",
+    combat: "fas fa-hand-fist",
     exploration: "fas fa-door-open",
-    collection: "fas fa-backpack",
+    collection: "fas fa-box-open",
     skill: "fas fa-magic",
     challenge: "fas fa-trophy",
   };

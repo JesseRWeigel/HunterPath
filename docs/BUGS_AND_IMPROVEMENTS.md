@@ -125,3 +125,14 @@ to finish before appearing.
 First time clearing each gate rank (E/D/C/B/A/S) triggers a story event with unique
 narrative text. Tracked via `player.clearedRanks` in save data. Each rank has its own
 celebration text (e.g., "D-Rank Conquered", "A-Rank Conquered!", "S-Rank — The Impossible").
+
+---
+
+## Round 4 (found 2026-02-25)
+
+### 29. ~~Font Awesome Pro icons render as empty boxes~~ FIXED
+**Files:** `HuntersPath.tsx`, `DailyQuest.tsx`, `HunterShop.tsx`
+Four icons (`fa-sword`, `fa-backpack`, `fa-user-crown`, `fa-music-slash`) are Pro-only and
+don't exist in the Font Awesome 6 Free CDN bundle. They rendered as empty rectangular boxes.
+**Fix:** Replaced with Free-tier alternatives: `fa-hand-fist`, `fa-box-open`, `fa-crown`,
+`fa-volume-xmark`.

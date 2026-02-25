@@ -1085,7 +1085,7 @@ const MONSTER_DATA = {
     name: "Dragon Knight",
     description:
       "A legendary warrior clad in dragon-scale armor. Their sword burns with ancient fire.",
-    icon: "fas fa-user-crown",
+    icon: "fas fa-crown",
     color: "text-orange-400",
     bgColor: "bg-orange-900/30",
     borderColor: "border-orange-500/30",
@@ -3716,7 +3716,7 @@ export default function HuntersPath() {
   function EnhancedInventory() {
     const filteredItems = getFilteredAndSortedItems();
     const equipmentSlots = [
-      { key: "weapon" as const, name: "Weapon", icon: "fas fa-sword" },
+      { key: "weapon" as const, name: "Weapon", icon: "fas fa-hand-fist" },
       { key: "armor" as const, name: "Armor", icon: "fas fa-shield-alt" },
       { key: "accessory" as const, name: "Accessory", icon: "fas fa-ring" },
     ];
@@ -3843,7 +3843,7 @@ export default function HuntersPath() {
                             : item.type === "key"
                             ? "fas fa-key"
                             : item.type === "equipment"
-                            ? "fas fa-sword"
+                            ? "fas fa-hand-fist"
                             : "fas fa-question"
                         }`}
                       ></i>
@@ -4867,7 +4867,7 @@ export default function HuntersPath() {
                   >
                     <i
                       className={`fas ${
-                        musicEnabled ? "fa-music" : "fa-music-slash"
+                        musicEnabled ? "fa-music" : "fa-volume-xmark"
                       }`}
                     ></i>
                   </button>
@@ -5184,7 +5184,7 @@ export default function HuntersPath() {
                           className="justify-between text-left"
                         >
                           <div className="flex items-center">
-                            <i className="fas fa-sword mr-2 text-red-400"></i>
+                            <i className="fas fa-hand-fist mr-2 text-red-400"></i>
                             Weapon Upgrade (+STR)
                           </div>
                           <span className="text-yellow-400">
@@ -6064,9 +6064,9 @@ export default function HuntersPath() {
                                 daily.completedQuests.includes(quest.id);
 
                               const questIcons = {
-                                combat: "fas fa-sword",
+                                combat: "fas fa-hand-fist",
                                 exploration: "fas fa-door-open",
-                                collection: "fas fa-backpack",
+                                collection: "fas fa-box-open",
                                 skill: "fas fa-magic",
                                 challenge: "fas fa-trophy",
                               };
@@ -6447,7 +6447,7 @@ export default function HuntersPath() {
                 {/* Combat Statistics */}
                 <Card>
                   <h3 className="text-lg font-bold text-zinc-100 mb-4">
-                    <i className="fas fa-sword mr-2 text-red-400"></i>
+                    <i className="fas fa-hand-fist mr-2 text-red-400"></i>
                     Combat Stats
                   </h3>
                   <div className="space-y-3">
