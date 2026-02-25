@@ -1622,6 +1622,11 @@ export default function HuntersPath() {
           }
         );
 
+        // Strip debug spirits from save data
+        gameState.player.spirits = (gameState.player.spirits || []).filter(
+          (s: any) => !s.id?.startsWith("debug_") && !s.name?.startsWith("Debug ")
+        );
+
         // Fix maxHp/maxMp if they're lower than expected for the player's level
         const expectedMaxHp = 100 + ((gameState.player.level || 1) - 1) * 10;
         const expectedMaxMp = 50 + ((gameState.player.level || 1) - 1) * 5;
@@ -3131,6 +3136,11 @@ export default function HuntersPath() {
             description: SPIRIT_DESCRIPTIONS[type],
           };
         }
+      );
+
+      // Strip debug spirits from save data
+      gameState.player.spirits = (gameState.player.spirits || []).filter(
+        (s: any) => !s.id?.startsWith("debug_") && !s.name?.startsWith("Debug ")
       );
 
       setPlayer(gameState.player);
