@@ -9,7 +9,7 @@ interface ManageTabProps {
   soundEnabled: boolean;
   musicEnabled: boolean;
   volume: number;
-  onAllocateStat: (stat: string) => void;
+  onAllocateStat: (stat: string, amount?: number) => void;
   onTrain: (type: string) => void;
   onBuyItem: (itemId: string) => void;
   onEquipItem: (itemId: string) => void;
@@ -101,14 +101,19 @@ export function ManageTab({
                   {player.stats?.[stat] ?? 0}
                 </div>
               </div>
-              <button
-                onClick={() => onAllocateStat(stat)}
-                disabled={!hasPoints}
-                className="w-10 h-10 rounded-lg bg-violet-600 text-white text-xl font-bold disabled:bg-zinc-800 disabled:text-zinc-600 flex items-center justify-center active:bg-violet-500"
-                aria-label={`Allocate point to ${stat}`}
-              >
-                +
-              </button>
+              <div className="flex gap-1">
+                {[1, 5, 10].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => onAllocateStat(stat, n)}
+                    disabled={!hasPoints}
+                    className={`${n === 1 ? "w-9" : "w-10"} h-9 rounded-lg bg-violet-600 text-white text-xs font-bold disabled:bg-zinc-800 disabled:text-zinc-600 flex items-center justify-center active:bg-violet-500`}
+                    aria-label={`Allocate ${n} point${n > 1 ? "s" : ""} to ${stat}`}
+                  >
+                    +{n}
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
         </div>

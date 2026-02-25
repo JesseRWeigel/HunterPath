@@ -28,7 +28,7 @@ export interface MobileLayoutProps {
   onRefreshGates: () => void;
   onUsePotion: (itemId: string) => void;
   onDismissResult: () => void;
-  onAllocateStat: (stat: string) => void;
+  onAllocateStat: (stat: string, amount?: number) => void;
   onForfeitDaily: () => void;
   onRebirth: () => void;
   onReset: () => void;

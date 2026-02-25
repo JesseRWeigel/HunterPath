@@ -2374,12 +2374,13 @@ export default function HuntersPath() {
     playMusic("ambient_music");
   }
 
-  function allocate(stat: keyof Player["stats"]) {
+  function allocate(stat: keyof Player["stats"], amount: number = 1) {
     if (player.points <= 0) return;
+    const actual = Math.min(amount, player.points);
     setPlayer((p) => ({
       ...p,
-      points: p.points - 1,
-      stats: { ...p.stats, [stat]: p.stats[stat] + 1 },
+      points: p.points - actual,
+      stats: { ...p.stats, [stat]: p.stats[stat] + actual },
     }));
   }
 
@@ -4055,7 +4056,7 @@ export default function HuntersPath() {
         onRefreshGates={refreshGates}
         onUsePotion={usePotion}
         onDismissResult={dismissCombatResult}
-        onAllocateStat={(stat) => allocate(stat as keyof Player["stats"])}
+        onAllocateStat={(stat, amount) => allocate(stat as keyof Player["stats"], amount)}
         onForfeitDaily={forfeitDaily}
         onRebirth={handleRebirth}
         onReset={resetGame}
