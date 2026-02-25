@@ -692,7 +692,7 @@ function rollDrop(gate: Gate) {
     const statType = statTypes[rand(0, statTypes.length - 1)];
     const rarity = getRarity(gate.rankIdx);
     const quality = getQuality(rarity);
-    const statBonus = Math.floor((quality / 100) * (gate.rankIdx + 1) * 2);
+    const statBonus = Math.max(1, Math.floor((quality / 100) * (gate.rankIdx + 1) * 2));
 
     return {
       id: uid(),
@@ -728,7 +728,7 @@ function rollDrop(gate: Gate) {
     const quality = getQuality(rarity);
     const equipmentTypes = ["weapon", "armor", "accessory"];
     const equipmentType = equipmentTypes[rand(0, equipmentTypes.length - 1)];
-    const statBonus = Math.floor((quality / 100) * (gate.rankIdx + 1) * 3);
+    const statBonus = Math.max(1, Math.floor((quality / 100) * (gate.rankIdx + 1) * 3));
 
     const equipmentNames = {
       weapon: `${gate.rank}-Rank Blade`,
