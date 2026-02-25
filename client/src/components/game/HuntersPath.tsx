@@ -351,10 +351,11 @@ function makeBoss(rankIdx: number): Boss {
     atkMultiplier = 0.4; // Much lower attack for S-rank
   }
 
+  const hp = Math.floor(base * 8 + rand(-25, 25));
   return {
     name: monsterData.name,
-    maxHp: Math.floor(base * 8 + rand(-25, 25)),
-    hp: Math.floor(base * 8 + rand(-25, 25)),
+    maxHp: hp,
+    hp,
     atk: Math.floor(base * atkMultiplier + rand(-5, 5)),
     def: Math.floor(base * 0.3 + rand(-3, 3)),
   };
