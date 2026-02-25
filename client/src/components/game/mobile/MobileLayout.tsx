@@ -39,6 +39,7 @@ export interface MobileLayoutProps {
   onBuyItem: (itemId: string) => void;
   onEquipItem: (itemId: string) => void;
   onUnequipItem: (slot: string) => void;
+  onUseRune: (itemId: string) => void;
   onSetSoundEnabled: (v: boolean) => void;
   onSetMusicEnabled: (v: boolean) => void;
   onSetVolume: (v: number) => void;
@@ -112,6 +113,7 @@ export function MobileLayout(props: MobileLayoutProps) {
             onBuyItem={props.onBuyItem}
             onEquipItem={props.onEquipItem}
             onUnequipItem={props.onUnequipItem}
+            onUseRune={props.onUseRune}
             onSave={props.onSave}
             onLoad={props.onLoad}
             onRebirth={props.onRebirth}

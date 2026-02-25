@@ -4274,6 +4274,7 @@ export default function HuntersPath() {
         }}
         onEquipItem={equipItem}
         onUnequipItem={(slot: string) => unequipItem(slot as keyof Equipment)}
+        onUseRune={useRune}
         onSetSoundEnabled={setSoundEnabled}
         onSetMusicEnabled={setMusicEnabled}
         onSetVolume={setVolume}

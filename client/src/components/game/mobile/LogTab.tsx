@@ -28,7 +28,6 @@ export function LogTab({ daily, log, player, onForfeitDaily }: LogTabProps) {
   const completedIds: string[] = daily?.completedQuests ?? [];
   const completedCount = quests.filter((q) => completedIds.includes(q.id)).length;
   const allDone = daily?.completed === true;
-  const inventory = player.inv ?? [];
 
   return (
     <div className="p-3 space-y-3 pb-4">
@@ -136,33 +135,6 @@ export function LogTab({ daily, log, player, onForfeitDaily }: LogTabProps) {
           </div>
         )}
       </div>
-
-      {/* Inventory */}
-      {inventory.length > 0 && (
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-3">
-          <div className="text-sm font-semibold text-zinc-300 mb-2">
-            Inventory ({inventory.length})
-          </div>
-          <div className="space-y-1">
-            {inventory.map((item: any, i: number) => (
-              <div
-                key={item.id ?? i}
-                className="flex justify-between text-xs text-zinc-400 py-1 border-b border-zinc-800 last:border-0"
-              >
-                <div>
-                  <span>{item.name ?? item.type ?? item.id}</span>
-                  {item.rarity && (
-                    <span className="ml-1.5 text-zinc-600 capitalize">{item.rarity}</span>
-                  )}
-                </div>
-                {item.quality != null && (
-                  <span className="text-zinc-600">Q{item.quality}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Activity log */}
       <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-3">

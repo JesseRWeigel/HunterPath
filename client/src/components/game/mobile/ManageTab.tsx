@@ -14,6 +14,7 @@ interface ManageTabProps {
   onBuyItem: (itemId: string) => void;
   onEquipItem: (itemId: string) => void;
   onUnequipItem: (slot: string) => void;
+  onUseRune: (itemId: string) => void;
   onSave: () => void;
   onLoad: () => void;
   onRebirth: () => void;
@@ -62,7 +63,7 @@ export function ManageTab({
   player, gold, prestigeUpgrades,
   soundEnabled, musicEnabled, volume,
   onAllocateStat, onTrain, onBuyItem,
-  onEquipItem, onUnequipItem,
+  onEquipItem, onUnequipItem, onUseRune,
   onSave, onLoad, onRebirth, onReset,
   onSetSoundEnabled, onSetMusicEnabled, onSetVolume,
 }: ManageTabProps) {
@@ -183,6 +184,14 @@ export function ManageTab({
                     className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-violet-600 text-xs text-white font-semibold active:bg-violet-500"
                   >
                     Equip
+                  </button>
+                )}
+                {item.type === "rune" && (
+                  <button
+                    onClick={() => onUseRune(item.id)}
+                    className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-emerald-700 text-xs text-white font-semibold active:bg-emerald-600"
+                  >
+                    Use
                   </button>
                 )}
               </div>
