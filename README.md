@@ -8,15 +8,13 @@ An idle RPG inspired by Solo Leveling, built as a Progressive Web App. Clear gat
 
 ## Screenshots
 
-<!-- TODO: Add screenshots to the screenshots/ directory and update paths below -->
+| Main Game | Combat | Spirits & Quests |
+|:---------:|:------:|:----------------:|
+| ![Main game view](screenshots/game-main.png) | ![Combat screen](screenshots/game-combat.png) | ![Spirits and quests](screenshots/game-spirits.png) |
 
-| Main Game | Combat | Spirit Binding |
-|:---------:|:------:|:--------------:|
-| ![Main game view](screenshots/game-main.png) | ![Combat screen](screenshots/game-combat.png) | ![Spirit binding](screenshots/game-spirits.png) |
-
-| Daily Quests | Stats & Shop | Mobile View |
-|:------------:|:------------:|:-----------:|
-| ![Quest log](screenshots/game-quests.png) | ![Stats page](screenshots/game-stats.png) | ![Mobile layout](screenshots/game-mobile.png) |
+| Daily Quests | Level Up & Stats | Mobile View |
+|:------------:|:----------------:|:-----------:|
+| ![Quest log](screenshots/game-quests.png) | ![Level up with stat allocation](screenshots/game-stats.png) | ![Mobile layout](screenshots/game-mobile.png) |
 
 ## Features
 
