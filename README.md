@@ -1,117 +1,225 @@
 # Hunter's Path
 
-An idle/roguelite RPG built with React, TypeScript, and Express.js. Features dungeon clearing mechanics, stat progression systems, daily quests with penalties, spirit binding mechanics, and fatigue management.
+[![Deploy to GitHub Pages](https://github.com/jesserweigel/HunterPath/actions/workflows/deploy-github-pages.yml/badge.svg)](https://github.com/jesserweigel/HunterPath/actions/workflows/deploy-github-pages.yml)
 
-## 🌟 Features
+An idle RPG inspired by Solo Leveling, built as a Progressive Web App. Clear gates, fight bosses, bind spirits, manage fatigue, complete daily quests, and prestige your way to S-Rank. Playable offline on any device.
 
-- **PWA Support** - Installable as a mobile app
-- **Offline Play** - Works without internet connection
-- **Gates & Dungeons** - Clear dungeons of different ranks (E through S)
-- **Stat System** - Allocate points to STR, AGI, INT, VIT, and LUCK
-- **Spirit Binding** - Recruit bound spirits from defeated bosses
-- **Daily Quests** - Complete daily tasks or face penalties
-- **Fatigue System** - Manage fatigue affecting combat performance
-- **Instant Dungeon Keys** - Special items for bonus runs
+**[Play Now](https://jesserweigel.github.io/HunterPath/)**
 
-## 🚀 Quick Start
+## Screenshots
+
+<!-- TODO: Add screenshots to the screenshots/ directory and update paths below -->
+
+| Main Game | Combat | Spirit Binding |
+|:---------:|:------:|:--------------:|
+| ![Main game view](screenshots/game-main.png) | ![Combat screen](screenshots/game-combat.png) | ![Spirit binding](screenshots/game-spirits.png) |
+
+| Daily Quests | Stats & Shop | Mobile View |
+|:------------:|:------------:|:-----------:|
+| ![Quest log](screenshots/game-quests.png) | ![Stats page](screenshots/game-stats.png) | ![Mobile layout](screenshots/game-mobile.png) |
+
+## Features
+
+### Combat & Dungeons
+- **Gate System** - Enter dungeon gates ranked E through S with scaling difficulty
+- **Boss Fights** - Tick-based combat against unique bosses (Goblin Warrior to Void Lord)
+- **Dungeon Modifiers** - Random buffs/debuffs per gate (Double EXP, Empowered Boss, Heroic, etc.)
+- **Auto-Dungeon** - AFK farming with smart gate selection based on your power level
+- **Loot Drops** - Potions, runes, equipment, and Instant Dungeon Keys
+
+### Progression
+- **Stat Allocation** - Distribute points across STR, AGI, INT, VIT, and LUCK
+- **Leveling** - Exponential XP curve with 5 stat points per level
+- **Rebirth/Prestige** - Reset for prestige points; unlock permanent upgrades (EXP boost, spirit power, fatigue resist, etc.)
+- **Story Milestones** - Narrative beats at key levels with boss intro cinematics and first-clear celebrations
+
+### Spirits
+- **Spirit Binding** - Extract spirits from defeated bosses (chance scales with INT + LUCK)
+- **5 Spirit Types** - Warrior, Mage, Rogue, Tank, Support — each with unique passive/active abilities
+- **Rarity Tiers** - Common through Legendary with increasing power multipliers
+- **Spirit Upkeep** - Bound spirits drain MP per combat tick
+
+### Economy & Quests
+- **Daily Quest System** - 5 quests per day across combat, exploration, collection, skill, and challenge types
+- **Quest Reputation** - Build rep to unlock epic-tier quests with bonus stat points
+- **Penalty Zone** - Forfeit dailies at your own risk
+- **Hunter Shop** - Buy potions, keys, and consumables
+- **Equipment** - Weapons, armor, and accessories from gate drops
+
+### Survival
+- **Fatigue System** - Accumulates during combat and training; reduces damage output up to 40%
+- **Training Activities** - Physical training, mental training, meditation (fatigue recovery), and work jobs
+- **Potion System** - HP/MP healing that scales with player level and potion quality
+
+### Quality of Life
+- **PWA** - Install on mobile/desktop, works fully offline
+- **Auto-Save** - localStorage persistence with save data integrity
+- **Responsive UI** - Desktop panel layout + dedicated mobile tab interface
+- **Audio & Haptics** - Sound effects and vibration feedback
+- **Lore System** - Unlockable story entries as you progress
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 18, TypeScript, Vite |
+| **UI** | Tailwind CSS, shadcn/ui (Radix primitives), Framer Motion |
+| **State** | React hooks, React Query |
+| **Backend** | Express.js, Node.js |
+| **Database** | PostgreSQL via Neon Serverless, Drizzle ORM |
+| **Audio** | Howler.js |
+| **PWA** | Service Worker, Web App Manifest |
+| **Testing** | Vitest, Testing Library, jsdom |
+| **Deployment** | GitHub Actions, GitHub Pages |
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.18.0 or higher
-- npm or yarn
+- Node.js 18.18.0+
+- npm
 
-### Local Development
+### Install & Run
 
 ```bash
-# Clone the repository
 git clone https://github.com/jesserweigel/HunterPath.git
 cd HunterPath
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Visit `http://localhost:3000` to play the game locally.
+Open [http://localhost:5000](http://localhost:5000) to play.
 
-## 📱 PWA Features
-
-This game is a Progressive Web App (PWA) that provides:
-
-- **Installable** - Can be installed on mobile devices like a native app
-- **Offline Support** - Works without internet connection once cached
-- **Fast Loading** - Assets are cached for instant loading
-- **App-like Experience** - Full-screen, no browser UI when installed
-
-### Installing on Mobile
-
-1. Open the game in your mobile browser
-2. Tap "Install" when the prompt appears, or use "Add to Home Screen"
-3. The game will be available as an app on your device
-
-## 🌐 Live Demo
-
-Play the game online: **[https://jesserweigel.github.io/HunterPath/](https://jesserweigel.github.io/HunterPath/)**
-
-## 🏗️ Deployment
-
-This project is automatically deployed to GitHub Pages:
-
-1. **Automatic Deployment** - Every push to the `main` branch triggers a new deployment
-2. **GitHub Actions** - Builds and deploys automatically using the included workflow
-3. **HTTPS Enabled** - Secure connection for PWA functionality
-
-### Manual Deployment
+### Build for Production
 
 ```bash
-# Build for production
 npm run build
-
-# Start production server
 npm start
 ```
 
-## 🎮 Game Mechanics
+## Project Structure
 
-### Core Systems
+```
+HunterPath/
+├── client/src/
+│   ├── components/
+│   │   ├── game/
+│   │   │   ├── HuntersPath.tsx      # Main game component (state, combat loop, UI)
+│   │   │   ├── bosses/              # Animated boss SVG components (E-S rank)
+│   │   │   ├── mobile/              # Mobile-specific layout and tabs
+│   │   │   └── sections/            # Desktop UI panels (Stats, Inventory, Quests, etc.)
+│   │   └── ui/                      # shadcn/ui component library
+│   ├── lib/game/                    # Pure game logic (testable, no React)
+│   │   ├── gameLogic.ts             # Player power, spirit upkeep, extraction chance
+│   │   ├── gameUtils.ts             # clamp, rand, uid, fmt, pick
+│   │   ├── gateSystem.ts            # Gate generation, bosses, drops, modifiers
+│   │   ├── spiritSystem.ts          # Spirit creation, rarity, abilities
+│   │   └── questSystem.ts           # Daily quest generation, difficulty scaling
+│   └── hooks/                       # Custom React hooks
+├── server/
+│   ├── index.ts                     # Express server setup
+│   ├── routes.ts                    # API route registration
+│   ├── storage.ts                   # In-memory storage (user CRUD)
+│   └── db.ts                        # Neon PostgreSQL + Drizzle connection
+├── shared/
+│   └── schema.ts                    # Drizzle ORM schema (users, gameStates, gateRuns, etc.)
+├── .github/workflows/               # GitHub Actions deployment
+├── vitest.config.ts                 # Test configuration
+└── vite.config.ts                   # Build configuration
+```
 
-- **Gates**: Enter dungeons to gain EXP and loot
-- **Leveling**: Gain stat points on level up
-- **Spirits**: Bind spirits from defeated bosses
-- **Daily Quests**: Complete for bonuses or face penalties
-- **Fatigue**: Manage fatigue for optimal performance
+## Testing
 
-### Tips
+The test suite covers game mechanics, React components, server storage, and schema validation.
 
-1. Complete Daily Quest before running dungeons
-2. Allocate stat points after leveling up
-3. Bind spirits from defeated bosses (INT and LUCK help)
-4. Manage fatigue by resting
-5. Use Instant Dungeon Keys for bonus runs
+```bash
+# Run all tests
+npm test
 
-## 🛠️ Technology Stack
+# Run tests in watch mode
+npm run test:watch
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Backend**: Express.js, Node.js
-- **UI**: Tailwind CSS, shadcn/ui components
-- **PWA**: Service Worker, Web App Manifest
-- **Database**: PostgreSQL (Drizzle ORM)
-- **Deployment**: GitHub Actions, GitHub Pages
+# Run tests with coverage report
+npm run test:coverage
+```
 
-## 📄 License
+### Coverage
 
-MIT License - see LICENSE file for details
+| Area | Coverage |
+|------|----------|
+| **Game logic** (gameLogic, gameUtils, gateSystem, spiritSystem, questSystem) | 97-100% |
+| **React components** (ErrorBoundary, Stats, DailyQuest, ActivityLog) | Render + interaction tests |
+| **Server** (MemStorage CRUD) | Full interface coverage |
+| **Schema** (Zod validation) | All insert schemas validated |
 
-## 🤝 Contributing
+### Test Structure
+
+Tests are colocated next to their source files:
+
+```
+gameLogic.ts      → gameLogic.test.ts
+gateSystem.ts     → gateSystem.test.ts
+Stats.tsx         → Stats.test.tsx
+storage.ts        → storage.test.ts
+```
+
+## Deployment
+
+Every push to `main` triggers automatic deployment to GitHub Pages via GitHub Actions:
+
+1. Install dependencies
+2. Build with Vite (output to `dist/public/`)
+3. Deploy to GitHub Pages with HTTPS
+
+The PWA service worker caches assets for offline play after first visit.
+
+### Manual Deploy
+
+```bash
+npm run build
+# Upload dist/public/ to any static host
+```
+
+## Game Mechanics Reference
+
+### Power Formula
+
+```
+basePower = STR×3 + AGI×2 + INT×1.5 + VIT×0.5
+spiritBonus = Σ(spirit.power) × (1 + spiritBoostLevel × 0.02)
+fatiguePenalty = 1 - min(0.4, fatigue/250)
+rebirthMult = 1 + rebirths × 0.15
+
+totalPower = max(1, (basePower + spiritBonus) × fatiguePenalty × rebirthMult)
+```
+
+### Gate Difficulty Scaling
+
+```
+gatePower(rank) = round(1.7^rankIdx × 30 + rankIdx × 20)
+
+E=30  D=71  C=127  B=200  A=304  S=454
+```
+
+### Rank Unlock Levels
+
+| Rank | Level Required |
+|------|---------------|
+| E | 1 |
+| D | 3 |
+| C | 6 |
+| B | 10 |
+| A | 15 |
+| S | 18 |
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Write tests for new game logic
+4. Make sure `npm test` passes
 5. Submit a pull request
 
-## 🐛 Issues
+## License
 
-Please report bugs and feature requests on the GitHub issues page.
+MIT License — see [LICENSE](LICENSE) for details.
