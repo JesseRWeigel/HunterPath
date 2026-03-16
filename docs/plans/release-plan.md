@@ -89,7 +89,7 @@ Ship on GitHub Pages + itch.io as a free browser game.
 - All are simple/stylized — consistent art direction
 
 ### Current Audio (all 16-byte stubs)
-- 15 SFX: attack, block, critical, damage, defeat, extraction_*, gate_enter, heal, level_up, rest, rune_use, victory
+- 15 SFX: attack, block, critical, damage, defeat, binding_*, gate_enter, heal, level_up, rest, rune_use, victory
 - 4 music tracks: ambient, combat, defeat, victory
 
 ---

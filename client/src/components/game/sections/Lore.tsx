@@ -19,7 +19,7 @@ export function Lore() {
             <li>Daily Quest must be completed or the Penalty Zone triggers.</li>
             <li>
               Level up to gain Stat Points. STR/AGI raise damage; INT/LUCK aid
-              extraction.
+              spirit binding.
             </li>
             <li>
               Spirit Binding after boss defeat may recruit a bound spirit (25%

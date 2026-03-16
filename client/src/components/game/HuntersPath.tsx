@@ -11,7 +11,7 @@ import { RebirthModal } from "./sections/RebirthModal";
 import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { MobileLayout } from "./mobile/MobileLayout";
-import { createInitialPlayer, playerPower, spiritUpkeep, calcExtractionChance, gainExpGoldFromGate } from "@/lib/game/gameLogic";
+import { createInitialPlayer, playerPower, spiritUpkeep, calcBindingChance, gainExpGoldFromGate } from "@/lib/game/gameLogic";
 import { createSpirit, getRarityColor, getRarityBorder, SPIRIT_TYPES, SPIRIT_ABILITIES, SPIRIT_DESCRIPTIONS } from "@/lib/game/spiritSystem";
 import { RANKS, RANK_COLORS as GAME_RANK_COLORS, DUNGEON_MODIFIERS, generateGatePool, makeGate, rollDrop } from "@/lib/game/gateSystem";
 export const RANK_COLORS = GAME_RANK_COLORS;
@@ -1513,12 +1513,12 @@ export default function HuntersPath() {
 
           // Automatically attempt spirit binding with visual sequence
           const bindBoost = (prestigeUpgrades["bind_chance"] || 0) * 0.03;
-          const extractionChance = calcExtractionChance(
+          const bindingChance = calcBindingChance(
             player,
             prev.gate.rankIdx
           ) + bindBoost;
-          if (Math.random() < extractionChance) {
-            // Start the visual extraction sequence
+          if (Math.random() < bindingChance) {
+            // Start the visual binding sequence
             startSpiritBindingSequence(
               boss.name,
               prev.gate.rank,
@@ -1837,8 +1837,8 @@ export default function HuntersPath() {
       bossRank,
     });
 
-    // Play extraction start sound
-    playSound("extraction_start");
+    // Play binding start sound
+    playSound("binding_start");
 
     // Phase 1: Preparing (2 seconds)
     setTimeout(() => {
@@ -1848,14 +1848,14 @@ export default function HuntersPath() {
         progress: 0,
       }));
 
-      // Play extraction loop sound
-      playSound("extraction_loop");
+      // Play binding loop sound
+      playSound("binding_loop");
 
       // Phase 2: Extracting (3 seconds with progress animation)
-      const extractionInterval = setInterval(() => {
+      const bindingInterval = setInterval(() => {
         setSpiritBindingState((prev) => {
           if (prev.progress >= 100) {
-            clearInterval(extractionInterval);
+            clearInterval(bindingInterval);
             return prev;
           }
           return { ...prev, progress: prev.progress + 2 };
@@ -1864,7 +1864,7 @@ export default function HuntersPath() {
 
       // After 3 seconds, determine success/failure
       setTimeout(() => {
-        const chance = calcExtractionChance(player, RANKS.indexOf(bossRank as BossRank));
+        const chance = calcBindingChance(player, RANKS.indexOf(bossRank as BossRank));
         const success = Math.random() < chance;
 
         setSpiritBindingState((prev) => ({
@@ -1875,7 +1875,7 @@ export default function HuntersPath() {
 
         // Play success/failure sound + haptics + particles
         if (success) {
-          playSound("extraction_success");
+          playSound("binding_success");
           hapticSuccess();
           triggerParticles("spirit-bind", "50%", "50%");
 
@@ -1908,7 +1908,7 @@ export default function HuntersPath() {
               : prev
           );
         } else {
-          playSound("extraction_failure");
+          playSound("binding_failure");
           hapticWarning();
         }
 
@@ -1926,7 +1926,7 @@ export default function HuntersPath() {
     }, 2000);
   }
 
-  function getExtractionSequenceText() {
+  function getBindingSequenceText() {
     const { phase, bossName, progress } = spiritBindingState;
 
     switch (phase) {
@@ -1944,13 +1944,13 @@ export default function HuntersPath() {
         };
       case "success":
         return {
-          title: "Extraction Successful!",
+          title: "Binding Successful!",
           subtitle: `${bossName}'s spirit joins you!`,
           description: "A new spirit ally has been bound to your will.",
         };
       case "failure":
         return {
-          title: "Extraction Failed",
+          title: "Binding Failed",
           subtitle: "The spirit crumbles to dust...",
           description: "The essence was too weak or your focus wavered.",
         };
@@ -2209,11 +2209,11 @@ export default function HuntersPath() {
     );
   }
 
-  function tryExtraction(bossRankIdx: number) {
-    const chance = calcExtractionChance(player, bossRankIdx);
+  function tryBinding(bossRankIdx: number) {
+    const chance = calcBindingChance(player, bossRankIdx);
     const cost = 10;
     if (player.mp < cost) {
-      logPush("Not enough MP to attempt extraction.");
+      logPush("Not enough MP to attempt binding.");
       return;
     }
 
@@ -2221,7 +2221,7 @@ export default function HuntersPath() {
     const bossRank = RANKS[bossRankIdx];
     const bossName = running?.boss.name || "Unknown Boss";
 
-    // Start the visual extraction sequence
+    // Start the visual binding sequence
     startSpiritBindingSequence(
       bossName,
       bossRank,
@@ -2231,7 +2231,7 @@ export default function HuntersPath() {
     // Consume MP immediately
     setPlayer((p) => ({ ...p, mp: Math.max(0, p.mp - cost) }));
 
-    // The actual extraction logic will be handled in the sequence
+    // The actual binding logic will be handled in the sequence
     // We'll update the player and stats when the sequence completes
     setTimeout(() => {
       if (Math.random() < chance) {
@@ -2250,7 +2250,7 @@ export default function HuntersPath() {
         recordSpiritBinding();
         checkAchievements();
       } else {
-        logPush("Extraction failed. The shade crumbles to dust.");
+        logPush("Binding failed. The shade crumbles to dust.");
       }
     }, 7000); // Wait for the full sequence to complete
   }
@@ -3665,7 +3665,7 @@ export default function HuntersPath() {
                         ></i>
                       </div>
                       {(() => {
-                        const text = getExtractionSequenceText();
+                        const text = getBindingSequenceText();
                         return (
                           <>
                             <h2
@@ -3718,7 +3718,7 @@ export default function HuntersPath() {
                     {spiritBindingState.phase === "failure" && (
                       <div className="text-center">
                         <div className="text-red-400 text-lg font-bold animate-pulse">
-                          💀 Extraction Failed 💀
+                          💀 Binding Failed 💀
                         </div>
                       </div>
                     )}
@@ -5487,7 +5487,7 @@ export default function HuntersPath() {
                       </li>
                       <li>
                         Level up to gain Stat Points. STR/AGI raise damage;
-                        INT/LUCK aid extraction.
+                        INT/LUCK aid spirit binding.
                       </li>
                       <li>
                         Spirit Binding after boss defeat may recruit a Spirit
@@ -5583,7 +5583,7 @@ export default function HuntersPath() {
 
                   {/* Text Content */}
                   {(() => {
-                    const text = getExtractionSequenceText();
+                    const text = getBindingSequenceText();
                     return (
                       <>
                         <h2
@@ -5651,7 +5651,7 @@ export default function HuntersPath() {
                 {spiritBindingState.phase === "failure" && (
                   <div className="text-center">
                     <div className="text-red-400 text-lg font-bold animate-pulse">
-                      💀 Extraction Failed 💀
+                      💀 Binding Failed 💀
                     </div>
                   </div>
                 )}
