@@ -18,6 +18,21 @@ import { RANKS, RANK_COLORS as GAME_RANK_COLORS, DUNGEON_MODIFIERS, generateGate
 export const RANK_COLORS = GAME_RANK_COLORS;
 import { formatGameTime, getCurrentGameDate, initialGameTime, generateDailyQuests, getDifficultyColor, getDifficultyBgColor } from "@/lib/game/questSystem";
 
+// Save format version — bump when the shape of saved data changes
+const SAVE_VERSION = 1;
+
+/** Safely read and parse a JSON value from localStorage. Returns `null` on any failure. */
+function safeParse<T = unknown>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return null;
+    return JSON.parse(raw) as T;
+  } catch (err) {
+    console.warn(`[save-recovery] Failed to parse "${key}":`, err);
+    return null;
+  }
+}
+
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
 // - Mechanics: Gates/Dungeons, Daily Quests with penalties,
@@ -690,6 +705,9 @@ export default function HuntersPath() {
   const { trigger: triggerParticles, bursts, removeBurst } = useParticles();
   const isMobile = useIsMobile();
 
+  // Save-recovery state
+  const [showRecovery, setShowRecovery] = useState(false);
+
   const [player, setPlayer] = useState<Player>(createInitialPlayer);
   const [rebirthModalOpen, setRebirthModalOpen] = useState(false);
   const [offlineGains, setOfflineGains] = useState<{
@@ -736,10 +754,9 @@ export default function HuntersPath() {
   const [daily, setDaily] = useState<Daily>(() => {
     // Check if we need to reset daily quests based on real date
     const today = new Date().toDateString();
-    const savedDaily = localStorage.getItem("hunters-path-daily");
+    const parsedDaily = safeParse<Daily>("hunters-path-daily");
 
-    if (savedDaily) {
-      const parsedDaily = JSON.parse(savedDaily);
+    if (parsedDaily) {
       if (parsedDaily.lastResetDate === today) {
         // Same day, restore saved state
         return parsedDaily;
@@ -913,8 +930,7 @@ export default function HuntersPath() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const today = new Date().toDateString();
-      const saved = localStorage.getItem("hunters-path-login-streak");
-      const streakData = saved ? JSON.parse(saved) : { streak: 0, lastLogin: "" };
+      const streakData = safeParse<{ streak: number; lastLogin: string }>("hunters-path-login-streak") || { streak: 0, lastLogin: "" };
 
       if (streakData.lastLogin === today) return; // already claimed today
 
@@ -1031,10 +1047,22 @@ export default function HuntersPath() {
 
   // Load game on startup
   useEffect(() => {
-    const saved = localStorage.getItem("hunters-path-autosave");
-    if (saved) {
+    const raw = localStorage.getItem("hunters-path-autosave");
+    if (raw) {
+      let gameState: any;
       try {
-        const gameState = JSON.parse(saved);
+        gameState = JSON.parse(raw);
+      } catch (err) {
+        console.error("[save-recovery] Corrupt autosave detected:", err);
+        setShowRecovery(true);
+        return;
+      }
+      if (!gameState || !gameState.player) {
+        console.error("[save-recovery] Autosave missing player data");
+        setShowRecovery(true);
+        return;
+      }
+      try {
 
         // Migrate old spirits to new format (also initialise missing field)
         gameState.player.spirits = (gameState.player.spirits || []).map(
@@ -1155,7 +1183,8 @@ export default function HuntersPath() {
 
         setLog(["Game loaded from auto-save. Welcome back, Hunter!"]);
       } catch (error) {
-        console.error("Failed to load auto-save:", error);
+        console.error("[save-recovery] Failed to apply auto-save:", error);
+        setShowRecovery(true);
       }
     }
   }, []);
@@ -2553,7 +2582,17 @@ export default function HuntersPath() {
       gameTime,
       daily,
       lastSaved: new Date().toISOString(),
+      saveVersion: SAVE_VERSION,
     };
+    // Rotating backup: copy current autosave → backup before overwriting
+    try {
+      const prev = localStorage.getItem("hunters-path-autosave");
+      if (prev) {
+        localStorage.setItem("hunters-path-backup", prev);
+      }
+    } catch (e) {
+      console.warn("[save-recovery] Failed to write backup:", e);
+    }
     localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
     localStorage.setItem("hunters-path-save", JSON.stringify(gameState));
   }
@@ -2699,6 +2738,33 @@ export default function HuntersPath() {
     }
   }
 
+  // --- Save recovery handlers ---
+  function handleRecoveryFresh() {
+    // Wipe all save keys and start fresh
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("hunters-path-")) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    setShowRecovery(false);
+    window.location.reload();
+  }
+
+  function handleRecoveryBackup() {
+    const backup = safeParse<any>("hunters-path-backup");
+    if (!backup || !backup.player) {
+      alert("Backup is also corrupt. Please start fresh.");
+      return;
+    }
+    // Promote backup to autosave & save, then reload
+    const raw = localStorage.getItem("hunters-path-backup")!;
+    localStorage.setItem("hunters-path-autosave", raw);
+    localStorage.setItem("hunters-path-save", raw);
+    setShowRecovery(false);
+    window.location.reload();
+  }
+
   function resetGame() {
     if (
       confirm(
@@ -2794,7 +2860,13 @@ export default function HuntersPath() {
       const gameState = {
         player, gates, gold, gameTime, daily,
         lastSaved: new Date().toISOString(),
+        saveVersion: SAVE_VERSION,
       };
+      // Rotating backup
+      try {
+        const prev = localStorage.getItem("hunters-path-autosave");
+        if (prev) localStorage.setItem("hunters-path-backup", prev);
+      } catch { /* best-effort */ }
       localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
       localStorage.setItem("hunters-path-save", JSON.stringify(gameState));
     }, 1000);
@@ -3958,6 +4030,45 @@ export default function HuntersPath() {
         }
       />
       </>
+    );
+  }
+
+  {/* Save corruption recovery dialog */}
+  if (showRecovery) {
+    const backupExists = localStorage.getItem("hunters-path-backup") !== null;
+    return (
+      <div className="min-h-screen game-gradient font-game text-zinc-100 flex items-center justify-center p-4">
+        <div className="bg-zinc-900 border border-red-500/50 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6 text-center">
+          <div className="text-red-400 text-5xl mb-2"><i className="fas fa-exclamation-triangle"></i></div>
+          <h2 className="text-2xl font-bold text-red-300">Save Data Corrupted</h2>
+          <p className="text-zinc-400 text-sm">
+            Your save data could not be loaded. This can happen if browser storage was cleared or data was corrupted.
+          </p>
+          <div className="space-y-3">
+            {backupExists && (
+              <button
+                onClick={handleRecoveryBackup}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors"
+              >
+                <i className="fas fa-history mr-2"></i>
+                Load Backup
+              </button>
+            )}
+            <button
+              onClick={handleRecoveryFresh}
+              className="w-full py-3 px-4 bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded-lg transition-colors"
+            >
+              <i className="fas fa-redo mr-2"></i>
+              Start Fresh
+            </button>
+          </div>
+          {backupExists && (
+            <p className="text-zinc-500 text-xs">
+              The backup is from your previous save before the last auto-save.
+            </p>
+          )}
+        </div>
+      </div>
     );
   }
 
