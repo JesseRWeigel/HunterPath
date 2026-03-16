@@ -2,7 +2,7 @@
 
 [![Deploy to GitHub Pages](https://github.com/jesserweigel/HunterPath/actions/workflows/deploy-github-pages.yml/badge.svg)](https://github.com/jesserweigel/HunterPath/actions/workflows/deploy-github-pages.yml)
 
-An idle RPG inspired by Solo Leveling, built as a Progressive Web App. Clear gates, fight bosses, bind spirits, manage fatigue, complete daily quests, and prestige your way to S-Rank. Playable offline on any device.
+A dark-fantasy idle RPG built as a Progressive Web App. Clear dungeon gates, fight bosses across six ranks, bind defeated spirits to your legion, manage fatigue, complete daily quests, and prestige your way to S-Rank. Playable offline on any device.
 
 **[Play Now](https://jesserweigel.github.io/HunterPath/)**
 
