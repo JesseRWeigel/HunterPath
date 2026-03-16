@@ -49,11 +49,20 @@ A dark-fantasy idle RPG built as a Progressive Web App. Clear dungeon gates, fig
 - **Training Activities** - Physical training, mental training, meditation (fatigue recovery), and work jobs
 - **Potion System** - HP/MP healing that scales with player level and potion quality
 
+### Meta & Progression Systems
+- **Achievement System** - 25+ achievements across 4 categories (combat, progression, collection, exploration)
+- **Statistics Dashboard** - Track combat stats, gates cleared, spirits bound, play time, and more
+- **Tutorial System** - Guided onboarding for new players so you're not dropped into the abyss blind
+- **Settings Panel** - Audio controls, save management, and game options
+
 ### Quality of Life
 - **PWA** - Install on mobile/desktop, works fully offline
+- **Save Export/Import** - Download your save as JSON; restore it anytime
+- **Save Corruption Recovery** - Rotating backups so a bad save never ends your run
 - **Auto-Save** - localStorage persistence with save data integrity
 - **Responsive UI** - Desktop panel layout + dedicated mobile tab interface
-- **Audio & Haptics** - Sound effects and vibration feedback
+- **AI-Generated Audio** - Background music via MusicGen and synthesized SFX — no more silence
+- **Haptic Feedback** - Vibration on mobile for combat hits and key events
 - **Lore System** - Unlockable story entries as you progress
 
 ## Tech Stack
@@ -105,15 +114,26 @@ HunterPath/
 │   │   │   ├── HuntersPath.tsx      # Main game component (state, combat loop, UI)
 │   │   │   ├── bosses/              # Animated boss SVG components (E-S rank)
 │   │   │   ├── mobile/              # Mobile-specific layout and tabs
-│   │   │   └── sections/            # Desktop UI panels (Stats, Inventory, Quests, etc.)
+│   │   │   └── sections/            # UI panels
+│   │   │       ├── Achievements.tsx  # Achievement tracker and unlock display
+│   │   │       ├── Statistics.tsx    # Play stats dashboard
+│   │   │       ├── Settings.tsx      # Audio, save management, options
+│   │   │       ├── Tutorial.tsx      # New-player onboarding flow
+│   │   │       └── ...              # Stats, Inventory, Quests, Shop, Lore, etc.
 │   │   └── ui/                      # shadcn/ui component library
 │   ├── lib/game/                    # Pure game logic (testable, no React)
 │   │   ├── gameLogic.ts             # Player power, spirit upkeep, binding chance
 │   │   ├── gameUtils.ts             # clamp, rand, uid, fmt, pick
 │   │   ├── gateSystem.ts            # Gate generation, bosses, drops, modifiers
 │   │   ├── spiritSystem.ts          # Spirit creation, rarity, abilities
-│   │   └── questSystem.ts           # Daily quest generation, difficulty scaling
+│   │   ├── questSystem.ts           # Daily quest generation, difficulty scaling
+│   │   ├── achievementSystem.ts     # Achievement definitions, unlock conditions
+│   │   └── statsTracker.ts          # Combat stats, play time, lifetime counters
 │   └── hooks/                       # Custom React hooks
+├── scripts/                         # Asset generation tooling
+│   ├── generate-music-ai.py         # MusicGen model — background music tracks
+│   ├── generate-music.py            # Procedural music fallback
+│   └── generate-sfx.py              # Synthesized sound effects
 ├── server/
 │   ├── index.ts                     # Express server setup
 │   ├── routes.ts                    # API route registration
@@ -128,7 +148,7 @@ HunterPath/
 
 ## Testing
 
-The test suite covers game mechanics, React components, server storage, and schema validation.
+215 tests across 13 files cover game mechanics, new systems, React components, server storage, and schema validation.
 
 ```bash
 # Run all tests
@@ -146,6 +166,8 @@ npm run test:coverage
 | Area | Coverage |
 |------|----------|
 | **Game logic** (gameLogic, gameUtils, gateSystem, spiritSystem, questSystem) | 97-100% |
+| **Achievements** (achievementSystem — unlock conditions, categories) | Full coverage |
+| **Statistics** (statsTracker — combat tracking, play time, counters) | Full coverage |
 | **React components** (ErrorBoundary, Stats, DailyQuest, ActivityLog) | Render + interaction tests |
 | **Server** (MemStorage CRUD) | Full interface coverage |
 | **Schema** (Zod validation) | All insert schemas validated |
@@ -155,10 +177,12 @@ npm run test:coverage
 Tests are colocated next to their source files:
 
 ```
-gameLogic.ts      → gameLogic.test.ts
-gateSystem.ts     → gateSystem.test.ts
-Stats.tsx         → Stats.test.tsx
-storage.ts        → storage.test.ts
+gameLogic.ts            → gameLogic.test.ts
+gateSystem.ts           → gateSystem.test.ts
+achievementSystem.ts    → achievementSystem.test.ts
+statsTracker.ts         → statsTracker.test.ts
+Stats.tsx               → Stats.test.tsx
+storage.ts              → storage.test.ts
 ```
 
 ## Deployment
@@ -177,6 +201,16 @@ The PWA service worker caches assets for offline play after first visit.
 npm run build
 # Upload dist/public/ to any static host
 ```
+
+## Generated Assets
+
+Audio is generated locally rather than sourced from asset packs:
+
+- **Music** — `scripts/generate-music-ai.py` uses Meta's MusicGen model to produce ambient, combat, victory, and defeat tracks
+- **SFX** — `scripts/generate-sfx.py` synthesizes attack, heal, level-up, gate-enter, and other sound effects via numpy/scipy
+- **Fallback** — `scripts/generate-music.py` provides procedural music generation when a GPU isn't available
+
+Run `python scripts/generate-music-ai.py` to regenerate music (requires a CUDA GPU and the `audiocraft` package).
 
 ## Game Mechanics Reference
 
