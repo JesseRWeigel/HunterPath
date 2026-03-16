@@ -8,6 +8,7 @@ import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, h
 import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
 import { RebirthModal } from "./sections/RebirthModal";
+import { Tutorial } from "./sections/Tutorial";
 import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { MobileLayout } from "./mobile/MobileLayout";
@@ -3554,6 +3555,8 @@ export default function HuntersPath() {
 
   if (isMobile) {
     return (
+      <>
+      <Tutorial />
       <MobileLayout
         player={player}
         playerPower={pPower}
@@ -3954,11 +3957,13 @@ export default function HuntersPath() {
           </>
         }
       />
+      </>
     );
   }
 
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
+      <Tutorial />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-6">
