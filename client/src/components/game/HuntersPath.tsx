@@ -14,6 +14,8 @@ import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { MobileLayout } from "./mobile/MobileLayout";
 import { createInitialPlayer, playerPower, spiritUpkeep, calcBindingChance, gainExpGoldFromGate } from "@/lib/game/gameLogic";
+import { createInitialStats, updateStatsAfterCombat, saveStats, loadStats, type GameStats, type CombatOutcome } from "@/lib/game/statsTracker";
+import { Statistics } from "./sections/Statistics";
 import { createSpirit, getRarityColor, getRarityBorder, SPIRIT_TYPES, SPIRIT_ABILITIES, SPIRIT_DESCRIPTIONS } from "@/lib/game/spiritSystem";
 import { RANKS, RANK_COLORS as GAME_RANK_COLORS, DUNGEON_MODIFIERS, generateGatePool, makeGate, rollDrop } from "@/lib/game/gateSystem";
 export const RANK_COLORS = GAME_RANK_COLORS;
@@ -226,7 +228,7 @@ interface CombatResult {
   combatLog: string[];
 }
 
-// Simple statistics interfaces for Phase 1
+// PlayerStatistics kept for backward compat with old saves; replaced by GameStats at runtime
 interface PlayerStatistics {
   totalGatesCompleted: number;
   totalGatesFailed: number;
@@ -795,6 +797,12 @@ export default function HuntersPath() {
   const [achievements, setAchievements] = useState<AchievementState[]>([]);
   const [showStats, setShowStats] = useState(false);
 
+  // Enhanced statistics (GameStats from statsTracker)
+  const [gameStats, setGameStats] = useState<GameStats>(createInitialStats);
+  const combatDamageDealtRef = useRef(0);
+  const combatDamageTakenRef = useRef(0);
+  const playTimeRef = useRef<NodeJS.Timeout | null>(null);
+
   const [prestigeUpgrades, setPrestigeUpgrades] = useState<Record<string, number>>(
     () => {
       try {
@@ -1034,7 +1042,27 @@ export default function HuntersPath() {
     } catch (error) {
       console.error("Failed to load statistics:", error);
     }
+    // Load enhanced game stats
+    setGameStats(loadStats());
   }, []);
+
+  // Play time tracker — increments every second while mounted
+  useEffect(() => {
+    playTimeRef.current = setInterval(() => {
+      setGameStats((prev) => ({ ...prev, totalPlayTime: prev.totalPlayTime + 1 }));
+    }, 1000);
+    return () => {
+      if (playTimeRef.current) clearInterval(playTimeRef.current);
+    };
+  }, []);
+
+  // Persist enhanced game stats periodically (every 30s alongside existing saves)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      saveStats(gameStats);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [gameStats]);
 
   // Sync audioManager with React state
   useEffect(() => {
@@ -1351,6 +1379,10 @@ export default function HuntersPath() {
           }
         }
 
+        // Accumulate damage for statistics
+        combatDamageDealtRef.current += dmgPlayer;
+        combatDamageTakenRef.current += dmgBoss;
+
         // Trigger visual effects, sounds, haptics, particles, and floating damage numbers
         if (dmgPlayer > 0) {
           triggerVisualEffect("screenShake");
@@ -1541,6 +1573,18 @@ export default function HuntersPath() {
 
           // Update statistics
           updateStats(true, exp, goldGain, prev.gate.rank);
+          setGameStats((gs) =>
+            updateStatsAfterCombat(gs, {
+              victory: true,
+              expGained: exp,
+              goldGained: goldGain,
+              damageDealt: combatDamageDealtRef.current,
+              damageTaken: combatDamageTakenRef.current,
+              ticks: tick + 1,
+              gateRank: prev.gate.rank,
+              spiritBound: false, // updated later if binding succeeds
+            })
+          );
           runAchievementCheck(player.hp === player.maxHp);
 
           // Automatically attempt spirit binding with visual sequence
@@ -1604,6 +1648,18 @@ export default function HuntersPath() {
 
           // Update statistics
           updateStats(false, 0, -10, prev.gate.rank);
+          setGameStats((gs) =>
+            updateStatsAfterCombat(gs, {
+              victory: false,
+              expGained: 0,
+              goldGained: 0,
+              damageDealt: combatDamageDealtRef.current,
+              damageTaken: combatDamageTakenRef.current,
+              ticks: tick + 1,
+              gateRank: prev.gate.rank,
+              spiritBound: false,
+            })
+          );
 
           // Keep the combat UI visible - don't set running to null yet
           return null;
@@ -1800,6 +1856,7 @@ export default function HuntersPath() {
       totalSpiritsBound: stats.totalSpiritsBound + 1,
       lastUpdated: new Date().toISOString(),
     }));
+    setGameStats((gs) => ({ ...gs, totalSpiritsBound: gs.totalSpiritsBound + 1 }));
   }
 
   function runAchievementCheck(noDamageClear = false) {
@@ -2048,6 +2105,8 @@ export default function HuntersPath() {
     const initLog = dialogueLine ? [dialogueLine] : [];
     setCombatLog(initLog);
     setCombatResult(null);
+    combatDamageDealtRef.current = 0;
+    combatDamageTakenRef.current = 0;
 
     // Clear any existing spirit binding state
     setSpiritBindingState({
@@ -5605,6 +5664,10 @@ export default function HuntersPath() {
 
             <Card className="mt-6">
               <Achievements achievementStates={achievements} />
+            </Card>
+
+            <Card className="mt-6">
+              <Statistics stats={gameStats} />
             </Card>
 
             <Card className="mt-6">
