@@ -8,3 +8,4 @@ export { ActivityLog } from "./ActivityLog";
 export { Lore } from "./Lore";
 export { RebirthModal } from "./RebirthModal";
 export { Tutorial } from "./Tutorial";
+export { Settings } from "./Settings";

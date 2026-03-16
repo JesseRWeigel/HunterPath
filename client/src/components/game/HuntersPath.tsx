@@ -9,6 +9,7 @@ import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
 import { RebirthModal } from "./sections/RebirthModal";
 import { Tutorial } from "./sections/Tutorial";
+import { Settings } from "./sections/Settings";
 import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { MobileLayout } from "./mobile/MobileLayout";
@@ -784,6 +785,7 @@ export default function HuntersPath() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [volume, setVolume] = useState(0.7);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Simple statistics state for Phase 1
   const [playerStats, setPlayerStats] = useState<PlayerStatistics>({
@@ -2792,6 +2794,18 @@ export default function HuntersPath() {
     }
   }
 
+  function deleteAllSaveData() {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("hunters-path-")) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    window.location.reload();
+  }
+
   // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
   useEffect(() => {
     if (!inRun && daily.penaltyArmed) {
@@ -4075,6 +4089,19 @@ export default function HuntersPath() {
   return (
     <div className="min-h-screen game-gradient font-game text-zinc-100 p-4">
       <Tutorial />
+      <Settings
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        volume={volume}
+        onSetVolume={(v) => updateVolume(v)}
+        soundEnabled={soundEnabled}
+        onSetSoundEnabled={setSoundEnabled}
+        musicEnabled={musicEnabled}
+        onSetMusicEnabled={setMusicEnabled}
+        onExportSave={exportSave}
+        onImportSave={importSave}
+        onDeleteSave={deleteAllSaveData}
+      />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-6">
@@ -4208,6 +4235,15 @@ export default function HuntersPath() {
                     title={`Volume: ${Math.round(volume * 100)}%`}
                   />
                 </div>
+
+                {/* Settings Gear */}
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className="bg-zinc-800 p-2 rounded-lg text-zinc-400 hover:text-violet-400 transition-colors"
+                  title="Settings"
+                >
+                  <i className="fas fa-gear"></i>
+                </button>
 
                 {/* Mobile Menu Toggle */}
                 <button
