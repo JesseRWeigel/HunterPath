@@ -3908,7 +3908,7 @@ export default function HuntersPath() {
                     ></div>
                   </div>
                   <div className="relative z-10 text-center max-w-2xl mx-4">
-                    <div className="mb-8 p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
+                    <div className="mb-4 sm:mb-8 p-4 sm:p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
                       <div className="w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-2xl">
                         <i className="fas fa-star text-6xl text-white animate-spin"></i>
                       </div>
@@ -3922,7 +3922,7 @@ export default function HuntersPath() {
                         +{levelUpState.statPointsGained} Stat Points Available!
                       </div>
                       {levelUpState.showStatAllocation && (
-                        <div className="mt-8 p-6 bg-zinc-800/50 rounded-lg border border-yellow-500/30">
+                        <div className="mt-4 sm:mt-8 p-3 sm:p-6 bg-zinc-800/50 rounded-lg border border-yellow-500/30">
                           <h3 className="text-xl font-bold text-yellow-300 mb-4">
                             Allocate Your Stat Points
                           </h3>
@@ -5731,8 +5731,8 @@ export default function HuntersPath() {
 
         {/* Spirit Binding Sequence Modal */}
         {spiritBindingState.isActive && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="relative w-full h-full flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 overflow-y-auto">
+            <div className="relative w-full flex items-center justify-center py-4 min-h-full">
               {/* Background Effects */}
               <div className="absolute inset-0">
                 {/* Animated particles */}
@@ -5994,8 +5994,8 @@ export default function HuntersPath() {
 
         {/* Level-Up Celebration Modal */}
         {levelUpState.isActive && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="relative w-full h-full flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 overflow-y-auto">
+            <div className="relative w-full flex items-center justify-center py-4 min-h-full">
               {/* Background Effects */}
               <div className="absolute inset-0">
                 {/* Animated particles */}
@@ -6028,28 +6028,28 @@ export default function HuntersPath() {
               {/* Main Content */}
               <div className="relative z-10 text-center max-w-2xl mx-4">
                 {/* Celebration Background */}
-                <div className="mb-8 p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
+                <div className="mb-4 sm:mb-8 p-4 sm:p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
                   {/* Level Icon */}
-                  <div className="w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-2xl">
-                    <i className="fas fa-star text-6xl text-white animate-spin"></i>
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-6 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-2xl">
+                    <i className="fas fa-star text-3xl sm:text-5xl text-white"></i>
                   </div>
 
                   {/* Level Up Text */}
-                  <h2 className="text-5xl font-bold mb-4 text-yellow-300 animate-celebration-bounce">
+                  <h2 className="text-3xl sm:text-5xl font-bold mb-2 sm:mb-4 text-yellow-300">
                     LEVEL UP!
                   </h2>
 
-                  <div className="text-3xl font-bold text-orange-300 mb-4">
+                  <div className="text-xl sm:text-3xl font-bold text-orange-300 mb-2 sm:mb-4">
                     Level {levelUpState.newLevel}
                   </div>
 
-                  <div className="text-xl text-yellow-200 mb-6">
+                  <div className="text-base sm:text-xl text-yellow-200 mb-3 sm:mb-6">
                     +{levelUpState.statPointsGained} Stat Points Available!
                   </div>
 
                   {/* Stat Allocation Section */}
                   {levelUpState.showStatAllocation && (
-                    <div className="mt-8 p-6 bg-zinc-800/50 rounded-lg border border-yellow-500/30">
+                    <div className="mt-4 sm:mt-8 p-3 sm:p-6 bg-zinc-800/50 rounded-lg border border-yellow-500/30">
                       <h3 className="text-xl font-bold text-yellow-300 mb-4">
                         Allocate Your Stat Points
                       </h3>

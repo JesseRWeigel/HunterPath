@@ -184,16 +184,25 @@ class AudioManager {
 
     const music = new Howl({
       src: [src],
+      html5: true, // Use HTML5 Audio for music (better for long tracks, helps with autoplay)
       volume: 0,
       loop,
+      onplay: () => {
+        music.fade(0, this._volume * 0.5, 1000); // crossfade in when actually playing
+      },
       onloaderror: () => {
         // Fallback: ambient drone via Web Audio
         if (name === "ambient") this.startAmbientDrone();
       },
+      onplayerror: () => {
+        // Autoplay was blocked — retry on next user interaction
+        music.once("unlock", () => {
+          music.play();
+        });
+      },
     });
 
     music.play();
-    music.fade(0, this._volume * 0.5, 1000); // crossfade in over 1s
     this.currentMusic = music;
     this.currentMusicName = name;
   }
