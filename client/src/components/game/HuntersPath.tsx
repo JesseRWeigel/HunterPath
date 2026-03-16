@@ -18,6 +18,8 @@ import { createSpirit, getRarityColor, getRarityBorder, SPIRIT_TYPES, SPIRIT_ABI
 import { RANKS, RANK_COLORS as GAME_RANK_COLORS, DUNGEON_MODIFIERS, generateGatePool, makeGate, rollDrop } from "@/lib/game/gateSystem";
 export const RANK_COLORS = GAME_RANK_COLORS;
 import { formatGameTime, getCurrentGameDate, initialGameTime, generateDailyQuests, getDifficultyColor, getDifficultyBgColor } from "@/lib/game/questSystem";
+import { checkAchievements as checkAchievementsSystem, ACHIEVEMENTS, type AchievementState, type AchievementGameState } from "@/lib/game/achievementSystem";
+import { Achievements } from "./sections/Achievements";
 
 // Save format version — bump when the shape of saved data changes
 const SAVE_VERSION = 1;
@@ -233,13 +235,6 @@ interface PlayerStatistics {
   totalSpiritsBound: number;
   highestGateRank: string;
   lastUpdated: string;
-}
-
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  unlockedAt: string;
 }
 
 interface PrestigeUpgrade {
@@ -797,7 +792,7 @@ export default function HuntersPath() {
     highestGateRank: "E",
     lastUpdated: new Date().toISOString(),
   });
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievements, setAchievements] = useState<AchievementState[]>([]);
   const [showStats, setShowStats] = useState(false);
 
   const [prestigeUpgrades, setPrestigeUpgrades] = useState<Record<string, number>>(
@@ -1002,6 +997,7 @@ export default function HuntersPath() {
       localStorage.setItem("hunters-path-stats", JSON.stringify({
         playerStats, achievements, lastSaved: new Date().toISOString(),
       }));
+      localStorage.setItem("hunters-path-achievements", JSON.stringify(achievements));
       localStorage.setItem("hunters-path-prestige-upgrades", JSON.stringify(prestigeUpgrades));
     }, 30000);
 
@@ -1027,7 +1023,11 @@ export default function HuntersPath() {
         if (stats.playerStats) {
           setPlayerStats(stats.playerStats);
         }
-        if (stats.achievements) {
+        // Load achievements: prefer dedicated key, fall back to stats blob
+        const savedAch = safeParse<AchievementState[]>("hunters-path-achievements");
+        if (savedAch && savedAch.length > 0) {
+          setAchievements(savedAch);
+        } else if (stats.achievements) {
           setAchievements(stats.achievements);
         }
       }
@@ -1541,7 +1541,7 @@ export default function HuntersPath() {
 
           // Update statistics
           updateStats(true, exp, goldGain, prev.gate.rank);
-          checkAchievements();
+          runAchievementCheck(player.hp === player.maxHp);
 
           // Automatically attempt spirit binding with visual sequence
           const bindBoost = (prestigeUpgrades["bind_chance"] || 0) * 0.03;
@@ -1677,6 +1677,9 @@ export default function HuntersPath() {
         // Trigger visual effects
         triggerVisualEffect("levelUp");
 
+        // Check achievements after level up
+        runAchievementCheck();
+
         setTimeout(() => {
           setGates(generateGatePool(level));
           logPush(
@@ -1799,59 +1802,34 @@ export default function HuntersPath() {
     }));
   }
 
-  function checkAchievements() {
-    const newAchievements: Achievement[] = [];
-
-    // First victory achievement
-    if (
-      playerStats.totalGatesCompleted === 1 &&
-      achievements &&
-      !achievements.some((a) => a.name === "First Blood")
-    ) {
-      newAchievements.push({
-        id: uid(),
-        name: "First Blood",
-        description: "Win your first gate battle",
-        unlockedAt: new Date().toISOString(),
+  function runAchievementCheck(noDamageClear = false) {
+    const gameState: AchievementGameState = {
+      player: {
+        level: player.level,
+        hp: player.hp,
+        maxHp: player.maxHp,
+        rebirths: player.rebirths,
+        spirits: player.spirits,
+        inv: player.inv,
+        equipment: player.equipment,
+        clearedRanks: player.clearedRanks,
+      },
+      playerStats,
+      daily,
+      loginStreak: loginStreak.streak,
+      noDamageClear,
+    };
+    const { updated, newlyUnlocked } = checkAchievementsSystem(gameState, achievements);
+    if (newlyUnlocked.length > 0) {
+      setAchievements(updated);
+      newlyUnlocked.forEach((a) => {
+        logPush(`🏆 Achievement Unlocked: ${a.name}!`);
       });
-    }
-
-    // Gate master achievement
-    if (
-      playerStats.totalGatesCompleted === 10 &&
-      achievements &&
-      !achievements.some((a) => a.name === "Gate Master")
-    ) {
-      newAchievements.push({
-        id: uid(),
-        name: "Gate Master",
-        description: "Complete 10 gates",
-        unlockedAt: new Date().toISOString(),
-      });
-    }
-
-    // Spirit caller achievement
-    if (
-      playerStats.totalSpiritsBound === 1 &&
-      achievements &&
-      !achievements.some((a) => a.name === "Spirit Caller")
-    ) {
-      newAchievements.push({
-        id: uid(),
-        name: "Spirit Caller",
-        description: "Bind your first spirit",
-        unlockedAt: new Date().toISOString(),
-      });
-    }
-
-    // Add new achievements
-    if (newAchievements.length > 0) {
-      setAchievements((current) => [...current, ...newAchievements]);
-
-      // Show achievement notifications
-      newAchievements.forEach((achievement) => {
-        logPush(`🏆 Achievement Unlocked: ${achievement.name}!`);
-      });
+      // Persist immediately
+      localStorage.setItem("hunters-path-achievements", JSON.stringify(updated));
+    } else if (updated.some((u, i) => u.progress !== (achievements[i]?.progress ?? 0))) {
+      // Progress changed even if nothing newly unlocked
+      setAchievements(updated);
     }
   }
 
@@ -2184,6 +2162,9 @@ export default function HuntersPath() {
 
         logPush(`All daily quests completed! +${reputationGain} Reputation`);
 
+        // Check achievements after quest completion
+        runAchievementCheck();
+
         return {
           ...d,
           availableQuests: updatedQuests,
@@ -2280,7 +2261,7 @@ export default function HuntersPath() {
 
         // Update statistics
         recordSpiritBinding();
-        checkAchievements();
+        runAchievementCheck();
       } else {
         logPush("Binding failed. The shade crumbles to dust.");
       }
@@ -5623,6 +5604,10 @@ export default function HuntersPath() {
             </Card>
 
             <Card className="mt-6">
+              <Achievements achievementStates={achievements} />
+            </Card>
+
+            <Card className="mt-6">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="lore">
                   <AccordionTrigger className="font-semibold hover:no-underline">
@@ -5909,40 +5894,7 @@ export default function HuntersPath() {
                 </Card>
               </div>
 
-              {/* Achievements */}
-              {achievements && achievements.length > 0 && (
-                <Card className="mt-6">
-                  <h3 className="text-lg font-bold text-zinc-100 mb-4">
-                    <i className="fas fa-medal mr-2 text-yellow-400"></i>
-                    Achievements ({achievements?.length || 0})
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {achievements &&
-                      achievements.map((achievement) => (
-                        <div
-                          key={achievement.id}
-                          className="bg-zinc-800/50 border border-yellow-500/30 rounded-lg p-3"
-                        >
-                          <div className="flex items-center space-x-2 mb-1">
-                            <i className="fas fa-trophy text-yellow-400"></i>
-                            <span className="font-bold text-yellow-300">
-                              {achievement.name}
-                            </span>
-                          </div>
-                          <p className="text-sm text-zinc-400">
-                            {achievement.description}
-                          </p>
-                          <p className="text-xs text-zinc-500 mt-1">
-                            Unlocked:{" "}
-                            {new Date(
-                              achievement.unlockedAt
-                            ).toLocaleDateString()}
-                          </p>
-                        </div>
-                      ))}
-                  </div>
-                </Card>
-              )}
+              {/* Achievements — now rendered in right sidebar via <Achievements /> */}
 
               <div className="mt-6 text-center">
                 <p className="text-xs text-zinc-500">

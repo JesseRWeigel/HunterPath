@@ -6,6 +6,7 @@ export { DailyQuest } from "./DailyQuest";
 export { Inventory } from "./Inventory";
 export { ActivityLog } from "./ActivityLog";
 export { Lore } from "./Lore";
+export { Achievements } from "./Achievements";
 export { RebirthModal } from "./RebirthModal";
 export { Tutorial } from "./Tutorial";
 export { Settings } from "./Settings";
