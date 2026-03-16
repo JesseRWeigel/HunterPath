@@ -998,6 +998,12 @@ export default function HuntersPath() {
     return () => clearTimeout(timer);
   }, []); // Only run once on mount
 
+  // Start ambient music on mount
+  useEffect(() => {
+    const timer = setTimeout(() => playMusic("ambient_music"), 2000);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Periodic save for ancillary data (daily quests, statistics, prestige)
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
@@ -2105,6 +2111,7 @@ export default function HuntersPath() {
     const initLog = dialogueLine ? [dialogueLine] : [];
     setCombatLog(initLog);
     setCombatResult(null);
+    playMusic("combat_music");
     combatDamageDealtRef.current = 0;
     combatDamageTakenRef.current = 0;
 
@@ -2465,6 +2472,7 @@ export default function HuntersPath() {
     setCombatResult(null);
     setRunning(null); // Clear the combat state
     setCombatLog([]); // Clear the combat log
+    playMusic("ambient_music"); // Resume ambient music after combat
   }
 
   function triggerVisualEffect(effect: keyof typeof visualEffects) {
@@ -3116,12 +3124,11 @@ export default function HuntersPath() {
           }
 
           // Create new equipment object with explicit copying
+          const eq = p.equipment || {};
           const newEquipment = {
-            weapon: p.equipment.weapon ? { ...p.equipment.weapon } : undefined,
-            armor: p.equipment.armor ? { ...p.equipment.armor } : undefined,
-            accessory: p.equipment.accessory
-              ? { ...p.equipment.accessory }
-              : undefined,
+            weapon: eq.weapon ? { ...eq.weapon } : undefined,
+            armor: eq.armor ? { ...eq.armor } : undefined,
+            accessory: eq.accessory ? { ...eq.accessory } : undefined,
           };
 
           // Set the new item
