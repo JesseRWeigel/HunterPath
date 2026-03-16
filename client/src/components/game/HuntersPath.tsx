@@ -998,10 +998,27 @@ export default function HuntersPath() {
     return () => clearTimeout(timer);
   }, []); // Only run once on mount
 
-  // Start ambient music on mount
+  // Start ambient music after first user interaction (browsers block autoplay)
   useEffect(() => {
-    const timer = setTimeout(() => playMusic("ambient_music"), 2000);
-    return () => clearTimeout(timer);
+    let started = false;
+    const startMusic = () => {
+      if (started) return;
+      started = true;
+      playMusic("ambient_music");
+      document.removeEventListener("click", startMusic);
+      document.removeEventListener("touchstart", startMusic);
+      document.removeEventListener("keydown", startMusic);
+    };
+    document.addEventListener("click", startMusic, { once: false });
+    document.addEventListener("touchstart", startMusic, { once: false });
+    document.addEventListener("keydown", startMusic, { once: false });
+    // Also try immediately in case autoplay is allowed
+    setTimeout(() => playMusic("ambient_music"), 2000);
+    return () => {
+      document.removeEventListener("click", startMusic);
+      document.removeEventListener("touchstart", startMusic);
+      document.removeEventListener("keydown", startMusic);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodic save for ancillary data (daily quests, statistics, prestige)
@@ -2398,27 +2415,20 @@ export default function HuntersPath() {
     const rankMatch = runeName.match(/([A-Z])-grade/);
     const typeMatch = runeName.match(/([A-Z]+)-grade/);
 
-    if (!rankMatch || !typeMatch) {
-      logPush("Invalid rune format. Cannot use this rune.");
-      return;
-    }
-
-    const rank = rankMatch[1];
-    const rankIdx = RANKS.indexOf(rank as BossRank);
-    if (rankIdx === -1) {
-      logPush("Unknown rune rank. Cannot use this rune.");
-      return;
-    }
-
-    // Determine stat type from rune name
+    // Determine stat type from rune name or stats
     let statType: keyof Player["stats"] | null = null;
     if (runeName.includes("STR")) statType = "STR";
     else if (runeName.includes("AGI")) statType = "AGI";
     else if (runeName.includes("INT")) statType = "INT";
     else if (runeName.includes("VIT")) statType = "VIT";
     else if (runeName.includes("LUCK")) statType = "LUCK";
-    else {
-      // Random stat if not specified
+    else if (item.stats) {
+      // Try to get stat type from item stats object
+      const statKey = Object.keys(item.stats).find(k => ["STR", "AGI", "INT", "VIT", "LUCK"].includes(k));
+      if (statKey) statType = statKey as keyof Player["stats"];
+    }
+    if (!statType) {
+      // Random stat as last resort
       const statKeys: (keyof Player["stats"])[] = [
         "STR",
         "AGI",
@@ -2429,10 +2439,16 @@ export default function HuntersPath() {
       statType = statKeys[rand(0, statKeys.length - 1)];
     }
 
-    // Calculate stat boost based on rank
-    const baseBoost = rankIdx + 1; // E=1, D=2, C=3, B=4, A=5, S=6
-    const variance = rand(-1, 1); // Small variance
-    const statBoost = Math.max(1, baseBoost + variance);
+    // Get stat bonus: prefer item.stats value, fall back to rank-based calculation
+    let statBoost = 1;
+    if (item.stats && item.stats[statType]) {
+      statBoost = Math.max(1, item.stats[statType]);
+    } else {
+      const rankMatch = runeName.match(/([A-Z])-grade/);
+      const rankIdx = rankMatch ? Math.max(0, RANKS.indexOf(rankMatch[1] as BossRank)) : 0;
+      const baseBoost = rankIdx + 1;
+      statBoost = Math.max(1, baseBoost + rand(-1, 1));
+    }
 
     // Apply stat boost
     setPlayer((p) => ({
