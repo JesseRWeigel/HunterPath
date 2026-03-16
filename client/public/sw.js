@@ -1,11 +1,35 @@
-const CACHE_NAME = "hunters-path-v3";
+const CACHE_NAME = "hunters-path-v4";
 const BASE_PATH = "/HunterPath/";
+
+// Audio files to precache for offline play
+const audioFiles = [
+  "sounds/attack.wav",
+  "sounds/block.wav",
+  "sounds/critical.wav",
+  "sounds/damage.wav",
+  "sounds/defeat.wav",
+  "sounds/victory.wav",
+  "sounds/heal.wav",
+  "sounds/level_up.wav",
+  "sounds/gate_enter.wav",
+  "sounds/rest.wav",
+  "sounds/rune_use.wav",
+  "sounds/binding_start.wav",
+  "sounds/binding_loop.wav",
+  "sounds/binding_success.wav",
+  "sounds/binding_failure.wav",
+  "music/ambient.wav",
+  "music/combat.wav",
+  "music/victory.wav",
+  "music/defeat.wav",
+];
 
 // Cache built assets - these are the actual files served by the server
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + "index.html",
   BASE_PATH + "manifest.json",
+  ...audioFiles.map((f) => BASE_PATH + f),
 ];
 
 // Install event - cache resources
@@ -17,13 +41,42 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Fetch event - network first, fallback to cache
+// Check if a request URL is for an audio file
+function isAudioRequest(url) {
+  return url.pathname.match(/\.(wav|mp3|ogg)$/);
+}
+
+// Fetch event - cache-first for audio, network-first for everything else
 self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (event.request.method !== "GET") {
     return;
   }
 
+  const url = new URL(event.request.url);
+
+  // Cache-first strategy for audio files (they don't change often)
+  if (isAudioRequest(url)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) {
+          return cached;
+        }
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Network-first strategy for all other requests
   event.respondWith(
     fetch(event.request)
       .then((response) => {
