@@ -95,28 +95,28 @@ const PROCEDURAL_SOUNDS: Record<SoundName, ToneStep[]> = {
 const BASE = import.meta.env.BASE_URL ?? "/";
 
 const SFX_PATHS: Record<SoundName, string> = {
-  attack: `${BASE}sounds/attack.mp3`,
-  damage: `${BASE}sounds/damage.mp3`,
-  critical: `${BASE}sounds/critical.mp3`,
-  block: `${BASE}sounds/block.mp3`,
-  victory: `${BASE}sounds/victory.mp3`,
-  defeat: `${BASE}sounds/defeat.mp3`,
-  heal: `${BASE}sounds/heal.mp3`,
-  rune_use: `${BASE}sounds/rune_use.mp3`,
-  level_up: `${BASE}sounds/level_up.mp3`,
-  rest: `${BASE}sounds/rest.mp3`,
-  gate_enter: `${BASE}sounds/gate_enter.mp3`,
-  binding_start: `${BASE}sounds/binding_start.mp3`,
-  binding_loop: `${BASE}sounds/binding_loop.mp3`,
-  binding_success: `${BASE}sounds/binding_success.mp3`,
-  binding_failure: `${BASE}sounds/binding_failure.mp3`,
+  attack: `${BASE}sounds/attack.wav`,
+  damage: `${BASE}sounds/damage.wav`,
+  critical: `${BASE}sounds/critical.wav`,
+  block: `${BASE}sounds/block.wav`,
+  victory: `${BASE}sounds/victory.wav`,
+  defeat: `${BASE}sounds/defeat.wav`,
+  heal: `${BASE}sounds/heal.wav`,
+  rune_use: `${BASE}sounds/rune_use.wav`,
+  level_up: `${BASE}sounds/level_up.wav`,
+  rest: `${BASE}sounds/rest.wav`,
+  gate_enter: `${BASE}sounds/gate_enter.wav`,
+  binding_start: `${BASE}sounds/binding_start.wav`,
+  binding_loop: `${BASE}sounds/binding_loop.wav`,
+  binding_success: `${BASE}sounds/binding_success.wav`,
+  binding_failure: `${BASE}sounds/binding_failure.wav`,
 };
 
 const MUSIC_PATHS: Record<MusicName, string> = {
-  ambient: `${BASE}music/ambient.mp3`,
-  combat: `${BASE}music/combat.mp3`,
-  victory_music: `${BASE}music/victory.mp3`,
-  defeat_music: `${BASE}music/defeat.mp3`,
+  ambient: `${BASE}music/ambient.wav`,
+  combat: `${BASE}music/combat.wav`,
+  victory_music: `${BASE}music/victory.wav`,
+  defeat_music: `${BASE}music/defeat.wav`,
 };
 
 class AudioManager {
