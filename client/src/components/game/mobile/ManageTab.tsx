@@ -40,7 +40,7 @@ function Accordion({ title, badge, defaultOpen = false, children }: {
         <span className="flex items-center gap-2">{title}{badge}</span>
         <span className="text-zinc-500 text-xs">{open ? "▲" : "▼"}</span>
       </button>
-      {open && <div className="bg-zinc-950 p-4">{children}</div>}
+      {open && <div className="bg-zinc-950 px-2.5 py-3 min-[420px]:px-4">{children}</div>}
     </div>
   );
 }
@@ -93,22 +93,22 @@ export function ManageTab({
         defaultOpen={hasPoints}
         badge={hasPoints ? <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> : undefined}
       >
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
           {STATS.map(stat => (
-            <div key={stat} className="flex items-center justify-between bg-zinc-900 rounded-lg px-3 py-2.5">
-              <div>
+            <div key={stat} className="flex items-center justify-between bg-zinc-900 rounded-lg px-2.5 py-2.5 min-w-0">
+              <div className="shrink-0">
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">{stat}</div>
                 <div className="text-lg font-bold text-zinc-100">
                   {player.stats?.[stat] ?? 0}
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 {[1, 5, 10].map(n => (
                   <button
                     key={n}
                     onClick={() => onAllocateStat(stat, n)}
                     disabled={!hasPoints}
-                    className={`${n === 1 ? "w-9" : "w-10"} h-9 rounded-lg bg-violet-600 text-white text-xs font-bold disabled:bg-zinc-800 disabled:text-zinc-600 flex items-center justify-center active:bg-violet-500`}
+                    className="w-9 h-9 rounded-lg bg-violet-600 text-white text-xs font-bold disabled:bg-zinc-800 disabled:text-zinc-600 flex items-center justify-center active:bg-violet-500"
                     aria-label={`Allocate ${n} point${n > 1 ? "s" : ""} to ${stat}`}
                   >
                     +{n}
