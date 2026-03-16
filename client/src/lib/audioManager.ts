@@ -17,10 +17,10 @@ type SoundName =
   | "level_up"
   | "rest"
   | "gate_enter"
-  | "extraction_start"
-  | "extraction_loop"
-  | "extraction_success"
-  | "extraction_failure";
+  | "binding_start"
+  | "binding_loop"
+  | "binding_success"
+  | "binding_failure";
 
 type MusicName = "ambient" | "combat" | "victory_music" | "defeat_music";
 
@@ -72,20 +72,20 @@ const PROCEDURAL_SOUNDS: Record<SoundName, ToneStep[]> = {
     { freq: 150, duration: 0.3, type: "sawtooth", volume: 0.3, delay: 0 },
     { freq: 200, duration: 0.3, type: "sawtooth", volume: 0.3, delay: 300 },
   ],
-  extraction_start: [
+  binding_start: [
     { freq: 400, duration: 0.2, type: "sine", volume: 0.2, delay: 0 },
     { freq: 600, duration: 0.2, type: "sine", volume: 0.2, delay: 200 },
   ],
-  extraction_loop: [
+  binding_loop: [
     { freq: 800, duration: 0.1, type: "sine", volume: 0.1, delay: 0 },
   ],
-  extraction_success: [
+  binding_success: [
     { freq: 523, duration: 0.2, type: "sine", volume: 0.3, delay: 0 },
     { freq: 659, duration: 0.2, type: "sine", volume: 0.3, delay: 200 },
     { freq: 784, duration: 0.2, type: "sine", volume: 0.3, delay: 400 },
     { freq: 1047, duration: 0.4, type: "sine", volume: 0.3, delay: 600 },
   ],
-  extraction_failure: [
+  binding_failure: [
     { freq: 200, duration: 0.4, type: "sawtooth", volume: 0.3, delay: 0 },
     { freq: 150, duration: 0.4, type: "sawtooth", volume: 0.3, delay: 400 },
   ],
@@ -106,10 +106,10 @@ const SFX_PATHS: Record<SoundName, string> = {
   level_up: `${BASE}sounds/level_up.mp3`,
   rest: `${BASE}sounds/rest.mp3`,
   gate_enter: `${BASE}sounds/gate_enter.mp3`,
-  extraction_start: `${BASE}sounds/extraction_start.mp3`,
-  extraction_loop: `${BASE}sounds/extraction_loop.mp3`,
-  extraction_success: `${BASE}sounds/extraction_success.mp3`,
-  extraction_failure: `${BASE}sounds/extraction_failure.mp3`,
+  binding_start: `${BASE}sounds/binding_start.mp3`,
+  binding_loop: `${BASE}sounds/binding_loop.mp3`,
+  binding_success: `${BASE}sounds/binding_success.mp3`,
+  binding_failure: `${BASE}sounds/binding_failure.mp3`,
 };
 
 const MUSIC_PATHS: Record<MusicName, string> = {

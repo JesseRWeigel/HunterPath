@@ -3,7 +3,7 @@ import {
   createInitialPlayer,
   playerPower,
   spiritUpkeep,
-  calcExtractionChance,
+  calcBindingChance,
   gainExpGoldFromGate,
   type LogicPlayer,
 } from "./gameLogic";
@@ -164,26 +164,26 @@ describe("gameLogic", () => {
     });
   });
 
-  describe("calcExtractionChance", () => {
+  describe("calcBindingChance", () => {
     it("calculates base chance from INT and LUCK", () => {
       const player = { stats: { STR: 5, AGI: 5, INT: 10, VIT: 5, LUCK: 10 } };
       // base = 0.25 + 10*0.008 + 10*0.01 = 0.25 + 0.08 + 0.1 = 0.43
       // rank 0 penalty = 0
-      expect(calcExtractionChance(player, 0)).toBeCloseTo(0.43, 2);
+      expect(calcBindingChance(player, 0)).toBeCloseTo(0.43, 2);
     });
 
     it("applies rank penalty for higher rank bosses", () => {
       const player = { stats: { STR: 5, AGI: 5, INT: 10, VIT: 5, LUCK: 10 } };
       // rank 3 (B): penalty = 0.03 * 3 = 0.09
       // 0.43 - 0.09 = 0.34
-      expect(calcExtractionChance(player, 3)).toBeCloseTo(0.34, 2);
+      expect(calcBindingChance(player, 3)).toBeCloseTo(0.34, 2);
     });
 
     it("clamps minimum at 0.08", () => {
       const weakPlayer = { stats: { STR: 0, AGI: 0, INT: 0, VIT: 0, LUCK: 0 } };
       // base = 0.25, rank 5: penalty = 0.15, result = 0.10 -> not clamped
       // rank 5: 0.25 - 0.15 = 0.10
-      expect(calcExtractionChance(weakPlayer, 5)).toBeCloseTo(0.10, 2);
+      expect(calcBindingChance(weakPlayer, 5)).toBeCloseTo(0.10, 2);
 
       // With rank penalty making it very low
       // Actually with INT=0 LUCK=0: base=0.25, rank 5: 0.25-0.15=0.10 still above 0.08
@@ -195,14 +195,14 @@ describe("gameLogic", () => {
       const strongPlayer = { stats: { STR: 5, AGI: 5, INT: 50, VIT: 5, LUCK: 50 } };
       // base = 0.25 + 50*0.008 + 50*0.01 = 0.25 + 0.4 + 0.5 = 1.15
       // clamped to 0.85
-      expect(calcExtractionChance(strongPlayer, 0)).toBe(0.85);
+      expect(calcBindingChance(strongPlayer, 0)).toBe(0.85);
     });
 
-    it("higher INT and LUCK improve extraction chance", () => {
+    it("higher INT and LUCK improve binding chance", () => {
       const low = { stats: { STR: 5, AGI: 5, INT: 5, VIT: 5, LUCK: 5 } };
       const high = { stats: { STR: 5, AGI: 5, INT: 20, VIT: 5, LUCK: 20 } };
-      expect(calcExtractionChance(high, 0)).toBeGreaterThan(
-        calcExtractionChance(low, 0)
+      expect(calcBindingChance(high, 0)).toBeGreaterThan(
+        calcBindingChance(low, 0)
       );
     });
   });

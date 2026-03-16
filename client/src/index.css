@@ -47,9 +47,9 @@
   --exp-color: hsl(262, 83%, 58%);
   --fatigue-color: hsl(25, 95%, 53%);
 
-  /* Shadow and extraction colors */
+  /* Spirit binding colors */
   --shadow-color: hsl(262, 83%, 58%);
-  --extraction-color: hsl(280, 100%, 70%);
+  --binding-color: hsl(280, 100%, 70%);
 
   /* Font family */
   --font-game: "Inter", system-ui, sans-serif;

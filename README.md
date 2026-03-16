@@ -108,7 +108,7 @@ HunterPath/
 │   │   │   └── sections/            # Desktop UI panels (Stats, Inventory, Quests, etc.)
 │   │   └── ui/                      # shadcn/ui component library
 │   ├── lib/game/                    # Pure game logic (testable, no React)
-│   │   ├── gameLogic.ts             # Player power, spirit upkeep, extraction chance
+│   │   ├── gameLogic.ts             # Player power, spirit upkeep, binding chance
 │   │   ├── gameUtils.ts             # clamp, rand, uid, fmt, pick
 │   │   ├── gateSystem.ts            # Gate generation, bosses, drops, modifiers
 │   │   ├── spiritSystem.ts          # Spirit creation, rarity, abilities
