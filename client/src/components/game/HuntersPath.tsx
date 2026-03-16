@@ -3164,6 +3164,63 @@ export default function HuntersPath() {
     logPush("Game saved successfully!");
   }
 
+  function exportSave() {
+    const data: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("hunters-path-")) {
+        data[key] = localStorage.getItem(key)!;
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `hunters-path-save-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logPush("Save exported!");
+  }
+
+  function importSave() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (!data["hunters-path-autosave"]) {
+            alert("Invalid save file: missing autosave data.");
+            return;
+          }
+          if (
+            !window.confirm(
+              "This will overwrite your current save. Are you sure?"
+            )
+          )
+            return;
+          for (const [key, value] of Object.entries(data)) {
+            if (key.startsWith("hunters-path-")) {
+              localStorage.setItem(key, value as string);
+            }
+          }
+          window.location.reload();
+        } catch {
+          alert("Failed to read save file. Is it valid JSON?");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
   function loadGame() {
     try {
       const saved = localStorage.getItem("hunters-path-save");
@@ -4953,6 +5010,22 @@ export default function HuntersPath() {
                   <i className="fas fa-upload mr-2"></i>
                   Load Game
                 </Btn>
+                <Btn
+                  onClick={exportSave}
+                  disabled={inRun}
+                  className="w-full justify-start"
+                >
+                  <i className="fas fa-file-export mr-2"></i>
+                  Export Save
+                </Btn>
+                <Btn
+                  onClick={importSave}
+                  disabled={inRun}
+                  className="w-full justify-start"
+                >
+                  <i className="fas fa-file-import mr-2"></i>
+                  Import Save
+                </Btn>
               </div>
             </div>
           </div>
@@ -5031,6 +5104,14 @@ export default function HuntersPath() {
                 <Btn onClick={loadGame} disabled={inRun}>
                   <i className="fas fa-upload mr-2"></i>
                   Load Game
+                </Btn>
+                <Btn onClick={exportSave} disabled={inRun}>
+                  <i className="fas fa-file-export mr-2"></i>
+                  Export Save
+                </Btn>
+                <Btn onClick={importSave} disabled={inRun}>
+                  <i className="fas fa-file-import mr-2"></i>
+                  Import Save
                 </Btn>
                 {daily.active && !daily.completed && (
                   <Btn onClick={forfeitDaily} theme="danger">
