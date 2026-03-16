@@ -1,0 +1,208 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for client/src/lib/game/spiritSystem.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../../prettify.css" />
+    <link rel="stylesheet" href="../../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../../index.html">All files</a> / <a href="index.html">client/src/lib/game</a> spiritSystem.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>17/17</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">89.28% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>25/28</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>4/4</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>15/15</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1011x</span>
+<span class="cline-any cline-yes">1011x</span>
+<span class="cline-any cline-yes">507x</span>
+<span class="cline-any cline-yes">505x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { rand, uid } from "@/lib/game/gameUtils";
+&nbsp;
+export type SpiritRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
+export type SpiritType = "warrior" | "mage" | "rogue" | "tank" | "support";
+export interface SpiritAbility { id: string; name: string; description: string; type: "passive" | "active"; effect: string; cooldown?: number; }
+export interface Spirit { id: string; name: string; power: number; rarity: SpiritRarity; abilities: SpiritAbility[]; level: number; exp: number; expToNext: number; type: SpiritType; description: string; }
+&nbsp;
+export const SPIRIT_TYPES: SpiritType[] = ["warrior", "mage", "rogue", "tank", "support"];
+export const SPIRIT_ABILITIES: Record&lt;SpiritType, SpiritAbility[]&gt; = {
+  warrior: [{ id: "berserker_rage", name: "Berserker Rage", description: "Increases damage by 25% when below 50% HP", type: "passive", effect: "damage_boost" }, { id: "cleave", name: "Cleave", description: "Attacks all enemies in range", type: "active", effect: "aoe_attack", cooldown: 3 }],
+  mage: [{ id: "arcane_mastery", name: "Arcane Mastery", description: "Spells have 15% chance to cast twice", type: "passive", effect: "double_cast" }, { id: "mana_shield", name: "Mana Shield", description: "Absorbs damage using MP instead of HP", type: "active", effect: "damage_absorption", cooldown: 5 }],
+  rogue: [{ id: "shadow_step", name: "Shadow Step", description: "Every 3rd attack is enhanced (+10% damage)", type: "passive", effect: "damage_boost" }, { id: "poison_blade", name: "Poison Blade", description: "Attacks poison enemies for 3 turns", type: "passive", effect: "poison_damage" }],
+  tank: [{ id: "fortress", name: "Fortress", description: "Reduces all damage taken by 30%", type: "passive", effect: "damage_reduction" }, { id: "ethereal_shield", name: "Ethereal Shield", description: "15% chance to block boss attacks entirely", type: "passive", effect: "block_chance" }, { id: "taunt", name: "Taunt", description: "Forces enemies to attack this spirit", type: "active", effect: "force_aggro", cooldown: 2 }],
+  support: [{ id: "healing_aura", name: "Healing Aura", description: "Heals all allies for 10% of max HP each turn", type: "passive", effect: "heal_aura" }, { id: "vitality_aura", name: "Vitality Aura", description: "Restores 2 HP per combat tick", type: "passive", effect: "hp_regen" }, { id: "blessing", name: "Blessing", description: "Increases all ally stats by 20% for 3 turns", type: "active", effect: "stat_boost", cooldown: 6 }],
+};
+export const SPIRIT_DESCRIPTIONS: Record&lt;SpiritType, string&gt; = {
+  warrior: "A fierce combatant specializing in melee damage and aggressive tactics.",
+  mage: "A master of arcane arts, wielding powerful spells and magical abilities.",
+  rogue: "A stealthy assassin with high critical hit chance and poison attacks.",
+  tank: "A stalwart defender who protects allies and absorbs enemy attacks.",
+  support: "A benevolent ally who heals and enhances the capabilities of the team.",
+};
+const rarityMultipliers: Record&lt;SpiritRarity, number&gt; = { common: 1, uncommon: 1.2, rare: 1.5, epic: 2, legendary: 3 };
+const spiritNames = ["Umbra", "Noctis", "Tenebris", "Kage", "Silens", "Vorago", "Ater", "Nox", "Moria", "Caecus"];
+&nbsp;
+export function getRarityFromBossRank(bossRankIdx: number): SpiritRarity {
+  const roll = Math.random();
+  if (bossRankIdx &gt;= 4) return roll &lt; 0.05 ? "legendary" : roll &lt; 0.15 ? "epic" : roll &lt; 0.35 ? "rare" : roll &lt; 0.65 ? "uncommon" : "common";
+  if (bossRankIdx &gt;= 2) return roll &lt; 0.02 ? "epic" : roll &lt; 0.08 ? <span class="branch-0 cbranch-no" title="branch not covered" >"rare" : r</span>oll &lt; 0.25 ? "uncommon" : <span class="branch-1 cbranch-no" title="branch not covered" >"common";</span>
+  return roll &lt; 0.01 ? "rare" : roll &lt; 0.1 ? "uncommon" : "common";
+}
+&nbsp;
+export function createSpirit(gatePower: number, bossRankIdx: number): Spirit {
+  const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
+  const rarity = getRarityFromBossRank(bossRankIdx);
+  const abilities = SPIRIT_ABILITIES[type].slice(0, Math.min(rarity === "common" ? 1 : rarity === "epic" ? <span class="branch-0 cbranch-no" title="branch not covered" >3 : r</span>arity === "legendary" ? 4 : 2, SPIRIT_ABILITIES[type].length));
+  return { id: uid(), name: `${spiritNames[rand(0, spiritNames.length - 1)]}-${rand(1, 999)}`, power: Math.floor(gatePower * 0.8 * rarityMultipliers[rarity]), rarity, abilities, level: 1, exp: 0, expToNext: 100, type, description: SPIRIT_DESCRIPTIONS[type] };
+}
+&nbsp;
+export function getRarityColor(rarity: SpiritRarity) { return ({ common: "text-gray-400", uncommon: "text-green-400", rare: "text-blue-400", epic: "text-purple-400", legendary: "text-yellow-400" })[rarity]; }
+export function getRarityBorder(rarity: SpiritRarity) { return ({ common: "border-gray-500", uncommon: "border-green-500", rare: "border-blue-500", epic: "border-purple-500", legendary: "border-yellow-500" })[rarity]; }
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-03-14T20:12:18.648Z
+            </div>
+        <script src="../../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../../sorter.js"></script>
+        <script src="../../../../block-navigation.js"></script>
+    </body>
+</html>
+    

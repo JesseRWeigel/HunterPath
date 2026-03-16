@@ -1,0 +1,23 @@
+[    1318ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5000/src/lib/audioManager.ts:196
+[    1319ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ http://localhost:5000/src/lib/audioManager.ts:250
+[    1546ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
+[155932278ms] [ERROR] SyntaxError: The requested module '/src/lib/game/gameLogic.ts?t=1773676222642' does not provide an export named 'calcExtractionChance' @ http://localhost:5000/@vite/client:173
+[155932279ms] [ERROR] [hmr] Failed to reload /src/components/game/HuntersPath.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5000/@vite/client:175
+[155932469ms] The requested module '/src/lib/game/gameLogic.ts?t=1773676222642' does not provide an export named 'calcExtractionChance'
+[155932446ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
+[155945355ms] The requested module '/src/lib/game/gameLogic.ts?t=1773676222642' does not provide an export named 'calcExtractionChance'
+[155945316ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
+[155973067ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
+[156033044ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
+[156046531ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:5000/manifest.json:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:5000/src/components/ui/toaster.tsx:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:5000/src/components/ui/tooltip.tsx:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:5000/src/components/PWAInstallPrompt.tsx:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/src/components/game/HuntersPath.tsx?t=1773676523555:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/src/lib/queryClient.ts:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/src/components/ErrorBoundary.tsx:0
+[156233462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/vite/dist/client/env.mjs:0
+[156233463ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/manifest.json:0
+[156233464ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/icon-192x192.png:0
+[156233465ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5000/icon-512x512.png:0

@@ -1,0 +1,2 @@
+[     235ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ https://jesserweigel.github.io/HunterPath/assets/index-BWknHgMY.js:95
+[     236ms] [WARNING] The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. https://developer.chrome.com/blog/autoplay/#web_audio @ https://jesserweigel.github.io/HunterPath/assets/index-BWknHgMY.js:95
