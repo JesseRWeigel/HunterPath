@@ -11,6 +11,11 @@ import { RebirthModal } from "./sections/RebirthModal";
 import { PlayerAvatar, BossE, BossD, BossC, BossB, BossA, BossS } from "./bosses";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { MobileLayout } from "./mobile/MobileLayout";
+import { createInitialPlayer, playerPower, spiritUpkeep, calcExtractionChance, gainExpGoldFromGate } from "@/lib/game/gameLogic";
+import { createSpirit, getRarityColor, getRarityBorder, SPIRIT_TYPES, SPIRIT_ABILITIES, SPIRIT_DESCRIPTIONS } from "@/lib/game/spiritSystem";
+import { RANKS, RANK_COLORS as GAME_RANK_COLORS, DUNGEON_MODIFIERS, generateGatePool, makeGate, rollDrop } from "@/lib/game/gateSystem";
+export const RANK_COLORS = GAME_RANK_COLORS;
+import { formatGameTime, getCurrentGameDate, initialGameTime, generateDailyQuests, getDifficultyColor, getDifficultyBgColor } from "@/lib/game/questSystem";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -31,17 +36,6 @@ const rand = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 const uid = () => Math.random().toString(36).slice(2, 9);
 const fmt = (n: number) => new Intl.NumberFormat().format(Math.floor(n));
-
-const RANKS = ["E", "D", "C", "B", "A", "S"] as const;
-
-export const RANK_COLORS = {
-  E: "bg-green-600",
-  D: "bg-blue-600",
-  C: "bg-purple-600",
-  B: "bg-red-600",
-  A: "bg-orange-600",
-  S: "bg-yellow-600",
-};
 
 const STAT_ICONS = {
   STR: "fas fa-fist-raised",
@@ -248,544 +242,7 @@ const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: "bind_chance", name: "Spirit Whisperer", description: "+3% spirit bind chance per level", costPer: 150, maxLevel: 5 },
 ];
 
-const DUNGEON_MODIFIERS: DungeonModifier[] = [
-  {
-    id: "double_exp",
-    name: "Double EXP",
-    description: "2× EXP reward from this gate",
-    icon: "📚",
-    type: "buff",
-    applyToRewards: (e, g) => ({ expMult: e * 2, goldMult: g }),
-    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b }),
-  },
-  {
-    id: "treasure_vault",
-    name: "Treasure Vault",
-    description: "2× gold reward",
-    icon: "💰",
-    type: "buff",
-    applyToRewards: (e, g) => ({ expMult: e, goldMult: g * 2 }),
-    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b }),
-  },
-  {
-    id: "empowered_boss",
-    name: "Empowered Boss",
-    description: "Boss deals 40% more damage",
-    icon: "💀",
-    type: "debuff",
-    applyToRewards: (e, g) => ({ expMult: e, goldMult: g }),
-    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b * 1.4 }),
-  },
-  {
-    id: "cursed_ground",
-    name: "Cursed Ground",
-    description: "You deal 25% less damage",
-    icon: "☠️",
-    type: "debuff",
-    applyToRewards: (e, g) => ({ expMult: e, goldMult: g }),
-    applyToCombat: (p, b) => ({ playerDmgMult: p * 0.75, bossDmgMult: b }),
-  },
-  {
-    id: "heroic",
-    name: "Heroic",
-    description: "Boss is stronger, but rewards are doubled",
-    icon: "⚔️",
-    type: "neutral",
-    applyToRewards: (e, g) => ({ expMult: e * 2, goldMult: g * 2 }),
-    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b * 1.5 }),
-  },
-  {
-    id: "weakened_boss",
-    name: "Weakened Boss",
-    description: "Boss deals 30% less damage",
-    icon: "🤕",
-    type: "buff",
-    applyToRewards: (e, g) => ({ expMult: e, goldMult: g }),
-    applyToCombat: (p, b) => ({ playerDmgMult: p, bossDmgMult: b * 0.7 }),
-  },
-];
-
-function gatePowerForRank(rankIdx: number) {
-  // Consistent exponential scaling: E=30, D=69, C=127, B=220, A=375, S=600
-  return Math.round(Math.pow(1.7, rankIdx) * 30 + rankIdx * 20);
-}
-
-function makeGate(rankIdx: number, usedNames?: Set<string>): Gate {
-  const id = uid();
-  const rank = RANKS[rankIdx];
-  const rec = gatePowerForRank(rankIdx);
-  const variance = rand(-20, 20);
-  const power = Math.round(Math.max(10, rec + variance));
-
-  // Roll 0-2 modifiers (higher rank = more modifiers)
-  const modifierCount = Math.random() < 0.25 + rankIdx * 0.08
-    ? (Math.random() < 0.35 ? 2 : 1)
-    : 0;
-  const shuffled = [...DUNGEON_MODIFIERS].sort(() => Math.random() - 0.5);
-  const modifiers = shuffled.slice(0, modifierCount);
-
-  const namePool = GATE_NAMES[rank] ?? GATE_NAMES["E"];
-  const unused = namePool.filter(n => !usedNames || !usedNames.has(n));
-  const source = unused.length > 0 ? unused : namePool;
-  const gateName = source[Math.floor(Math.random() * source.length)];
-  return {
-    id,
-    name: gateName,
-    rank,
-    rankIdx,
-    recommended: rec,
-    power,
-    boss: makeBoss(rankIdx),
-    modifiers,
-  };
-}
-
-function makeBoss(rankIdx: number): Boss {
-  const base = gatePowerForRank(rankIdx);
-  const rank = RANKS[rankIdx];
-  const monsterData = MONSTER_DATA[rank as keyof typeof MONSTER_DATA];
-
-  const atkMultiplier = 0.8;
-
-  const hp = Math.floor(base * 8 + rand(-25, 25));
-  return {
-    name: monsterData.name,
-    maxHp: hp,
-    hp,
-    atk: Math.floor(base * atkMultiplier + rand(-5, 5)),
-    def: Math.floor(base * 0.3 + rand(-3, 3)),
-  };
-}
-
-function spiritName() {
-  const names = [
-    "Umbra",
-    "Noctis",
-    "Tenebris",
-    "Kage",
-    "Silens",
-    "Vorago",
-    "Ater",
-    "Nox",
-    "Moria",
-    "Caecus",
-  ];
-  return names[rand(0, names.length - 1)] + "-" + rand(1, 999);
-}
-
-// Spirit system data
-const SPIRIT_TYPES = ["warrior", "mage", "rogue", "tank", "support"] as const;
-const SPIRIT_RARITIES = [
-  "common",
-  "uncommon",
-  "rare",
-  "epic",
-  "legendary",
-] as const;
-
-const SPIRIT_ABILITIES: Record<string, SpiritAbility[]> = {
-  warrior: [
-    {
-      id: "berserker_rage",
-      name: "Berserker Rage",
-      description: "Increases damage by 25% when below 50% HP",
-      type: "passive",
-      effect: "damage_boost",
-    },
-    {
-      id: "cleave",
-      name: "Cleave",
-      description: "Attacks all enemies in range",
-      type: "active",
-      effect: "aoe_attack",
-      cooldown: 3,
-    },
-  ],
-  mage: [
-    {
-      id: "arcane_mastery",
-      name: "Arcane Mastery",
-      description: "Spells have 15% chance to cast twice",
-      type: "passive",
-      effect: "double_cast",
-    },
-    {
-      id: "mana_shield",
-      name: "Mana Shield",
-      description: "Absorbs damage using MP instead of HP",
-      type: "active",
-      effect: "damage_absorption",
-      cooldown: 5,
-    },
-  ],
-  rogue: [
-    {
-      id: "shadow_step",
-      name: "Shadow Step",
-      description: "Every 3rd attack is enhanced (+10% damage)",
-      type: "passive",
-      effect: "damage_boost",
-    },
-    {
-      id: "poison_blade",
-      name: "Poison Blade",
-      description: "Attacks poison enemies for 3 turns",
-      type: "passive",
-      effect: "poison_damage",
-    },
-  ],
-  tank: [
-    {
-      id: "fortress",
-      name: "Fortress",
-      description: "Reduces all damage taken by 30%",
-      type: "passive",
-      effect: "damage_reduction",
-    },
-    {
-      id: "ethereal_shield",
-      name: "Ethereal Shield",
-      description: "15% chance to block boss attacks entirely",
-      type: "passive",
-      effect: "block_chance",
-    },
-    {
-      id: "taunt",
-      name: "Taunt",
-      description: "Forces enemies to attack this spirit",
-      type: "active",
-      effect: "force_aggro",
-      cooldown: 2,
-    },
-  ],
-  support: [
-    {
-      id: "healing_aura",
-      name: "Healing Aura",
-      description: "Heals all allies for 10% of max HP each turn",
-      type: "passive",
-      effect: "heal_aura",
-    },
-    {
-      id: "vitality_aura",
-      name: "Vitality Aura",
-      description: "Restores 2 HP per combat tick",
-      type: "passive",
-      effect: "hp_regen",
-    },
-    {
-      id: "blessing",
-      name: "Blessing",
-      description: "Increases all ally stats by 20% for 3 turns",
-      type: "active",
-      effect: "stat_boost",
-      cooldown: 6,
-    },
-  ],
-};
-
-const SPIRIT_DESCRIPTIONS: Record<string, string> = {
-  warrior:
-    "A fierce combatant specializing in melee damage and aggressive tactics.",
-  mage: "A master of arcane arts, wielding powerful spells and magical abilities.",
-  rogue:
-    "A stealthy assassin with high critical hit chance and poison attacks.",
-  tank: "A stalwart defender who protects allies and absorbs enemy attacks.",
-  support:
-    "A benevolent ally who heals and enhances the capabilities of the team.",
-};
-
-function getRarityFromBossRank(bossRankIdx: number): Spirit["rarity"] {
-  // Higher rank bosses have better rarity chances
-  const rarityRoll = Math.random();
-
-  if (bossRankIdx >= 4) {
-    // S-rank and above
-    if (rarityRoll < 0.05) return "legendary";
-    if (rarityRoll < 0.15) return "epic";
-    if (rarityRoll < 0.35) return "rare";
-    if (rarityRoll < 0.65) return "uncommon";
-    return "common";
-  } else if (bossRankIdx >= 2) {
-    // C-rank and above
-    if (rarityRoll < 0.02) return "epic";
-    if (rarityRoll < 0.08) return "rare";
-    if (rarityRoll < 0.25) return "uncommon";
-    return "common";
-  } else {
-    // D-rank and below
-    if (rarityRoll < 0.01) return "rare";
-    if (rarityRoll < 0.1) return "uncommon";
-    return "common";
-  }
-}
-
-function createSpirit(gatePower: number, bossRankIdx: number): Spirit {
-  const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
-  const rarity = getRarityFromBossRank(bossRankIdx);
-
-  // Base power calculation with rarity multiplier
-  const rarityMultipliers = {
-    common: 1,
-    uncommon: 1.2,
-    rare: 1.5,
-    epic: 2,
-    legendary: 3,
-  };
-  const basePower = Math.floor(gatePower * 0.8 * rarityMultipliers[rarity]);
-
-  // Get abilities based on type and rarity
-  const availableAbilities = SPIRIT_ABILITIES[type];
-  const abilityCount =
-    rarity === "common"
-      ? 1
-      : rarity === "uncommon"
-      ? 2
-      : rarity === "rare"
-      ? 2
-      : rarity === "epic"
-      ? 3
-      : 4;
-  const abilities = availableAbilities.slice(
-    0,
-    Math.min(abilityCount, availableAbilities.length)
-  );
-
-  return {
-    id: uid(),
-    name: spiritName(),
-    power: basePower,
-    rarity,
-    abilities,
-    level: 1,
-    exp: 0,
-    expToNext: 100,
-    type,
-    description: SPIRIT_DESCRIPTIONS[type],
-  };
-}
-
-function getRarityColor(rarity: Spirit["rarity"]): string {
-  const colors = {
-    common: "text-gray-400",
-    uncommon: "text-green-400",
-    rare: "text-blue-400",
-    epic: "text-purple-400",
-    legendary: "text-yellow-400",
-  };
-  return colors[rarity];
-}
-
-function getRarityBorder(rarity: Spirit["rarity"]): string {
-  const borders = {
-    common: "border-gray-500",
-    uncommon: "border-green-500",
-    rare: "border-blue-500",
-    epic: "border-purple-500",
-    legendary: "border-yellow-500",
-  };
-  return borders[rarity];
-}
-
-function initialPlayer(): Player {
-  return {
-    level: 1,
-    exp: 0,
-    expNext: 100,
-    hp: 100,
-    mp: 50,
-    maxHp: 100,
-    maxMp: 50,
-    fatigue: 0, // 0–100
-    points: 5,
-    stats: {
-      STR: 5,
-      AGI: 5,
-      INT: 5,
-      VIT: 5,
-      LUCK: 5,
-    },
-    spirits: [], // {id, name, power, upkeep}
-    inv: [], // {id, name, type}
-    keys: 0, // Instant Dungeon Keys
-    equipment: {},
-    rebirths: 0,
-    prestigePoints: 0,
-  };
-}
-
-function playerPower(p: Player, spiritPowerBoostLevel: number = 0) {
-  const { STR, AGI, INT, VIT } = p.stats;
-  // More balanced power calculation - each stat matters more
-  const base = STR * 3 + AGI * 2 + INT * 1.5 + VIT * 0.5;
-  const spiritPowerMult = 1 + spiritPowerBoostLevel * 0.02;
-  const spiritBonus = (p.spirits || []).reduce((a, s) => a + s.power, 0) * spiritPowerMult;
-  const fatiguePenalty = 1 - Math.min(0.4, p.fatigue / 250); // reduced penalty, up to -40%
-  const rebirthMultiplier = 1 + (p.rebirths || 0) * 0.15; // +15% power per rebirth
-  return Math.max(1, (base + spiritBonus) * fatiguePenalty * rebirthMultiplier);
-}
-
-function spiritUpkeep(p: Player) {
-  // MP upkeep per tick when in dungeon
-  return Math.floor(
-    (p.spirits || []).length * 1 + (p.spirits || []).reduce((a, s) => a + s.power * 0.02, 0)
-  );
-}
-
-function calcExtractionChance(p: Player, bossRankIdx: number) {
-  // Improved extraction chance - more accessible and fun
-  const { INT, LUCK } = p.stats;
-
-  // Higher base chance for better gameplay
-  const base = 0.25 + INT * 0.008 + LUCK * 0.01; // 25% base + better stat scaling
-
-  // Reduced rank penalty - higher ranks are still harder but not impossible
-  const rankPenalty = 0.03 * bossRankIdx; // 3% per rank instead of 5%
-
-  // Higher minimum chance for better player experience
-  return clamp(base - rankPenalty, 0.08, 0.85); // 8%–85% instead of 2%–65%
-}
-
-function gainExpGoldFromGate(gate: Gate) {
-  const base = gate.recommended;
-  const exp = Math.floor(base * 1.1 + rand(10, 40));
-  const gold = Math.floor(base * 0.8 + rand(5, 25));
-  return { exp, gold };
-}
-
-function rollDrop(gate: Gate) {
-  const getRarity = (
-    rankIdx: number
-  ): "common" | "uncommon" | "rare" | "epic" | "legendary" => {
-    const r = Math.random();
-    if (rankIdx >= 4 && r < 0.05) return "legendary";
-    if (rankIdx >= 3 && r < 0.15) return "epic";
-    if (rankIdx >= 2 && r < 0.35) return "rare";
-    if (rankIdx >= 1 && r < 0.65) return "uncommon";
-    return "common";
-  };
-
-  const getQuality = (rarity: string): number => {
-    const baseQuality = {
-      common: 30,
-      uncommon: 50,
-      rare: 70,
-      epic: 85,
-      legendary: 95,
-    };
-    const base = baseQuality[rarity as keyof typeof baseQuality] || 50;
-    return Math.max(1, Math.min(100, base + rand(-10, 10)));
-  };
-
-  const r = Math.random();
-  if (r < 0.08) {
-    const rarity = getRarity(gate.rankIdx);
-    const quality = getQuality(rarity);
-    return {
-      id: uid(),
-      name: "Instant Dungeon Key",
-      type: "key",
-      rarity,
-      quality,
-      description: "Opens a special dungeon with enhanced rewards",
-      sellValue: Math.floor(quality * 2),
-    };
-  }
-  if (r < 0.28) {
-    // Generate specific stat runes
-    const statTypes = ["STR", "AGI", "INT", "VIT", "LUCK"];
-    const statType = statTypes[rand(0, statTypes.length - 1)];
-    const rarity = getRarity(gate.rankIdx);
-    const quality = getQuality(rarity);
-    const statBonus = Math.max(1, Math.floor((quality / 100) * (gate.rankIdx + 1) * 2));
-
-    return {
-      id: uid(),
-      name: `${gate.rank}-grade ${statType} Rune`,
-      type: "rune",
-      rarity,
-      quality,
-      description: `Temporarily boosts ${statType} by ${statBonus}`,
-      stats: { [statType]: statBonus },
-      sellValue: Math.floor(quality * 1.5),
-    };
-  }
-  if (r < 0.55) {
-    const rarity = getRarity(gate.rankIdx);
-    const quality = getQuality(rarity);
-    const healAmount = Math.floor((quality / 100) * 50 + 25 + gate.rankIdx * 15);
-
-    return {
-      id: uid(),
-      name: `${gate.rank}-grade Potion`,
-      type: "potion",
-      rarity,
-      quality,
-      description: `Restores ${healAmount} HP`,
-      stats: { HP: healAmount },
-      sellValue: Math.floor(quality * 1.2),
-    };
-  }
-
-  // Equipment drops (rare)
-  if (r < 0.65) {
-    const rarity = getRarity(gate.rankIdx);
-    const quality = getQuality(rarity);
-    const equipmentTypes = ["weapon", "armor", "accessory"];
-    const equipmentType = equipmentTypes[rand(0, equipmentTypes.length - 1)];
-    const statBonus = Math.max(1, Math.floor((quality / 100) * (gate.rankIdx + 1) * 3));
-
-    const equipmentNames = {
-      weapon: `${gate.rank}-Rank Blade`,
-      armor: `${gate.rank}-Rank Armor`,
-      accessory: `${gate.rank}-Rank Charm`,
-    };
-
-    const statTypes = {
-      weapon: "STR",
-      armor: "VIT",
-      accessory: "LUCK",
-    };
-
-    return {
-      id: uid(),
-      name: equipmentNames[equipmentType as keyof typeof equipmentNames],
-      type: "equipment",
-      rarity,
-      quality,
-      description: `Provides ${statBonus} ${
-        statTypes[equipmentType as keyof typeof statTypes]
-      }`,
-      stats: {
-        [statTypes[equipmentType as keyof typeof statTypes]]: statBonus,
-      },
-      equipmentSlot: equipmentType as "weapon" | "armor" | "accessory",
-      sellValue: Math.floor(quality * 3),
-    };
-  }
-
-  return null;
-}
-
-function formatGameTime(gameTime: GameTime): string {
-  return `Day ${gameTime.day} - ${gameTime.currentDate}`;
-}
-
-function getCurrentGameDate(): string {
-  const now = new Date();
-  return `${String(now.getMonth() + 1).padStart(2, "0")}/${String(
-    now.getDate()
-  ).padStart(2, "0")}`;
-}
-
-function initialGameTime(): GameTime {
-  const currentDate = getCurrentGameDate();
-  return {
-    day: 1,
-    currentDate,
-    lastReset: currentDate,
-  };
-}
+// Core combat, gate, spirit, and progression logic lives in @/lib/game modules.
 
 // ---------- React UI Components ----------
 function Card({
@@ -973,64 +430,6 @@ function DamageNumber({
       {label}
     </motion.div>
   );
-}
-
-function generateGatePool(playerLevel: number): Gate[] {
-  const gates: Gate[] = [];
-  const usedNames = new Set<string>();
-
-  function addGate(rankIdx: number) {
-    const gate = makeGate(rankIdx, usedNames);
-    usedNames.add(gate.name);
-    gates.push(gate);
-  }
-
-  // Always have multiple E-rank gates available (2-4)
-  const eGateCount = rand(2, 4);
-  for (let i = 0; i < eGateCount; i++) {
-    addGate(0);
-  }
-
-  // Add D-rank gates if player level >= 3
-  if (playerLevel >= 3) {
-    const dGateCount = rand(2, 4);
-    for (let i = 0; i < dGateCount; i++) addGate(1);
-  }
-
-  // Add C-rank gates if player level >= 6
-  if (playerLevel >= 6) {
-    const cGateCount = rand(2, 4);
-    for (let i = 0; i < cGateCount; i++) addGate(2);
-  }
-
-  // Add B-rank gates if player level >= 10
-  if (playerLevel >= 10) {
-    const bGateCount = rand(2, 4);
-    for (let i = 0; i < bGateCount; i++) addGate(3);
-  }
-
-  // Add A-rank gates if player level >= 15 (increased count)
-  if (playerLevel >= 15) {
-    const aGateCount = rand(2, 4);
-    for (let i = 0; i < aGateCount; i++) addGate(4);
-  }
-
-  // Add S-rank gates if player level >= 18 (lowered from 20)
-  if (playerLevel >= 18) {
-    const sGateCount = rand(1, 2);
-    for (let i = 0; i < sGateCount; i++) addGate(5);
-  }
-
-  // For very high levels, add even more high-rank gates
-  if (playerLevel >= 25) {
-    const extraAGateCount = rand(1, 2);
-    for (let i = 0; i < extraAGateCount; i++) addGate(4);
-
-    const extraSGateCount = rand(1, 2);
-    for (let i = 0; i < extraSGateCount; i++) addGate(5);
-  }
-
-  return gates;
 }
 
 // Monster data for immersive experience
@@ -1290,7 +689,7 @@ export default function HuntersPath() {
   const { trigger: triggerParticles, bursts, removeBurst } = useParticles();
   const isMobile = useIsMobile();
 
-  const [player, setPlayer] = useState<Player>(initialPlayer);
+  const [player, setPlayer] = useState<Player>(createInitialPlayer);
   const [rebirthModalOpen, setRebirthModalOpen] = useState(false);
   const [offlineGains, setOfflineGains] = useState<{
     show: boolean;
@@ -2276,7 +1675,7 @@ export default function HuntersPath() {
     const earnedPoints = Math.floor(
       player.level * 10 * (1 + player.rebirths * 0.5)
     );
-    const fresh = initialPlayer();
+    const fresh = createInitialPlayer();
     setPlayer({
       ...fresh,
       level: player.level,
@@ -3248,7 +2647,7 @@ export default function HuntersPath() {
         "Are you sure you want to reset your progress? This cannot be undone."
       )
     ) {
-      setPlayer(initialPlayer());
+      setPlayer(createInitialPlayer());
       setGates(generateGatePool(1));
       setGold(50);
       setGameTime(initialGameTime());
@@ -3507,11 +2906,8 @@ export default function HuntersPath() {
   // Enhanced Inventory Utility Functions
   function equipItem(itemId: string) {
     try {
-      console.log("Equipping item:", itemId);
-
       const item = player.inv.find((i) => i.id === itemId);
       if (!item || item.type !== "equipment" || !item.equipmentSlot) {
-        console.log("Cannot equip item:", { item, itemId });
         return;
       }
 
@@ -3559,7 +2955,6 @@ export default function HuntersPath() {
             equipment: newEquipment,
           };
 
-          console.log("New player state:", newPlayer);
           return newPlayer;
         } catch (setPlayerError) {
           console.error("Error in setPlayer callback:", setPlayerError);
@@ -3583,11 +2978,8 @@ export default function HuntersPath() {
 
   function unequipItem(slot: keyof Equipment) {
     try {
-      console.log("Unequipping item from slot:", slot);
-
       const item = player.equipment[slot];
       if (!item) {
-        console.log("No item to unequip in slot:", slot);
         return;
       }
 
@@ -3611,7 +3003,6 @@ export default function HuntersPath() {
             equipment: newEquipment,
           };
 
-          console.log("New player state after unequip:", newPlayer);
           return newPlayer;
         } catch (setPlayerError) {
           console.error(
@@ -4100,247 +3491,9 @@ export default function HuntersPath() {
     logPush("Cleared all items and gold!");
   }
 
-  // Enhanced Daily Quest System
-  function generateDailyQuests(
-    playerLevel: number,
-    questReputation: number = 0
-  ): DailyTask[] {
-    const quests: DailyTask[] = [];
-
-    // Determine available difficulties based on level and reputation
-    const availableDifficulties: ("easy" | "medium" | "hard" | "epic")[] = [
-      "easy",
-    ];
-    if (playerLevel >= 5) availableDifficulties.push("medium");
-    if (playerLevel >= 10) availableDifficulties.push("hard");
-    if (playerLevel >= 15 && questReputation >= 50)
-      availableDifficulties.push("epic");
-
-    // Quest type definitions
-    const questTypes = [
-      {
-        type: "combat" as const,
-        name: "Monster Hunter",
-        description: "Defeat monsters in gates",
-        getObjective: (level: number, difficulty: string) => {
-          const base = Math.max(1, Math.floor(level / 3));
-          switch (difficulty) {
-            case "easy":
-              return base;
-            case "medium":
-              return base * 2;
-            case "hard":
-              return base * 3;
-            case "epic":
-              return base * 5;
-            default:
-              return base;
-          }
-        },
-      },
-      {
-        type: "exploration" as const,
-        name: "Gate Explorer",
-        description: "Enter gates of different ranks",
-        getObjective: (level: number, difficulty: string) => {
-          const base = Math.max(1, Math.floor(level / 5));
-          switch (difficulty) {
-            case "easy":
-              return base;
-            case "medium":
-              return base * 2;
-            case "hard":
-              return base * 3;
-            case "epic":
-              return base * 4;
-            default:
-              return base;
-          }
-        },
-      },
-      {
-        type: "collection" as const,
-        name: "Item Collector",
-        description: "Gather items from gates",
-        getObjective: (level: number, difficulty: string) => {
-          const base = Math.max(1, Math.floor(level / 4));
-          switch (difficulty) {
-            case "easy":
-              return base;
-            case "medium":
-              return base * 2;
-            case "hard":
-              return base * 3;
-            case "epic":
-              return base * 4;
-            default:
-              return base;
-          }
-        },
-      },
-      {
-        type: "skill" as const,
-        name: "Resource Manager",
-        description: "Use potions and runes effectively",
-        getObjective: (level: number, difficulty: string) => {
-          const base = Math.max(1, Math.floor(level / 6));
-          switch (difficulty) {
-            case "easy":
-              return base;
-            case "medium":
-              return base * 2;
-            case "hard":
-              return base * 3;
-            case "epic":
-              return base * 4;
-            default:
-              return base;
-          }
-        },
-      },
-      {
-        type: "challenge" as const,
-        name: "Perfect Hunter",
-        description: "Complete gates without taking damage",
-        getObjective: (level: number, difficulty: string) => {
-          const base = Math.max(1, Math.floor(level / 8));
-          switch (difficulty) {
-            case "easy":
-              return base;
-            case "medium":
-              return base * 2;
-            case "hard":
-              return base * 3;
-            case "epic":
-              return base * 4;
-            default:
-              return base;
-          }
-        },
-      },
-    ];
-
-    // Generate 5 random quests
-    const usedTypes = new Set<string>();
-    const usedDifficulties = new Set<string>();
-
-    for (let i = 0; i < 5; i++) {
-      // Select random quest type (avoid duplicates)
-      let availableTypes = questTypes.filter((qt) => !usedTypes.has(qt.type));
-      if (availableTypes.length === 0) {
-        availableTypes = questTypes;
-        usedTypes.clear();
-      }
-
-      const questType =
-        availableTypes[Math.floor(Math.random() * availableTypes.length)];
-      usedTypes.add(questType.type);
-
-      // Select random difficulty
-      const difficulty =
-        availableDifficulties[
-          Math.floor(Math.random() * availableDifficulties.length)
-        ];
-
-      // Calculate rewards based on level and difficulty
-      const baseExp = playerLevel * 10;
-      const baseGold = playerLevel * 5;
-
-      let expReward: number;
-      let goldReward: number;
-
-      switch (difficulty) {
-        case "easy":
-          expReward = Math.floor(baseExp * 0.8);
-          goldReward = Math.floor(baseGold * 0.8);
-          break;
-        case "medium":
-          expReward = Math.floor(baseExp * 1.2);
-          goldReward = Math.floor(baseGold * 1.2);
-          break;
-        case "hard":
-          expReward = Math.floor(baseExp * 1.8);
-          goldReward = Math.floor(baseGold * 1.8);
-          break;
-        case "epic":
-          expReward = Math.floor(baseExp * 2.5);
-          goldReward = Math.floor(baseGold * 2.5);
-          break;
-        default:
-          expReward = baseExp;
-          goldReward = baseGold;
-      }
-
-      const objective = questType.getObjective(playerLevel, difficulty);
-
-      quests.push({
-        id: `${questType.type}_${difficulty}_${i}`,
-        name: `${questType.name} (${
-          difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-        })`,
-        description: `${questType.description} - ${objective} times`,
-        type: questType.type,
-        difficulty,
-        need: objective,
-        have: 0,
-        expReward,
-        goldReward,
-        bonusRewards:
-          difficulty === "epic"
-            ? {
-                items: [
-                  {
-                    id: uid(),
-                    name: `${
-                      difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-                    } Quest Reward`,
-                    type: "potion",
-                    rarity: "rare",
-                    quality: 80,
-                    description: "Special reward for completing an epic quest",
-                    sellValue: 100,
-                  },
-                ],
-                statPoints: 1,
-              }
-            : undefined,
-      });
-    }
-
-    return quests;
-  }
-
-  function getDifficultyColor(difficulty: string): string {
-    switch (difficulty) {
-      case "easy":
-        return "text-green-400";
-      case "medium":
-        return "text-yellow-400";
-      case "hard":
-        return "text-orange-400";
-      case "epic":
-        return "text-purple-400";
-      default:
-        return "text-gray-400";
-    }
-  }
-
-  function getDifficultyBgColor(difficulty: string): string {
-    switch (difficulty) {
-      case "easy":
-        return "bg-green-600";
-      case "medium":
-        return "bg-yellow-600";
-      case "hard":
-        return "bg-orange-600";
-      case "epic":
-        return "bg-purple-600";
-      default:
-        return "bg-gray-600";
-    }
-  }
-
   const BossComp = running ? BOSS_COMPONENTS[running.gate.rank as BossRank] : null;
+
+
 
   if (isMobile) {
     return (
