@@ -1,11 +1,23 @@
 // Types and interfaces extracted from HuntersPath.tsx
 
+export interface BossMechanic {
+  id: string;
+  name: string;
+  description: string;
+  trigger: "phase" | "hp_threshold" | "every_n_ticks" | "random_chance";
+  triggerValue: number;
+  activated?: boolean;
+}
+
 export interface Boss {
   name: string;
   maxHp: number;
   hp: number;
   atk: number;
   def: number;
+  mechanics?: BossMechanic[];
+  phase?: number;
+  mechanicState?: Record<string, number>;
 }
 
 export interface DungeonModifier {

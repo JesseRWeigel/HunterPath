@@ -1,4 +1,5 @@
 import { rand, uid } from "@/lib/game/gameUtils";
+import { initBossMechanics } from "@/lib/game/bossMechanics";
 
 export const RANKS = ["E", "D", "C", "B", "A", "S"] as const;
 export const RANK_COLORS = { E: "bg-green-600", D: "bg-blue-600", C: "bg-purple-600", B: "bg-red-600", A: "bg-orange-600", S: "bg-yellow-600" };
@@ -31,7 +32,8 @@ const GATE_NAMES: Record<string, string[]> = {
 export function gatePowerForRank(rankIdx: number) { return Math.round(Math.pow(1.7, rankIdx) * 30 + rankIdx * 20); }
 export function makeBoss(rankIdx: number): Boss {
   const base = gatePowerForRank(rankIdx); const rank = RANKS[rankIdx]; const hp = Math.floor(base * 8 + rand(-25, 25));
-  return { name: MONSTER_DATA[rank].name, maxHp: hp, hp, atk: Math.floor(base * 0.8 + rand(-5, 5)), def: Math.floor(base * 0.3 + rand(-3, 3)) };
+  const boss: Boss = { name: MONSTER_DATA[rank].name, maxHp: hp, hp, atk: Math.floor(base * 0.8 + rand(-5, 5)), def: Math.floor(base * 0.3 + rand(-3, 3)) };
+  return initBossMechanics(boss, rank);
 }
 export function makeGate(rankIdx: number, usedNames?: Set<string>): Gate {
   const rank = RANKS[rankIdx]; const namePool = GATE_NAMES[rank] ?? GATE_NAMES.E; const unused = namePool.filter((n) => !usedNames?.has(n)); const source = unused.length ? unused : namePool;

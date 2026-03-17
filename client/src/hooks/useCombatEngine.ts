@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { clamp, rand, pick, fmt } from "@/lib/game/gameUtils";
 import { playerPower, spiritUpkeep, calcBindingChance, gainExpGoldFromGate } from "@/lib/game/gameLogic";
 import { RANKS, DUNGEON_MODIFIERS, generateGatePool, rollDrop } from "@/lib/game/gateSystem";
+import { processBossMechanics, getBossPhase } from "@/lib/game/bossMechanics";
 import { updateStatsAfterCombat, type GameStats, type CombatOutcome } from "@/lib/game/statsTracker";
 import { PLAYER_ATTACK_MSGS, BOSS_ATTACK_MSGS, BOSS_BLOCK_MSGS, CRIT_MSGS, SPIRIT_ABILITY_MSGS, BOSS_PHASE_MSGS, BOSS_DIALOGUE, FIRST_CLEAR_TEXT } from "@/lib/game/constants";
 import type { Player, Gate, RunningState, CombatResult, Boss } from "@/lib/game/types";
@@ -150,15 +151,39 @@ export function useCombatEngine({
           bossDmgMult = result.bossDmgMult;
         }
 
-        // Player attack - increased base damage (with spirit bonuses and dungeon modifiers)
+        // Apply boss mechanics
+        const previousPhase = boss.phase ?? 0;
+        const tempBoss = { ...boss, hp: hpEnemy };
+        const mechResult = processBossMechanics(tempBoss, tick, previousPhase);
+        playerDmgMult *= mechResult.playerDmgMult;
+        bossDmgMult *= mechResult.bossDmgMult;
+        const effectiveBossDef = boss.def * mechResult.bossDefMult;
+
+        // Apply boss healing from mechanics (e.g., Troll regeneration)
+        if (mechResult.bossHeal > 0) {
+          hpEnemy = clamp(hpEnemy + mechResult.bossHeal, 0, boss.maxHp);
+        }
+
+        // Update boss phase and mechanic state
+        const newPhase = getBossPhase({ ...boss, hp: hpEnemy });
+        if (newPhase !== previousPhase || tempBoss.mechanicState !== boss.mechanicState) {
+          boss = { ...boss, phase: newPhase, mechanicState: tempBoss.mechanicState };
+        }
+
+        // Add mechanic messages to combat log
+        if (mechResult.messages.length > 0) {
+          setCombatLog((log) => [...log, ...mechResult.messages].slice(-12));
+        }
+
+        // Player attack - increased base damage (with spirit bonuses, dungeon modifiers, and boss mechanics)
         const dmgPlayer = Math.max(
           1,
-          Math.floor(pPower * 1.2 * playerDmgMult - boss.def * 0.3 + rand(0, 6))
+          Math.floor(pPower * 1.2 * playerDmgMult - effectiveBossDef * 0.3 + rand(0, 6))
         );
         const oldHpEnemy = hpEnemy;
         hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
 
-        // Boss attack - slightly reduced boss damage (with spirit block chance and dungeon modifiers)
+        // Boss attack - with spirit block chance, dungeon modifiers, and boss mechanics
         const blocked = spiritBlockChance > 0 && Math.random() < spiritBlockChance;
         const dmgBoss = blocked ? 0 : Math.max(
           0,
