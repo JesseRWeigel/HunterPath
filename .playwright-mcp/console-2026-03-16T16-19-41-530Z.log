@@ -1,0 +1,8 @@
+[     108ms] [ERROR] WebSocket connection to 'ws://localhost:5000/?token=iib6WFvyIos_' failed: Error during WebSocket handshake: Unexpected response code: 400 @ http://localhost:5000/@vite/client:535
+[     109ms] SyntaxError: Failed to construct 'WebSocket': The URL 'ws://localhost:undefined/?token=iib6WFvyIos_' is invalid.
+    at setupWebSocket (http://localhost:5000/@vite/client:536:19)
+    at fallback (http://localhost:5000/@vite/client:509:16)
+    at WebSocket.<anonymous> (http://localhost:5000/@vite/client:555:7)
+[     156ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/react.js?v=51e68e9a:0
+[     156ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:5000/@fs/home/jesse/Projects/HunterPath/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=fcb29685:0
+[     161ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0
