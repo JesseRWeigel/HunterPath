@@ -1,3 +1,0 @@
-[      25ms] [ERROR] Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html". Strict MIME type checking is enforced for module scripts per HTML spec. @ http://localhost:5000/src/lib/queryClient.ts:0
-[      30ms] [ERROR] Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html". Strict MIME type checking is enforced for module scripts per HTML spec. @ http://localhost:5000/src/components/PWAInstallPrompt.tsx:0
-[     216ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:5000/HunterPath/icon-192x192.png (Download error or resource isn't a valid image) @ http://localhost:5000/:0

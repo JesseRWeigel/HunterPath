@@ -1301,44 +1301,27 @@ export default function HuntersPath() {
 
             {/* Level-Up Celebration Modal */}
             {levelUpState.isActive && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <div className="absolute inset-0">
-                    <div className="absolute top-1/4 left-1/4 w-3 h-3 bg-yellow-400 rounded-full animate-bounce opacity-80"></div>
+              <div className="fixed inset-0 bg-black/80 flex items-start justify-center z-50 overflow-y-auto">
+                <div className="relative w-full flex items-center justify-center py-4 min-h-full">
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-bounce opacity-80"></div>
                     <div
-                      className="absolute top-1/3 right-1/3 w-2 h-2 bg-orange-400 rounded-full animate-bounce opacity-60"
+                      className="absolute top-1/3 right-1/3 w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce opacity-60"
                       style={{ animationDelay: "0.2s" }}
                     ></div>
-                    <div
-                      className="absolute bottom-1/4 left-1/3 w-2.5 h-2.5 bg-red-400 rounded-full animate-bounce opacity-70"
-                      style={{ animationDelay: "0.4s" }}
-                    ></div>
-                    <div
-                      className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce opacity-50"
-                      style={{ animationDelay: "0.6s" }}
-                    ></div>
-                    <div
-                      className="absolute top-1/2 left-1/2 w-4 h-4 bg-purple-400 rounded-full animate-bounce opacity-90"
-                      style={{ animationDelay: "0.8s" }}
-                    ></div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 border-4 border-yellow-500/40 rounded-full animate-pulse"></div>
-                    <div
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 border-2 border-orange-400/30 rounded-full animate-pulse"
-                      style={{ animationDelay: "0.5s" }}
-                    ></div>
                   </div>
-                  <div className="relative z-10 text-center max-w-2xl mx-4">
-                    <div className="mb-4 sm:mb-8 p-4 sm:p-8 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
-                      <div className="w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse shadow-2xl">
-                        <i className="fas fa-star text-6xl text-white animate-spin"></i>
+                  <div className="relative z-10 text-center max-w-sm mx-4">
+                    <div className="mb-3 p-3 rounded-lg border-2 bg-gradient-to-br from-yellow-900/40 to-orange-900/40 border-yellow-500/60">
+                      <div className="w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400 to-orange-500 shadow-xl">
+                        <i className="fas fa-star text-2xl text-white"></i>
                       </div>
-                      <h2 className="text-5xl font-bold mb-4 text-yellow-300 animate-celebration-bounce">
+                      <h2 className="text-2xl font-bold mb-1 text-yellow-300">
                         LEVEL UP!
                       </h2>
-                      <div className="text-3xl font-bold text-orange-300 mb-4">
+                      <div className="text-lg font-bold text-orange-300 mb-1">
                         Level {levelUpState.newLevel}
                       </div>
-                      <div className="text-xl text-yellow-200 mb-6">
+                      <div className="text-sm text-yellow-200 mb-2">
                         +{levelUpState.statPointsGained} Stat Points Available!
                       </div>
                       {levelUpState.showStatAllocation && (

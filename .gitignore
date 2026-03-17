@@ -4,6 +4,28 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
-
 .local
 .env
+
+# Test/debug artifacts
+*.png
+!client/public/**/*.png
+!screenshots/*.png
+coverage/
+.playwright-mcp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+firebase-debug.log
+
+# OS
+Thumbs.db
+
+# Claude worktrees
+.claude/worktrees/
