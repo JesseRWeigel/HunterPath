@@ -3,6 +3,7 @@ import { clamp, rand } from "@/lib/game/gameUtils";
 import { RANKS } from "@/lib/game/gateSystem";
 import { makeGate } from "@/lib/game/gateSystem";
 import type { Player, Item, Gate, Daily } from "@/lib/game/types";
+import type { ParticlePreset } from "@/lib/particles";
 
 type BossRank = (typeof RANKS)[number];
 
@@ -28,7 +29,7 @@ export function useItemUsage({
   setPlayer: React.Dispatch<React.SetStateAction<Player>>;
   playSound: (sound: string) => void;
   triggerVisualEffect: (effect: string) => void;
-  triggerParticles: (preset: string, x: string, y: string) => void;
+  triggerParticles: (preset: ParticlePreset, x?: string, y?: string) => void;
   addDamageNumber: (amount: number, type: "damage" | "heal" | "critical" | "block", side: "player" | "enemy") => void;
   logPush: (msg: string) => void;
   inRun: boolean;
