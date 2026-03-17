@@ -28,6 +28,10 @@ import { useShop } from "@/hooks/useShop";
 import { useEquipment } from "@/hooks/useEquipment";
 import { useItemUsage } from "@/hooks/useItemUsage";
 import { useRebirth } from "@/hooks/useRebirth";
+import { useCombatEngine } from "@/hooks/useCombatEngine";
+import { useDailyQuests } from "@/hooks/useDailyQuests";
+import { useLevelUp } from "@/hooks/useLevelUp";
+import { useSpiritBinding } from "@/hooks/useSpiritBinding";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -56,7 +60,6 @@ import { STAT_ICONS, STAT_COLORS, PRESTIGE_UPGRADES, MONSTER_DATA, PLAYER_ATTACK
 
 // ---------- React UI Components ----------
 import { Card, Btn, Bar, BarMini, CombatBar, DamageNumber } from "./ui";
-
 
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -91,9 +94,8 @@ export default function HuntersPath() {
   const [log, setLog] = useState<string[]>([
     "Welcome, Hunter. Complete your Daily Quest, then clear a Gate.",
   ]);
-  const [combatLog, setCombatLog] = useState<string[]>([]);
   const [gates, setGates] = useState<Gate[]>(() => generateGatePool(1));
-  const [running, setRunning] = useState<RunningState | null>(null); // { gate, boss, tick, inBoss, hpEnemy }
+  const [running, setRunning] = useState<RunningState | null>(null);
   const [combatResult, setCombatResult] = useState<CombatResult | null>(null);
   const [visualEffects, setVisualEffects] = useState<{
     damageFlash: boolean;
@@ -172,8 +174,6 @@ export default function HuntersPath() {
 
   // Enhanced statistics (GameStats from statsTracker)
   const [gameStats, setGameStats] = useState<GameStats>(createInitialStats);
-  const combatDamageDealtRef = useRef(0);
-  const combatDamageTakenRef = useRef(0);
   const playTimeRef = useRef<NodeJS.Timeout | null>(null);
 
   const [prestigeUpgrades, setPrestigeUpgrades] = useState<Record<string, number>>(
@@ -185,78 +185,8 @@ export default function HuntersPath() {
     }
   );
 
-  const tickRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoDungeon, setAutoDungeon] = useState(false);
-  const autoDungeonRef = useRef<boolean>(false);
-
   const pPower = useMemo(() => playerPower(player, prestigeUpgrades["spirit_power"] || 0), [player, prestigeUpgrades]);
 
-  const inRun = Boolean(running);
-
-  // Spirit binding sequence state
-  const [spiritBindingState, setSpiritBindingState] = useState<{
-    isActive: boolean;
-    phase: "preparing" | "extracting" | "success" | "failure" | null;
-    progress: number;
-    bossName: string;
-    bossRank: string;
-  }>({
-    isActive: false,
-    phase: null,
-    progress: 0,
-    bossName: "",
-    bossRank: "",
-  });
-
-  // Level-up celebration state
-  const [levelUpState, setLevelUpState] = useState({
-    isActive: false,
-    newLevel: 0,
-    statPointsGained: 0,
-    showStatAllocation: false,
-  });
-
-  // Story event modal — shown for rank milestones & first clears
-  const [storyEvent, setStoryEvent] = useState<{
-    title: string;
-    message: string;
-    rankColor?: string;
-  } | null>(null);
-  const pendingStoryEvents = useRef<{ title: string; message: string; rankColor?: string }[]>([]);
-  const [storyQueueTrigger, setStoryQueueTrigger] = useState(0);
-
-  function queueStoryEvent(event: { title: string; message: string; rankColor?: string }) {
-    pendingStoryEvents.current.push(event);
-    setStoryQueueTrigger(n => n + 1);
-  }
-
-  // Show pending story events when level-up and spirit binding are both done
-  useEffect(() => {
-    if (levelUpState.isActive || spiritBindingState.isActive || storyEvent) return;
-    if (pendingStoryEvents.current.length > 0) {
-      const next = pendingStoryEvents.current.shift()!;
-      // Small delay so it doesn't flash immediately during transitions
-      const timer = setTimeout(() => setStoryEvent(next), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [levelUpState.isActive, spiritBindingState.isActive, storyEvent, storyQueueTrigger]);
-
-  // Boss intro sequence — shown before combat starts
-  const [bossIntro, setBossIntro] = useState<{
-    gate: Gate;
-    boss: Boss;
-    dialogue: string;
-  } | null>(null);
-
-  // Stat progression tracking
-  const [statHistory, setStatHistory] = useState<
-    {
-      level: number;
-      stats: Player["stats"];
-      power: number;
-      timestamp: string;
-    }[]
-  >([]);
 
   // Daily login streak state
   const [loginStreak, setLoginStreak] = useState<{
@@ -384,15 +314,6 @@ export default function HuntersPath() {
     return () => clearInterval(autoSaveInterval);
   }, [daily, playerStats, achievements, prestigeUpgrades]);
 
-  // Auto-trigger stat allocation after level-up celebration
-  useEffect(() => {
-    if (levelUpState.isActive && !levelUpState.showStatAllocation) {
-      const timer = setTimeout(() => {
-        setLevelUpState((prev) => ({ ...prev, showStatAllocation: true }));
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [levelUpState.isActive, levelUpState.showStatAllocation]);
 
   // Load statistics on component mount
   useEffect(() => {
@@ -436,518 +357,80 @@ export default function HuntersPath() {
     return () => clearInterval(interval);
   }, [gameStats]);
 
-  // Real-time daily quest reset system - check every minute
-  useEffect(() => {
-    const checkDailyReset = () => {
-      const today = new Date().toDateString();
-
-      setDaily((prevDaily) => {
-        // If it's a new day and we haven't reset yet
-        if (prevDaily.lastResetDate !== today) {
-          setLog((l) => [
-            `New day begins! Daily quests have been refreshed.`,
-            ...l,
-          ]);
-
-          const newQuests = generateDailyQuests(
-            player.level,
-            prevDaily.questReputation
-          );
-
-          const newDaily = {
-            active: true, // Auto-start daily quests
-            availableQuests: newQuests,
-            completedQuests: [],
-            completed: false,
-            penaltyArmed: false,
-            questReputation: prevDaily.questReputation, // Preserve reputation
-            lastResetDate: today,
-          };
-
-          // Save the new daily state
-          localStorage.setItem("hunters-path-daily", JSON.stringify(newDaily));
-          return newDaily;
-        }
-        return prevDaily;
-      });
-    };
-
-    // Check immediately on mount
-    checkDailyReset();
-
-    // Then check every minute
-    const interval = setInterval(checkDailyReset, 60000); // 1 minute
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [player.level]);
 
   // Game time system - advance time every 30 seconds (1 game hour)
   useGameTime({ setGameTime, setLog, setPlayer });
 
-  // Dungeon tick loop
-  useEffect(() => {
-    if (!inRun) return;
-    if (tickRef.current) clearInterval(tickRef.current);
-    tickRef.current = setInterval(() => {
-      setRunning((prev) => {
-        if (!prev) return prev;
-        let { boss, hpEnemy, tick } = prev;
-
-        // Apply spirit passive abilities
-        let spiritDmgBonus = 0;
-        let spiritBlockChance = 0;
-        let spiritHealPerTick = 0;
-
-        for (const spirit of player.spirits) {
-          for (const ability of (spirit.abilities || [])) {
-            if (ability.type !== "passive") continue;
-            switch (ability.id) {
-              case "berserker_rage":
-                if (player.hp < player.maxHp * 0.5) spiritDmgBonus += 0.25;
-                break;
-              case "ethereal_shield":
-                spiritBlockChance += 0.15;
-                break;
-              case "shadow_step":
-                if (tick % 3 === 0) spiritDmgBonus += 0.10;
-                break;
-              case "vitality_aura":
-                spiritHealPerTick += 2;
-                break;
-              case "mana_shield":
-                // Converts some mana damage to reduced physical: handled implicitly by MP upkeep
-                break;
-            }
-          }
-        }
-
-        // Cap combined block chance at 75% max
-        spiritBlockChance = Math.min(spiritBlockChance, 0.75);
-        // Cap spirit damage bonus at 100% max
-        spiritDmgBonus = Math.min(spiritDmgBonus, 1.0);
-
-        // Apply dungeon modifiers to combat
-        // Re-look up modifier by ID to restore functions lost during serialization
-        let playerDmgMult = 1 + spiritDmgBonus;
-        let bossDmgMult = 1;
-        for (const mod of (prev.gate.modifiers || [])) {
-          const liveMod = DUNGEON_MODIFIERS.find(m => m.id === mod.id) ?? mod;
-          if (typeof liveMod.applyToCombat !== "function") continue;
-          const result = liveMod.applyToCombat(playerDmgMult, bossDmgMult);
-          playerDmgMult = result.playerDmgMult;
-          bossDmgMult = result.bossDmgMult;
-        }
-
-        // Player attack - increased base damage (with spirit bonuses and dungeon modifiers)
-        const dmgPlayer = Math.max(
-          1,
-          Math.floor(pPower * 1.2 * playerDmgMult - boss.def * 0.3 + rand(0, 6))
-        );
-        const oldHpEnemy = hpEnemy;
-        hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
-
-        // Boss attack - slightly reduced boss damage (with spirit block chance and dungeon modifiers)
-        const blocked = spiritBlockChance > 0 && Math.random() < spiritBlockChance;
-        const dmgBoss = blocked ? 0 : Math.max(
-          0,
-          Math.floor(boss.atk * 0.8 * bossDmgMult - player.stats.VIT * 0.7 + rand(0, 3))
-        );
-        const oldHp = player.hp;
-        let newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
-
-        // Spirit healing
-        if (spiritHealPerTick > 0 && newHp > 0) {
-          const healAmount = Math.min(spiritHealPerTick, player.maxHp - newHp);
-          if (healAmount > 0) {
-            newHp = Math.min(newHp + healAmount, player.maxHp);
-            addDamageNumber(healAmount, "heal", "player");
-          }
-        }
-
-        // Accumulate damage for statistics
-        combatDamageDealtRef.current += dmgPlayer;
-        combatDamageTakenRef.current += dmgBoss;
-
-        // Trigger visual effects, sounds, haptics, particles, and floating damage numbers
-        if (dmgPlayer > 0) {
-          triggerVisualEffect("screenShake");
-          playSound("attack");
-          const isCrit = dmgPlayer > pPower * 1.5;
-          if (isCrit) {
-            triggerVisualEffect("criticalHit");
-            playSound("critical");
-            hapticHeavy();
-            triggerParticles("critical-hit", "75%", "40%");
-            addDamageNumber(dmgPlayer, "critical", "enemy");
-          } else {
-            hapticMedium();
-            triggerParticles("combat-hit", "75%", "40%");
-            addDamageNumber(dmgPlayer, "damage", "enemy");
-          }
-        }
-        if (dmgBoss > 0) {
-          triggerVisualEffect("damageFlash");
-          playSound("damage");
-          hapticWarning();
-          triggerParticles("combat-hit", "25%", "40%");
-          addDamageNumber(dmgBoss, "damage", "player");
-        } else {
-          playSound("block");
-          addDamageNumber(0, "block", "player");
-        }
-
-        // MP upkeep
-        const upkeep = spiritUpkeep(player);
-        const newMp = clamp(player.mp - upkeep, 0, player.maxMp);
-
-        // Fatigue gain
-        const fatigueGainMult = 1 - (prestigeUpgrades["fatigue_resist"] || 0) * 0.05;
-        const newFatigue = clamp(player.fatigue + 0.5 * fatigueGainMult, 0, 100);
-
-        // Add combat log entries
-        const rank = prev.gate?.rank ?? "E";
-        const oldBossHpPct = boss.maxHp > 0 ? (oldHpEnemy / boss.maxHp) * 100 : 0;
-        const newBossHpPct = boss.maxHp > 0 ? (hpEnemy / boss.maxHp) * 100 : 0;
-        setCombatLog((log) => {
-          const newEntries: string[] = [];
-          const isCrit = dmgPlayer > pPower * 1.5;
-
-          // Player attack
-          if (dmgPlayer > 0) {
-            if (isCrit) {
-              newEntries.push(pick(CRIT_MSGS)(dmgPlayer));
-            } else {
-              newEntries.push(pick(PLAYER_ATTACK_MSGS)(dmgPlayer));
-            }
-          }
-
-          // Boss attack
-          if (dmgBoss > 0) {
-            const rankMsgs = BOSS_ATTACK_MSGS[rank] ?? BOSS_ATTACK_MSGS["E"];
-            newEntries.push(pick(rankMsgs)(boss.name, dmgBoss));
-          } else {
-            newEntries.push(pick(BOSS_BLOCK_MSGS)(boss.name));
-          }
-
-          // Boss HP phase transitions
-          for (const threshold of [75, 50, 25]) {
-            if (oldBossHpPct > threshold && newBossHpPct <= threshold) {
-              newEntries.push(pick(BOSS_PHASE_MSGS[String(threshold)]));
-            }
-          }
-
-          // Spirit ability procs (throttled to avoid spam)
-          if (spiritDmgBonus > 0 && tick % 3 === 0) {
-            // Find which spirit abilities are active for flavor
-            for (const spirit of player.spirits) {
-              for (const ab of (spirit.abilities || [])) {
-                if (ab.type !== "passive") continue;
-                if (ab.id === "berserker_rage" && player.hp < player.maxHp * 0.5) {
-                  newEntries.push(pick(SPIRIT_ABILITY_MSGS["berserker_rage"]));
-                  break;
-                }
-                if (ab.id === "shadow_step" && tick % 3 === 0) {
-                  newEntries.push(pick(SPIRIT_ABILITY_MSGS["shadow_step"]));
-                  break;
-                }
-              }
-            }
-          }
-          if (blocked) {
-            newEntries.push(pick(SPIRIT_ABILITY_MSGS["ethereal_shield"]));
-          }
-          if (spiritHealPerTick > 0 && tick % 3 === 0) {
-            newEntries.push(pick(SPIRIT_ABILITY_MSGS["vitality_aura"]));
-          }
-
-          // Keep only last 8 entries
-          return [...log, ...newEntries].slice(-8);
-        });
-
-        setPlayer((pp) => ({
-          ...pp,
-          hp: newHp,
-          mp: newMp,
-          fatigue: newFatigue,
-        }));
-
-        if (hpEnemy <= 0) {
-          // Victory
-          clearInterval(tickRef.current!);
-          playSound("victory");
-          playMusic("victory_music", false);
-          hapticSuccess();
-
-          const { exp: rawExp, gold: rawGold } = gainExpGoldFromGate(prev.gate);
-          const expBoost = 1 + (prestigeUpgrades["exp_boost"] || 0) * 0.05;
-          const goldBoostMult = 1 + (prestigeUpgrades["gold_boost"] || 0) * 0.05;
-
-          // Apply dungeon modifiers to rewards
-          // Re-look up modifier by ID to restore functions lost during serialization
-          let expMult = expBoost;
-          let goldMult = goldBoostMult;
-          for (const mod of (prev.gate.modifiers || [])) {
-            const liveMod = DUNGEON_MODIFIERS.find(m => m.id === mod.id) ?? mod;
-            if (typeof liveMod.applyToRewards !== "function") continue;
-            const result = liveMod.applyToRewards(expMult, goldMult);
-            expMult = result.expMult;
-            goldMult = result.goldMult;
-          }
-          const exp = Math.floor(rawExp * expMult);
-          const goldGain = Math.floor(rawGold * goldMult);
-          const drop = rollDrop(prev.gate);
-          const drops = drop ? [drop] : [];
-
-          // Track quest progress
-          trackQuestProgress("monster_defeated");
-          if (drop) {
-            trackQuestProgress("item_gained");
-          }
-          // Check if player took no damage for challenge quests
-          if (player.hp === player.maxHp) {
-            trackQuestProgress("gate_completed_no_damage");
-          }
-
-          // Show combat result screen first
-          setCombatResult({
-            victory: true,
-            gate: prev.gate,
-            boss: boss,
-            expGained: exp,
-            goldGained: goldGain,
-            drops,
-            combatLog: [...combatLog, `Victory! ${boss.name} is defeated! 🎉`],
-          });
-
-          // Apply rewards
-          setGold((g) => g + goldGain);
-          setLog((l) => [
-            `Cleared ${prev.gate.name}! +${fmt(exp)} EXP, +${fmt(goldGain)}₲`,
-            ...l,
-          ]);
-          handleLevelGain(exp);
-
-          // Apply drops
-          if (drop) {
-            if (drop.type === "key")
-              setPlayer((pp) => ({ ...pp, keys: pp.keys + 1 }));
-            else setPlayer((pp) => ({ ...pp, inv: [...pp.inv, drop] }));
-            setLog((l) => [`Found: ${drop.name}`, ...l]);
-          }
-
-          // Heal to full on victory
-          setPlayer((pp) => ({
-            ...pp,
-            hp: pp.maxHp,
-            mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.3), pp.maxMp),
-          }));
-
-          // First-clear celebration — queue story modal for new rank clears
-          const rank = prev.gate.rank;
-          const alreadyCleared = player.clearedRanks ?? [];
-          if (!alreadyCleared.includes(rank)) {
-            setPlayer((pp) => ({
-              ...pp,
-              clearedRanks: [...(pp.clearedRanks ?? []), rank],
-            }));
-            const firstClear = FIRST_CLEAR_TEXT[rank];
-            if (firstClear) {
-              queueStoryEvent({ title: firstClear.title, message: firstClear.message });
-            }
-          }
-
-          // Update statistics
-          updateStats(true, exp, goldGain, prev.gate.rank);
-          setGameStats((gs) =>
-            updateStatsAfterCombat(gs, {
-              victory: true,
-              expGained: exp,
-              goldGained: goldGain,
-              damageDealt: combatDamageDealtRef.current,
-              damageTaken: combatDamageTakenRef.current,
-              ticks: tick + 1,
-              gateRank: prev.gate.rank,
-              spiritBound: false, // updated later if binding succeeds
-            })
-          );
-          runAchievementCheck(player.hp === player.maxHp);
-
-          // Automatically attempt spirit binding with visual sequence
-          const bindBoost = (prestigeUpgrades["bind_chance"] || 0) * 0.03;
-          const bindingChance = calcBindingChance(
-            player,
-            prev.gate.rankIdx
-          ) + bindBoost;
-          if (Math.random() < bindingChance) {
-            // Start the visual binding sequence
-            startSpiritBindingSequence(
-              boss.name,
-              prev.gate.rank,
-              prev.gate.power
-            );
-          }
-
-          // Keep the combat UI visible - don't set running to null yet
-          // Remove cleared gate and potentially refresh pool
-          setGates((gs) => {
-            const filtered = gs.filter((g) => g.id !== prev.gate.id);
-
-            // If we have fewer than 3 gates total, generate a new pool
-            if (filtered.length < 3) {
-              return generateGatePool(player.level);
-            }
-
-            return filtered;
-          });
-          return null;
-        }
-        if (newHp <= 0) {
-          // Defeat
-          clearInterval(tickRef.current!);
-          playSound("defeat");
-          playMusic("defeat_music", false);
-          hapticWarning();
-
-          // Show combat result screen
-          setCombatResult({
-            victory: false,
-            gate: prev.gate,
-            boss: boss,
-            expGained: 0,
-            goldGained: -10,
-            drops: [],
-            combatLog: [...combatLog, `Defeat! Hunter falls in battle... 💀`],
-          });
-
-          setLog((l) => [
-            `You were defeated in ${prev.gate.name}. Rest and try again.`,
-            ...l,
-          ]);
-          // defeat penalty: lose some gold; recover to 30% HP
-          setGold((g) => Math.max(0, g - 10));
-          setPlayer((pp) => ({
-            ...pp,
-            hp: Math.max(5, Math.floor(pp.maxHp * 0.3)),
-            mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.2), pp.maxMp),
-          }));
-
-          // Update statistics
-          updateStats(false, 0, -10, prev.gate.rank);
-          setGameStats((gs) =>
-            updateStatsAfterCombat(gs, {
-              victory: false,
-              expGained: 0,
-              goldGained: 0,
-              damageDealt: combatDamageDealtRef.current,
-              damageTaken: combatDamageTakenRef.current,
-              ticks: tick + 1,
-              gateRank: prev.gate.rank,
-              spiritBound: false,
-            })
-          );
-
-          // Keep the combat UI visible - don't set running to null yet
-          return null;
-        }
-
-        // Continue ticking
-        return { ...prev, hpEnemy, tick: tick + 1 };
-      });
-    }, 2500); // Slowed down from 1500ms to 2500ms for much better visibility
-    return () => {
-      if (tickRef.current) clearInterval(tickRef.current);
-    };
-  }, [inRun, pPower, player.stats.VIT, player.maxHp, player.mp, player.hp, player.spirits]);
-
-  function handleLevelGain(addExp: number) {
-    setPlayer((p) => {
-      let exp = p.exp + addExp;
-      let level = p.level;
-      let expNext = p.expNext;
-      let points = p.points;
-      let maxHp = p.maxHp;
-      let maxMp = p.maxMp;
-      let leveledUp = false;
-      let levelsGained = 0;
-
-      while (exp >= expNext) {
-        exp -= expNext;
-        level += 1;
-        leveledUp = true;
-        levelsGained += 1;
-        expNext = Math.floor(expNext * 1.35);
-        points += 5;
-        maxHp += 10;
-        maxMp += 5;
-
-        logPush(`Level Up! Welcome to level ${level}. +5 stat points!`);
-        playSound("level_up");
-        hapticHeavy();
-        triggerParticles("level-up", "50%", "50%");
-
-        // Check for rank milestone story event — queue modal to show after level-up
-        const milestone = RANK_MILESTONES.find(m => m.level === level);
-        if (milestone) {
-          logPush(`--- ${milestone.title} ---`);
-          logPush(milestone.message);
-          queueStoryEvent({ title: milestone.title, message: milestone.message, rankColor: milestone.color });
-        }
-      }
-
-      // If player leveled up, refresh gates to unlock new tiers
-      if (leveledUp) {
-        // Record stat history before level up
-        setStatHistory((prev) => [
-          ...prev,
-          {
-            level: p.level,
-            stats: p.stats,
-            power: playerPower(p),
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-
-        // Trigger level-up celebration
-        setLevelUpState({
-          isActive: true,
-          newLevel: level,
-          statPointsGained: levelsGained * 5,
-          showStatAllocation: false,
-        });
-
-        // Trigger visual effects
-        triggerVisualEffect("levelUp");
-
-        // Check achievements after level up
-        runAchievementCheck();
-
-        setTimeout(() => {
-          setGates(generateGatePool(level));
-          logPush(
-            `New gates appeared! Higher tier dungeons are now available.`
-          );
-        }, 1000);
-      }
-
-      return {
-        ...p,
-        exp,
-        level,
-        expNext,
-        points,
-        maxHp,
-        maxMp,
-        hp: Math.max(p.hp, Math.floor(maxHp * 0.6)),
-        mp: Math.max(p.mp, Math.floor(maxMp * 0.5)),
-      };
-    });
-  }
 
   function logPush(msg: string) {
     setLog((l) => [msg, ...l].slice(0, 120));
   }
+
+  // --- Extracted hooks ---
+
+  const {
+    levelUpState, completeLevelUp, handleLevelGain,
+    storyEvent, setStoryEvent, queueStoryEvent,
+    pendingStoryEvents, storyQueueTrigger,
+    statHistory, setStatHistory, allocateStatWithFeedback,
+  } = useLevelUp({
+    player, setPlayer, setGates, logPush, playSound,
+    hapticHeavy, triggerParticles, triggerVisualEffect, runAchievementCheck,
+  });
+
+  function recordSpiritBinding() {
+    setPlayerStats((stats) => ({
+      ...stats,
+      totalSpiritsBound: stats.totalSpiritsBound + 1,
+      lastUpdated: new Date().toISOString(),
+    }));
+    setGameStats((gs) => ({ ...gs, totalSpiritsBound: gs.totalSpiritsBound + 1 }));
+  }
+
+  const {
+    spiritBindingState, setSpiritBindingState,
+    startSpiritBindingSequence, getBindingSequenceText, tryBinding,
+  } = useSpiritBinding({
+    player, setPlayer, running, setCombatResult,
+    playSound, hapticSuccess, hapticWarning, triggerParticles,
+    logPush, recordSpiritBinding, runAchievementCheck,
+  });
+
+  const {
+    trackQuestProgress, progressDaily, forfeitDaily, applyPenaltyZone,
+  } = useDailyQuests({
+    daily, setDaily, player, setPlayer, gold, setGold,
+    logPush, runAchievementCheck,
+  });
+
+  const {
+    combatLog, setCombatLog, bossIntro,
+    autoDungeon, setAutoDungeon, inRun,
+    startGate, skipBossIntro, dismissCombatResult, refreshGates,
+    beginCombat,
+  } = useCombatEngine({
+    player, setPlayer, gates, setGates, gold, setGold, pPower, prestigeUpgrades,
+    playSound, playMusic, logPush,
+    hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, hapticRumble,
+    triggerParticles, triggerVisualEffect, addDamageNumber,
+    trackQuestProgress, handleLevelGain, queueStoryEvent,
+    startSpiritBindingSequence,
+    clearSpiritBindingState: () => setSpiritBindingState({
+      isActive: false, phase: null, progress: 0, bossName: "", bossRank: "",
+    }),
+    updateStats, setGameStats, runAchievementCheck, rest,
+    running, setRunning, combatResult, setCombatResult,
+  });
+
+  // Show pending story events when level-up and spirit binding are both done
+  useEffect(() => {
+    if (levelUpState.isActive || spiritBindingState.isActive || storyEvent) return;
+    if (pendingStoryEvents.current.length > 0) {
+      const next = pendingStoryEvents.current.shift()!;
+      const timer = setTimeout(() => setStoryEvent(next), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [levelUpState.isActive, spiritBindingState.isActive, storyEvent, storyQueueTrigger]);
 
   // Save system hook
   const {
@@ -997,14 +480,6 @@ export default function HuntersPath() {
     });
   }
 
-  function recordSpiritBinding() {
-    setPlayerStats((stats) => ({
-      ...stats,
-      totalSpiritsBound: stats.totalSpiritsBound + 1,
-      lastUpdated: new Date().toISOString(),
-    }));
-    setGameStats((gs) => ({ ...gs, totalSpiritsBound: gs.totalSpiritsBound + 1 }));
-  }
 
   function runAchievementCheck(noDamageClear = false) {
     const gameState: AchievementGameState = {
@@ -1037,242 +512,6 @@ export default function HuntersPath() {
     }
   }
 
-  // Spirit binding sequence functions
-  function startSpiritBindingSequence(
-    bossName: string,
-    bossRank: string,
-    gatePower: number
-  ) {
-    setSpiritBindingState({
-      isActive: true,
-      phase: "preparing",
-      progress: 0,
-      bossName,
-      bossRank,
-    });
-
-    // Play binding start sound
-    playSound("binding_start");
-
-    // Phase 1: Preparing (2 seconds)
-    setTimeout(() => {
-      setSpiritBindingState((prev) => ({
-        ...prev,
-        phase: "extracting",
-        progress: 0,
-      }));
-
-      // Play binding loop sound
-      playSound("binding_loop");
-
-      // Phase 2: Extracting (3 seconds with progress animation)
-      const bindingInterval = setInterval(() => {
-        setSpiritBindingState((prev) => {
-          if (prev.progress >= 100) {
-            clearInterval(bindingInterval);
-            return prev;
-          }
-          return { ...prev, progress: prev.progress + 2 };
-        });
-      }, 60); // Update every 60ms for smooth animation
-
-      // After 3 seconds, determine success/failure
-      setTimeout(() => {
-        const chance = calcBindingChance(player, RANKS.indexOf(bossRank as BossRank));
-        const success = Math.random() < chance;
-
-        setSpiritBindingState((prev) => ({
-          ...prev,
-          phase: success ? "success" : "failure",
-          progress: 100,
-        }));
-
-        // Play success/failure sound + haptics + particles
-        if (success) {
-          playSound("binding_success");
-          hapticSuccess();
-          triggerParticles("spirit-bind", "50%", "50%");
-
-          // Create the spirit and update player state
-          const spiritBound = createSpirit(
-            gatePower,
-            RANKS.indexOf(bossRank as BossRank)
-          );
-
-          setPlayer((pp) => ({
-            ...pp,
-            spirits: [...pp.spirits, spiritBound],
-          }));
-
-          recordSpiritBinding();
-          setLog((l) => [
-            `${spiritBound.rarity.toUpperCase()} spirit bound: ${
-              spiritBound.name
-            }! (${spiritBound.type})`,
-            ...l,
-          ]);
-
-          // Update combat result with the bound spirit
-          setCombatResult((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  spiritBound,
-                }
-              : prev
-          );
-        } else {
-          playSound("binding_failure");
-          hapticWarning();
-        }
-
-        // End sequence after 2 seconds
-        setTimeout(() => {
-          setSpiritBindingState({
-            isActive: false,
-            phase: null,
-            progress: 0,
-            bossName: "",
-            bossRank: "",
-          });
-        }, 2000);
-      }, 3000);
-    }, 2000);
-  }
-
-  function getBindingSequenceText() {
-    const { phase, bossName, progress } = spiritBindingState;
-
-    switch (phase) {
-      case "preparing":
-        return {
-          title: "Spirit Binding Initiated",
-          subtitle: `Preparing to bind spirit from ${bossName}...`,
-          description: "Gathering magical energy and focusing your will...",
-        };
-      case "extracting":
-        return {
-          title: "Binding Spirit",
-          subtitle: `${progress}% Complete`,
-          description: "The spirit essence is being drawn forth...",
-        };
-      case "success":
-        return {
-          title: "Binding Successful!",
-          subtitle: `${bossName}'s spirit joins you!`,
-          description: "A new spirit ally has been bound to your will.",
-        };
-      case "failure":
-        return {
-          title: "Binding Failed",
-          subtitle: "The spirit crumbles to dust...",
-          description: "The essence was too weak or your focus wavered.",
-        };
-      default:
-        return { title: "", subtitle: "", description: "" };
-    }
-  }
-
-  // Quest Progress Tracking Functions
-  function trackQuestProgress(action: string, count: number = 1) {
-    if (!daily.active || daily.completed) return;
-
-    daily.availableQuests.forEach((quest) => {
-      if (daily.completedQuests.includes(quest.id)) return; // Skip already completed quests
-
-      let shouldProgress = false;
-
-      switch (quest.type) {
-        case "combat":
-          if (action === "monster_defeated") shouldProgress = true;
-          break;
-        case "exploration":
-          if (action === "gate_entered") shouldProgress = true;
-          break;
-        case "collection":
-          if (action === "item_gained") shouldProgress = true;
-          break;
-        case "skill":
-          if (action === "potion_used" || action === "rune_used")
-            shouldProgress = true;
-          break;
-        case "challenge":
-          if (action === "gate_completed_no_damage") shouldProgress = true;
-          break;
-      }
-
-      if (shouldProgress) {
-        progressDaily(quest.id);
-      }
-    });
-  }
-
-  function startGate(g: Gate) {
-    if (inRun || bossIntro) return;
-
-    // Track gate entry for exploration quests
-    trackQuestProgress("gate_entered");
-
-    const dialogue = BOSS_DIALOGUE[g.rank];
-    const line = dialogue ? pick(dialogue) : "";
-
-    // Play gate entry sound + haptic rumble
-    playSound("gate_enter");
-    hapticRumble();
-    logPush(`Entered ${g.name} (${g.rank}-Rank)`);
-
-    // Skip boss intro during auto-dungeon — go straight to combat
-    if (autoDungeonRef.current) {
-      beginCombat(g, line);
-      return;
-    }
-
-    // Show boss intro sequence first
-    setBossIntro({ gate: g, boss: g.boss, dialogue: line });
-
-    // Auto-proceed to combat after 2.5s
-    setTimeout(() => {
-      beginCombat(g, line);
-    }, 2500);
-  }
-
-  const beginCombatRef = useRef(false);
-  function beginCombat(g: Gate, dialogueLine: string) {
-    // Guard against double-call (timeout + tap)
-    if (beginCombatRef.current) return;
-    beginCombatRef.current = true;
-    setBossIntro(null);
-
-    setRunning({
-      gate: g,
-      boss: g.boss,
-      hpEnemy: g.boss.hp,
-      tick: 0,
-    });
-    const initLog = dialogueLine ? [dialogueLine] : [];
-    setCombatLog(initLog);
-    setCombatResult(null);
-    playMusic("combat_music");
-    combatDamageDealtRef.current = 0;
-    combatDamageTakenRef.current = 0;
-
-    // Clear any existing spirit binding state
-    setSpiritBindingState({
-      isActive: false,
-      phase: null,
-      progress: 0,
-      bossName: "",
-      bossRank: "",
-    });
-
-    // Reset guard after a tick
-    setTimeout(() => { beginCombatRef.current = false; }, 100);
-  }
-
-  function skipBossIntro() {
-    if (!bossIntro) return;
-    beginCombat(bossIntro.gate, bossIntro.dialogue);
-  }
 
   function rest() {
     if (inRun) return;
@@ -1299,200 +538,14 @@ export default function HuntersPath() {
     }));
   }
 
-  function progressDaily(id: string) {
-    if (!daily.active || daily.completed) return;
-
-    setDaily((d) => {
-      const updatedQuests = d.availableQuests.map((t) =>
-        t.id === id ? { ...t, have: clamp(t.have + 1, 0, t.need) } : t
-      );
-
-      // Check if any quests are completed
-      const completedQuests = updatedQuests.filter(
-        (q) => !d.completedQuests.includes(q.id) && q.have >= q.need
-      );
-
-      const newCompletedQuests = [...d.completedQuests];
-      let totalExpGained = 0;
-      let totalGoldGained = 0;
-      let bonusItems: Item[] = [];
-      let bonusStatPoints = 0;
-
-      completedQuests.forEach((quest) => {
-        newCompletedQuests.push(quest.id);
-        totalExpGained += quest.expReward;
-        totalGoldGained += quest.goldReward;
-
-        if (quest.bonusRewards) {
-          if (quest.bonusRewards.items) {
-            bonusItems.push(...quest.bonusRewards.items);
-          }
-          if (quest.bonusRewards.statPoints) {
-            bonusStatPoints += quest.bonusRewards.statPoints;
-          }
-        }
-
-        // Log individual quest completion
-        logPush(
-          `Quest completed: ${quest.name}! +${quest.expReward} EXP, +${quest.goldReward} Gold`
-        );
-        if (quest.bonusRewards) {
-          if (quest.bonusRewards.statPoints) {
-            logPush(
-              `+${quest.bonusRewards.statPoints} Stat Points from epic quest!`
-            );
-          }
-          if (quest.bonusRewards.items) {
-            logPush(`Received ${quest.bonusRewards.items.length} bonus items!`);
-          }
-        }
-      });
-
-      // Check if all quests are completed
-      const allCompleted = updatedQuests.every((quest) =>
-        newCompletedQuests.includes(quest.id)
-      );
-
-      if (allCompleted && !d.completed) {
-        // Award reputation points
-        const reputationGain = Math.floor(totalExpGained / 10);
-
-        // Update player stats
-        setPlayer((p) => ({
-          ...p,
-          exp: p.exp + totalExpGained,
-          points: p.points + bonusStatPoints,
-          inv: [...p.inv, ...bonusItems],
-        }));
-
-        setGold((g) => g + totalGoldGained);
-
-        logPush(`All daily quests completed! +${reputationGain} Reputation`);
-
-        // Check achievements after quest completion
-        runAchievementCheck();
-
-        return {
-          ...d,
-          availableQuests: updatedQuests,
-          completedQuests: newCompletedQuests,
-          completed: true,
-          completedDate: getCurrentGameDate(),
-          questReputation: d.questReputation + reputationGain,
-        };
-      }
-
-      // Apply rewards for individual quest completions
-      if (completedQuests.length > 0) {
-        setPlayer((p) => ({
-          ...p,
-          exp: p.exp + totalExpGained,
-          points: p.points + bonusStatPoints,
-          inv: [...p.inv, ...bonusItems],
-        }));
-
-        setGold((g) => g + totalGoldGained);
-      }
-
-      return {
-        ...d,
-        availableQuests: updatedQuests,
-        completedQuests: newCompletedQuests,
-      };
-    });
-  }
-
-  function forfeitDaily() {
-    if (!daily.active) return;
-
-    setDaily({
-      active: false,
-      availableQuests: [],
-      completedQuests: [],
-      completed: false,
-      penaltyArmed: true,
-      questReputation: daily.questReputation,
-    });
-
-    logPush("Daily quests forfeited.");
-  }
-
-  function applyPenaltyZone() {
-    // In the source logic, failure triggers a Penalty Zone. We'll simulate a harsh debuff.
-    setPlayer((p) => ({
-      ...p,
-      hp: Math.max(1, Math.floor(p.maxHp * 0.1)),
-      fatigue: clamp(p.fatigue + 25, 0, 100),
-    }));
-    logPush(
-      "Penalty Zone: You pushed boulders for hours. HP to a sliver; Fatigue up."
-    );
-  }
-
-  function tryBinding(bossRankIdx: number) {
-    const chance = calcBindingChance(player, bossRankIdx);
-    const cost = 10;
-    if (player.mp < cost) {
-      logPush("Not enough MP to attempt binding.");
-      return;
-    }
-
-    // Get boss info for the sequence
-    const bossRank = RANKS[bossRankIdx];
-    const bossName = running?.boss.name || "Unknown Boss";
-
-    // Start the visual binding sequence
-    startSpiritBindingSequence(
-      bossName,
-      bossRank,
-      running?.gate.power || 100
-    );
-
-    // Consume MP immediately
-    setPlayer((p) => ({ ...p, mp: Math.max(0, p.mp - cost) }));
-
-    // The actual binding logic will be handled in the sequence
-    // We'll update the player and stats when the sequence completes
-    setTimeout(() => {
-      if (Math.random() < chance) {
-        const pow = Math.floor(
-          5 + player.stats.INT * 0.8 + bossRankIdx * 6 + rand(0, 8)
-        );
-        const s = createSpirit(pow, bossRankIdx);
-        setPlayer((p) => ({ ...p, spirits: [...p.spirits, s] }));
-        logPush(
-          `${s.rarity.toUpperCase()} spirit bound: ${s.name}! (${
-            s.type
-          }) - +${s.power} power`
-        );
-
-        // Update statistics
-        recordSpiritBinding();
-        runAchievementCheck();
-      } else {
-        logPush("Binding failed. The shade crumbles to dust.");
-      }
-    }, 7000); // Wait for the full sequence to complete
-  }
-
-  // Test function for spirit binding (for easier testing)
-  function testSpiritBinding() {
-    // Function removed for production
-  }
 
   const { usePotion, useRune, useKey } = useItemUsage({
     player, setPlayer, playSound, triggerVisualEffect, triggerParticles,
     addDamageNumber, logPush, inRun, running, setCombatLog, daily, progressDaily, startGate,
   });
 
-  function dismissCombatResult() {
-    setCombatResult(null);
-    setRunning(null); // Clear the combat state
-    setCombatLog([]); // Clear the combat log
-    playMusic("ambient_music"); // Resume ambient music after combat
-  }
 
-  function triggerVisualEffect(effect: keyof typeof visualEffects) {
+  function triggerVisualEffect(effect: string) {
     setVisualEffects((prev) => ({ ...prev, [effect]: true }));
     setTimeout(() => {
       setVisualEffects((prev) => ({ ...prev, [effect]: false }));
@@ -1507,23 +560,8 @@ export default function HuntersPath() {
     player, setPlayer, gold, setGold, logPush,
   });
 
-  // Refresh gate pool
-  function refreshGates() {
-    if (inRun) return;
-    const cost = Math.max(10, player.level * 5);
-    if (gold < cost) {
-      logPush(`Not enough gold. Need ${cost}₲ to refresh gates.`);
-      return;
-    }
 
-    setGold((g) => g - cost);
-    setGates(generateGatePool(player.level));
-    logPush(`Gates refreshed! (-${cost}₲)`);
-  }
-
-
-
-  // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
+  // Arm penalty if player enters dungeon mid-daily and then completes after
   useEffect(() => {
     if (!inRun && daily.penaltyArmed) {
       setDaily((d) => ({ ...d, penaltyArmed: false }));
@@ -1531,58 +569,6 @@ export default function HuntersPath() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inRun]);
-
-  // Keep autoDungeonRef in sync with autoDungeon state (for stale closure safety)
-  useEffect(() => {
-    autoDungeonRef.current = autoDungeon;
-  }, [autoDungeon]);
-
-  // Auto-dungeon logic: after each run ends (or combatResult appears), queue next run
-  useEffect(() => {
-    if (!autoDungeon || inRun || player.fatigue > 80) return;
-
-    // Auto-rest if HP is low before entering next gate
-    if (player.hp < player.maxHp * 0.5) {
-      const timer = setTimeout(() => {
-        if (!autoDungeonRef.current) return;
-        if (combatResult) setCombatResult(null);
-        rest();
-        logPush("Auto-dungeon: Resting before next gate...");
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-
-    const timer = setTimeout(() => {
-      if (!autoDungeonRef.current) return; // user turned it off during delay
-
-      // Auto-dismiss combat result if one is showing
-      if (combatResult) setCombatResult(null);
-
-      // Pick gates the player can comfortably clear (power >= actual gate power)
-      const clearable = gates.filter(g => pPower >= g.power);
-      if (clearable.length === 0) {
-        logPush("Auto-dungeon: No suitable gates found. Disabling.");
-        setAutoDungeon(false);
-        return;
-      }
-
-      // Pick highest rank available
-      const target = clearable.sort((a, b) => b.rankIdx - a.rankIdx)[0];
-      startGate(target);
-    }, 3000); // 3 second pause between runs
-
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoDungeon, inRun, gates, pPower, player.fatigue, player.hp, player.maxHp, combatResult]);
-
-  // Auto-disable when fatigue > 80
-  useEffect(() => {
-    if (player.fatigue > 80 && autoDungeon) {
-      setAutoDungeon(false);
-      logPush("Auto-dungeon disabled: too fatigued. Rest first!");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player.fatigue, autoDungeon]);
 
 
   // Stat progression visualization component
@@ -1636,45 +622,6 @@ export default function HuntersPath() {
         </div>
       </div>
     );
-  }
-
-  function completeLevelUp() {
-    setLevelUpState({
-      isActive: false,
-      newLevel: 0,
-      statPointsGained: 0,
-      showStatAllocation: false,
-    });
-  }
-
-  function allocateStatWithFeedback(stat: keyof Player["stats"]) {
-    if (player.points <= 0) return;
-
-    // Trigger visual feedback
-    triggerVisualEffect("statAllocation");
-
-    setPlayer((p) => ({
-      ...p,
-      points: p.points - 1,
-      stats: { ...p.stats, [stat]: p.stats[stat] + 1 },
-    }));
-
-    // Play stat allocation sound
-    playSound("rune_use"); // Reuse rune sound for stat allocation
-
-    // Record stat change
-    setStatHistory((prev) => [
-      ...prev,
-      {
-        level: player.level,
-        stats: { ...player.stats, [stat]: player.stats[stat] + 1 },
-        power: playerPower({
-          ...player,
-          stats: { ...player.stats, [stat]: player.stats[stat] + 1 },
-        }),
-        timestamp: new Date().toISOString(),
-      },
-    ]);
   }
 
   // Enhanced Inventory System State
@@ -2173,7 +1120,6 @@ export default function HuntersPath() {
   }
 
   const BossComp = running ? BOSS_COMPONENTS[running.gate.rank as BossRank] : null;
-
 
 
   if (isMobile) {
