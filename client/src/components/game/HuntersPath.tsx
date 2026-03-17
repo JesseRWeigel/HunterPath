@@ -22,6 +22,12 @@ export const RANK_COLORS = GAME_RANK_COLORS;
 import { formatGameTime, getCurrentGameDate, initialGameTime, generateDailyQuests, getDifficultyColor, getDifficultyBgColor } from "@/lib/game/questSystem";
 import { checkAchievements as checkAchievementsSystem, ACHIEVEMENTS, type AchievementState, type AchievementGameState } from "@/lib/game/achievementSystem";
 import { Achievements } from "./sections/Achievements";
+import { useGameTime } from "@/hooks/useGameTime";
+import { useTraining } from "@/hooks/useTraining";
+import { useShop } from "@/hooks/useShop";
+import { useEquipment } from "@/hooks/useEquipment";
+import { useItemUsage } from "@/hooks/useItemUsage";
+import { useRebirth } from "@/hooks/useRebirth";
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -180,7 +186,6 @@ export default function HuntersPath() {
   );
 
   const tickRef = useRef<NodeJS.Timeout | null>(null);
-  const timeRef = useRef<NodeJS.Timeout | null>(null);
   const [autoDungeon, setAutoDungeon] = useState(false);
   const autoDungeonRef = useRef<boolean>(false);
 
@@ -478,38 +483,8 @@ export default function HuntersPath() {
     };
   }, [player.level]);
 
-  // Game time system - advance time every 30 seconds (1 game hour) - simplified without daily reset
-  useEffect(() => {
-    if (timeRef.current) clearInterval(timeRef.current);
-    timeRef.current = setInterval(() => {
-      setGameTime((prevTime) => {
-        const currentRealDate = getCurrentGameDate();
-        const shouldAdvanceDay =
-          currentRealDate !== prevTime.currentDate || Math.random() < 0.1; // 10% chance per hour or real day change
-
-        if (shouldAdvanceDay) {
-          const newDay = prevTime.day + 1;
-          setLog((l) => [`Day ${newDay} begins.`, ...l]);
-
-          // Passive experience gain for surviving another day
-          const passiveExp = Math.floor(10 + newDay * 2);
-          setPlayer((p) => ({ ...p, exp: p.exp + passiveExp }));
-          setLog((l) => [`+${passiveExp} EXP for surviving another day`, ...l]);
-
-          return {
-            day: newDay,
-            currentDate: currentRealDate,
-            lastReset: currentRealDate,
-          };
-        }
-        return prevTime;
-      });
-    }, 30000); // 30 seconds = 1 game hour
-
-    return () => {
-      if (timeRef.current) clearInterval(timeRef.current);
-    };
-  }, []);
+  // Game time system - advance time every 30 seconds (1 game hour)
+  useGameTime({ setGameTime, setLog, setPlayer });
 
   // Dungeon tick loop
   useEffect(() => {
@@ -985,61 +960,10 @@ export default function HuntersPath() {
     logPush,
   });
 
-  function handleRebirth() {
-    const earnedPoints = Math.floor(
-      player.level * 10 * (1 + player.rebirths * 0.5)
-    );
-    const fresh = createInitialPlayer();
-    setPlayer({
-      ...fresh,
-      level: player.level,
-      exp: 0,
-      expNext: player.expNext,
-      stats: { ...player.stats },
-      spirits: [...player.spirits],
-      equipment: { ...player.equipment },
-      inv: [],
-      keys: 0,
-      fatigue: 0,
-      hp: player.maxHp,
-      maxHp: player.maxHp,
-      mp: player.maxMp,
-      maxMp: player.maxMp,
-      points: player.points,
-      rebirths: player.rebirths + 1,
-      prestigePoints: player.prestigePoints + earnedPoints,
-    });
-    const startGold = 50 + (prestigeUpgrades["start_gold"] || 0) * 100;
-    setGold(startGold);
-    setGates(generateGatePool(player.level));
-    setRebirthModalOpen(false);
-    setLog((prev) => [
-      `⚡ REBIRTH ${player.rebirths + 1}! +${earnedPoints} Prestige Points. Power bonus: +${(player.rebirths + 1) * 15}%`,
-      ...prev,
-    ]);
-  }
-
-  function buyPrestigeUpgrade(upgradeId: string) {
-    const upgrade = PRESTIGE_UPGRADES.find(u => u.id === upgradeId);
-    if (!upgrade) return;
-    const currentLevel = prestigeUpgrades[upgradeId] || 0;
-    if (currentLevel >= upgrade.maxLevel) {
-      logPush(`${upgrade.name} is already at max level!`);
-      return;
-    }
-    const cost = upgrade.costPer * (currentLevel + 1);
-    if (player.prestigePoints < cost) {
-      logPush(`Not enough Prestige Points. Need ${cost} PP.`);
-      return;
-    }
-    setPlayer(p => ({ ...p, prestigePoints: p.prestigePoints - cost }));
-    setPrestigeUpgrades(prev => {
-      const next = { ...prev, [upgradeId]: (prev[upgradeId] || 0) + 1 };
-      localStorage.setItem("hunters-path-prestige-upgrades", JSON.stringify(next));
-      return next;
-    });
-    logPush(`Upgraded ${upgrade.name} to level ${currentLevel + 1}!`);
-  }
+  const { handleRebirth, buyPrestigeUpgrade } = useRebirth({
+    player, setPlayer, setGold, setGates, setRebirthModalOpen,
+    prestigeUpgrades, setPrestigeUpgrades, logPush,
+  });
 
   // Simple statistics tracking functions
   function updateStats(
@@ -1556,133 +1480,10 @@ export default function HuntersPath() {
     // Function removed for production
   }
 
-  function usePotion(itemId: string) {
-    const idx = player.inv.findIndex((i) => i.id === itemId);
-    if (idx === -1) return;
-    const item = player.inv[idx];
-    if (item.type !== "potion") return;
-
-    const oldHp = player.hp;
-    const oldMp = player.mp;
-
-    // Use the potion's own HP stat if available; fall back to 50% maxHp
-    const hpHeal = item.stats?.HP ?? Math.floor(player.maxHp * 0.5);
-    const mpHeal = Math.floor(player.maxMp * 0.3);
-
-    setPlayer((p) => ({
-      ...p,
-      hp: clamp(p.hp + hpHeal, 0, p.maxHp),
-      mp: clamp(p.mp + mpHeal, 0, p.maxMp),
-      inv: p.inv.filter((i: Item) => i.id !== itemId),
-    }));
-
-    // Trigger heal visual effect + particles
-    triggerVisualEffect("healFlash");
-    playSound("heal");
-    triggerParticles("heal", "25%", "40%");
-
-    // Add combat log entry if in combat
-    if (inRun && running) {
-      setCombatLog((log) => [
-        ...log.slice(-7),
-        `Hunter uses a potion! +${hpHeal} HP, +${mpHeal} MP`,
-      ]);
-    }
-
-    logPush(
-      "You used a potion. 体力回復 (tairyoku kaifuku): vitality restored."
-    );
-
-    // Progress Resource Manager quest
-    if (daily.active && !daily.completed) {
-      const resourceQuest = daily.availableQuests.find(
-        (q) => q.type === "skill" && q.name.includes("Resource Manager")
-      );
-      if (resourceQuest) {
-        progressDaily(resourceQuest.id);
-      }
-    }
-  }
-
-  function useRune(itemId: string) {
-    const idx = player.inv.findIndex((i) => i.id === itemId);
-    if (idx === -1) return;
-    const item = player.inv[idx];
-    if (item.type !== "rune") return;
-
-    // Parse rune name to get rank and type
-    const runeName = item.name;
-    const rankMatch = runeName.match(/([A-Z])-grade/);
-    const typeMatch = runeName.match(/([A-Z]+)-grade/);
-
-    // Determine stat type from rune name or stats
-    let statType: keyof Player["stats"] | null = null;
-    if (runeName.includes("STR")) statType = "STR";
-    else if (runeName.includes("AGI")) statType = "AGI";
-    else if (runeName.includes("INT")) statType = "INT";
-    else if (runeName.includes("VIT")) statType = "VIT";
-    else if (runeName.includes("LUCK")) statType = "LUCK";
-    else if (item.stats) {
-      // Try to get stat type from item stats object
-      const statKey = Object.keys(item.stats).find(k => ["STR", "AGI", "INT", "VIT", "LUCK"].includes(k));
-      if (statKey) statType = statKey as keyof Player["stats"];
-    }
-    if (!statType) {
-      // Random stat as last resort
-      const statKeys: (keyof Player["stats"])[] = [
-        "STR",
-        "AGI",
-        "INT",
-        "VIT",
-        "LUCK",
-      ];
-      statType = statKeys[rand(0, statKeys.length - 1)];
-    }
-
-    // Get stat bonus: prefer item.stats value, fall back to rank-based calculation
-    let statBoost = 1;
-    if (item.stats && item.stats[statType]) {
-      statBoost = Math.max(1, item.stats[statType]);
-    } else {
-      const rankMatch = runeName.match(/([A-Z])-grade/);
-      const rankIdx = rankMatch ? Math.max(0, RANKS.indexOf(rankMatch[1] as BossRank)) : 0;
-      const baseBoost = rankIdx + 1;
-      statBoost = Math.max(1, baseBoost + rand(-1, 1));
-    }
-
-    // Apply stat boost
-    setPlayer((p) => ({
-      ...p,
-      stats: {
-        ...p.stats,
-        [statType!]: p.stats[statType!] + statBoost,
-      },
-      inv: p.inv.filter((i: Item) => i.id !== itemId),
-    }));
-
-    logPush(
-      `Used ${item.name}! +${statBoost} ${statType} permanently. 魔力強化 (maryoku kyōka): magical enhancement.`
-    );
-    playSound("rune_use");
-
-    // Progress Resource Manager quest
-    if (daily.active && !daily.completed) {
-      const resourceQuest = daily.availableQuests.find(
-        (q) => q.type === "skill" && q.name.includes("Resource Manager")
-      );
-      if (resourceQuest) {
-        progressDaily(resourceQuest.id);
-      }
-    }
-  }
-
-  function useKey() {
-    if (player.keys <= 0 || inRun) return;
-    const rankIdx = clamp(rand(1, 3), 0, RANKS.length - 1);
-    const g = makeGate(rankIdx);
-    setPlayer((p) => ({ ...p, keys: p.keys - 1 }));
-    startGate({ ...g, name: `Instant Dungeon: ${g.name}` });
-  }
+  const { usePotion, useRune, useKey } = useItemUsage({
+    player, setPlayer, playSound, triggerVisualEffect, triggerParticles,
+    addDamageNumber, logPush, inRun, running, setCombatLog, daily, progressDaily, startGate,
+  });
 
   function dismissCombatResult() {
     setCombatResult(null);
@@ -1698,132 +1499,13 @@ export default function HuntersPath() {
     }, 300);
   }
 
-  // Additional training activities for more EXP
-  function doTraining(type: "physical" | "mental" | "meditation") {
-    if (inRun) return;
+  const { doTraining, doWork } = useTraining({
+    setPlayer, setGold, logPush, handleLevelGain, inRun,
+  });
 
-    let expGain = 0;
-    let fatigueGain = 0;
-    let message = "";
-
-    switch (type) {
-      case "physical":
-        expGain = rand(8, 15);
-        fatigueGain = rand(5, 10);
-        message = "Physical training complete. Your body grows stronger.";
-        break;
-      case "mental":
-        expGain = rand(6, 12);
-        fatigueGain = rand(3, 7);
-        message = "Mental training sharpens your focus.";
-        break;
-      case "meditation":
-        expGain = rand(4, 8);
-        fatigueGain = -rand(5, 12); // Meditation reduces fatigue
-        message = "Meditation brings clarity and peace.";
-        break;
-    }
-
-    setPlayer((p) => ({
-      ...p,
-      exp: p.exp + expGain,
-      fatigue: clamp(p.fatigue + fatigueGain, 0, 100),
-    }));
-
-    handleLevelGain(expGain);
-    logPush(`${message} +${expGain} EXP`);
-  }
-
-  // Work for gold and small EXP
-  function doWork() {
-    if (inRun) return;
-
-    const goldGain = rand(15, 35);
-    const expGain = rand(3, 8);
-    const fatigueGain = rand(8, 15);
-
-    setGold((g) => g + goldGain);
-    setPlayer((p) => ({
-      ...p,
-      exp: p.exp + expGain,
-      fatigue: clamp(p.fatigue + fatigueGain, 0, 100),
-    }));
-
-    handleLevelGain(expGain);
-    logPush(`Work complete. +${goldGain}₲, +${expGain} EXP (but more fatigue)`);
-  }
-
-  // Shop functions
-  function buyPotion() {
-    const cost = 25;
-    if (gold < cost) {
-      logPush(`Not enough gold. Need ${cost}₲ for a potion.`);
-      return;
-    }
-
-    const quality = rand(40, 60);
-    // Shop potions scale with player level so they stay useful
-    const levelBonus = Math.floor((player.level ?? 1) * 1.5);
-    const healAmount = Math.floor((quality / 100) * 50 + 25 + levelBonus);
-
-    setGold((g) => g - cost);
-    setPlayer((p) => ({
-      ...p,
-      inv: [
-        ...p.inv,
-        {
-          id: uid(),
-          name: "Health Potion",
-          type: "potion",
-          rarity: "common",
-          quality,
-          description: `Restores ${healAmount} HP`,
-          stats: { HP: healAmount },
-          sellValue: Math.floor(quality * 1.2),
-        },
-      ],
-    }));
-    logPush(`Purchased a Health Potion for ${cost}₲`);
-  }
-
-  function buyUpgrade(type: "weapon" | "armor" | "accessory") {
-    let cost = 0;
-    let bonus = 0;
-    let statType = "";
-
-    switch (type) {
-      case "weapon":
-        cost = 100 + player.level * 25;
-        bonus = 3 + Math.floor(player.level / 3);
-        statType = "STR";
-        break;
-      case "armor":
-        cost = 80 + player.level * 20;
-        bonus = 2 + Math.floor(player.level / 4);
-        statType = "VIT";
-        break;
-      case "accessory":
-        cost = 120 + player.level * 30;
-        bonus = 2 + Math.floor(player.level / 5);
-        statType = "LUCK";
-        break;
-    }
-
-    if (gold < cost) {
-      logPush(`Not enough gold. Need ${cost}₲ for ${type} upgrade.`);
-      return;
-    }
-
-    setGold((g) => g - cost);
-    setPlayer((p) => ({
-      ...p,
-      stats: {
-        ...p.stats,
-        [statType]: p.stats[statType as keyof Player["stats"]] + bonus,
-      },
-    }));
-    logPush(`Purchased ${type} upgrade! +${bonus} ${statType} for ${cost}₲`);
-  }
+  const { buyPotion, buyUpgrade } = useShop({
+    player, setPlayer, gold, setGold, logPush,
+  });
 
   // Refresh gate pool
   function refreshGates() {
@@ -2022,128 +1704,9 @@ export default function HuntersPath() {
   // Mobile menu state
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // Enhanced Inventory Utility Functions
-  function equipItem(itemId: string) {
-    try {
-      const item = player.inv.find((i) => i.id === itemId);
-      if (!item || item.type !== "equipment" || !item.equipmentSlot) {
-        return;
-      }
-
-      // Validate item structure
-      if (!item.id || !item.name || !item.equipmentSlot) {
-        console.error("Invalid item structure:", item);
-        logPush("Invalid item. Cannot equip.");
-        return;
-      }
-
-      setPlayer((p) => {
-        try {
-          // Create defensive copies to prevent mutation issues
-          const newInv = [...p.inv].filter((i) => i.id !== itemId);
-          const oldItem = item.equipmentSlot
-            ? p.equipment[item.equipmentSlot]
-            : undefined;
-
-          // Add old item back to inventory if it exists
-          if (oldItem) {
-            newInv.push({ ...oldItem }); // Create copy to prevent reference issues
-          }
-
-          // Create new equipment object with explicit copying
-          const eq = p.equipment || {};
-          const newEquipment = {
-            weapon: eq.weapon ? { ...eq.weapon } : undefined,
-            armor: eq.armor ? { ...eq.armor } : undefined,
-            accessory: eq.accessory ? { ...eq.accessory } : undefined,
-          };
-
-          // Set the new item
-          if (item.equipmentSlot === "weapon") {
-            newEquipment.weapon = { ...item };
-          } else if (item.equipmentSlot === "armor") {
-            newEquipment.armor = { ...item };
-          } else if (item.equipmentSlot === "accessory") {
-            newEquipment.accessory = { ...item };
-          }
-
-          const newPlayer = {
-            ...p,
-            inv: newInv,
-            equipment: newEquipment,
-          };
-
-          return newPlayer;
-        } catch (setPlayerError) {
-          console.error("Error in setPlayer callback:", setPlayerError);
-          // Return unchanged state if there's an error
-          return p;
-        }
-      });
-
-      logPush(`Equipped ${item.name}!`);
-
-      // Force a small delay and re-render for mobile PWA compatibility
-      setTimeout(() => {
-        // Trigger a small state update to ensure re-render
-        setPlayer((p) => ({ ...p }));
-      }, 100);
-    } catch (error) {
-      console.error("Error equipping item:", error);
-      logPush("Error equipping item. Please try again.");
-    }
-  }
-
-  function unequipItem(slot: keyof Equipment) {
-    try {
-      const item = player.equipment[slot];
-      if (!item) {
-        return;
-      }
-
-      // Validate item structure
-      if (!item.id || !item.name) {
-        console.error("Invalid item structure:", item);
-        logPush("Invalid item. Cannot unequip.");
-        return;
-      }
-
-      setPlayer((p) => {
-        try {
-          // Create defensive copies
-          const newInv = [...p.inv, { ...item }]; // Create copy to prevent reference issues
-          const newEquipment = { ...p.equipment };
-          newEquipment[slot] = undefined;
-
-          const newPlayer = {
-            ...p,
-            inv: newInv,
-            equipment: newEquipment,
-          };
-
-          return newPlayer;
-        } catch (setPlayerError) {
-          console.error(
-            "Error in setPlayer callback (unequip):",
-            setPlayerError
-          );
-          // Return unchanged state if there's an error
-          return p;
-        }
-      });
-
-      logPush(`Unequipped ${item.name}!`);
-
-      // Force a small delay and re-render for mobile PWA compatibility
-      setTimeout(() => {
-        // Trigger a small state update to ensure re-render
-        setPlayer((p) => ({ ...p }));
-      }, 100);
-    } catch (error) {
-      console.error("Error unequipping item:", error);
-      logPush("Error unequipping item. Please try again.");
-    }
-  }
+  const { equipItem, unequipItem } = useEquipment({
+    player, setPlayer, logPush,
+  });
 
   function getRarityColor(rarity: string): string {
     switch (rarity) {
