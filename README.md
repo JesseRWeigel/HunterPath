@@ -104,6 +104,10 @@ npm run build
 npm start
 ```
 
+## Architecture
+
+The game logic lives in pure TypeScript modules under `lib/game/`, completely decoupled from React. The main component (`HuntersPath.tsx`, ~4,000 lines) orchestrates state and rendering, delegating domain logic to 13 custom hooks and 7 pure-logic modules. Shared types, constants, and reusable UI primitives are each extracted into their own directories.
+
 ## Project Structure
 
 ```
@@ -111,25 +115,54 @@ HunterPath/
 ├── client/src/
 │   ├── components/
 │   │   ├── game/
-│   │   │   ├── HuntersPath.tsx      # Main game component (state, combat loop, UI)
-│   │   │   ├── bosses/              # Animated boss SVG components (E-S rank)
-│   │   │   ├── mobile/              # Mobile-specific layout and tabs
-│   │   │   └── sections/            # UI panels
-│   │   │       ├── Achievements.tsx  # Achievement tracker and unlock display
-│   │   │       ├── Statistics.tsx    # Play stats dashboard
-│   │   │       ├── Settings.tsx      # Audio, save management, options
-│   │   │       ├── Tutorial.tsx      # New-player onboarding flow
-│   │   │       └── ...              # Stats, Inventory, Quests, Shop, Lore, etc.
-│   │   └── ui/                      # shadcn/ui component library
-│   ├── lib/game/                    # Pure game logic (testable, no React)
-│   │   ├── gameLogic.ts             # Player power, spirit upkeep, binding chance
-│   │   ├── gameUtils.ts             # clamp, rand, uid, fmt, pick
-│   │   ├── gateSystem.ts            # Gate generation, bosses, drops, modifiers
-│   │   ├── spiritSystem.ts          # Spirit creation, rarity, abilities
-│   │   ├── questSystem.ts           # Daily quest generation, difficulty scaling
-│   │   ├── achievementSystem.ts     # Achievement definitions, unlock conditions
-│   │   └── statsTracker.ts          # Combat stats, play time, lifetime counters
-│   └── hooks/                       # Custom React hooks
+│   │   │   ├── HuntersPath.tsx      # Main game orchestrator (~4k lines)
+│   │   │   ├── bosses/              # Animated boss SVG components (E-S rank) + PlayerAvatar
+│   │   │   ├── mobile/              # Mobile layout: MobileLayout, BottomTabBar, tab views
+│   │   │   ├── sections/            # UI panels (16 components)
+│   │   │   │   ├── Achievements.tsx, Statistics.tsx, Settings.tsx, Tutorial.tsx
+│   │   │   │   ├── DailyQuest.tsx, HunterShop.tsx, Inventory.tsx, Lore.tsx
+│   │   │   │   ├── SpiritLegion.tsx, Stats.tsx, TrainingActivities.tsx
+│   │   │   │   ├── ActivityLog.tsx, RebirthModal.tsx
+│   │   │   │   └── index.ts         # Barrel export
+│   │   │   └── ui/                  # Extracted UI primitives
+│   │   │       ├── Bar.tsx, BarMini.tsx   # HP/MP/XP bars
+│   │   │       ├── Btn.tsx, Card.tsx      # Button & card wrappers
+│   │   │       ├── CombatBar.tsx          # Combat progress bar
+│   │   │       ├── DamageNumber.tsx       # Floating damage numbers
+│   │   │       └── index.ts
+│   │   └── ui/                      # shadcn/ui component library (Radix primitives)
+│   ├── hooks/                       # 13 custom game hooks + 2 utility hooks
+│   │   ├── useCombatEngine.ts       # Tick-based combat loop and boss fights
+│   │   ├── useSaveSystem.ts         # Auto-save, export/import, corruption recovery
+│   │   ├── useDailyQuests.ts        # Quest generation, tracking, rewards
+│   │   ├── useSpiritBinding.ts      # Spirit extraction and binding logic
+│   │   ├── useEquipment.ts          # Gear management and stat bonuses
+│   │   ├── useItemUsage.ts          # Potion and consumable usage
+│   │   ├── useLevelUp.ts            # XP thresholds and stat point allocation
+│   │   ├── useRebirth.ts            # Prestige reset and permanent upgrades
+│   │   ├── useShop.ts               # Hunter Shop buy/sell
+│   │   ├── useTraining.ts           # Training activities and fatigue
+│   │   ├── useAudio.ts              # BGM and SFX via Howler.js
+│   │   ├── useGameTime.ts           # Play-time tracking
+│   │   ├── useIsMobile.ts           # Responsive breakpoint detection
+│   │   ├── use-mobile.tsx           # shadcn mobile hook
+│   │   └── use-toast.ts             # shadcn toast hook
+│   └── lib/game/                    # Pure game logic (zero React, fully testable)
+│       ├── types.ts                 # Shared TypeScript interfaces (Player, Spirit, Gate, etc.)
+│       ├── constants/               # All magic numbers in one place
+│       │   ├── monsters.ts          # Boss names, stats, and abilities per rank
+│       │   ├── combatMessages.ts    # Flavor text for combat events
+│       │   ├── prestige.ts          # Rebirth cost curves and upgrade definitions
+│       │   ├── story.ts             # Story milestones and boss intro scripts
+│       │   ├── ui.ts                # UI-related constants (colors, thresholds)
+│       │   └── index.ts             # Barrel export
+│       ├── gameLogic.ts             # Player power, spirit upkeep, binding chance
+│       ├── gameUtils.ts             # clamp, rand, uid, fmt, pick
+│       ├── gateSystem.ts            # Gate generation, bosses, drops, modifiers
+│       ├── spiritSystem.ts          # Spirit creation, rarity, abilities
+│       ├── questSystem.ts           # Daily quest generation, difficulty scaling
+│       ├── achievementSystem.ts     # Achievement definitions, unlock conditions
+│       └── statsTracker.ts          # Combat stats, play time, lifetime counters
 ├── scripts/                         # Asset generation tooling
 │   ├── generate-music-ai.py         # MusicGen model — background music tracks
 │   ├── generate-music.py            # Procedural music fallback
@@ -148,7 +181,7 @@ HunterPath/
 
 ## Testing
 
-215 tests across 13 files cover game mechanics, new systems, React components, server storage, and schema validation.
+215 tests across 13 test files cover game mechanics, React components, server storage, and schema validation.
 
 ```bash
 # Run all tests
@@ -166,8 +199,7 @@ npm run test:coverage
 | Area | Coverage |
 |------|----------|
 | **Game logic** (gameLogic, gameUtils, gateSystem, spiritSystem, questSystem) | 97-100% |
-| **Achievements** (achievementSystem — unlock conditions, categories) | Full coverage |
-| **Statistics** (statsTracker — combat tracking, play time, counters) | Full coverage |
+| **Achievements & Stats** (achievementSystem, statsTracker) | Full coverage |
 | **React components** (ErrorBoundary, Stats, DailyQuest, ActivityLog) | Render + interaction tests |
 | **Server** (MemStorage CRUD) | Full interface coverage |
 | **Schema** (Zod validation) | All insert schemas validated |
@@ -177,12 +209,19 @@ npm run test:coverage
 Tests are colocated next to their source files:
 
 ```
-gameLogic.ts            → gameLogic.test.ts
-gateSystem.ts           → gateSystem.test.ts
-achievementSystem.ts    → achievementSystem.test.ts
-statsTracker.ts         → statsTracker.test.ts
-Stats.tsx               → Stats.test.tsx
-storage.ts              → storage.test.ts
+lib/game/gameLogic.ts        → gameLogic.test.ts
+lib/game/gameUtils.ts        → gameUtils.test.ts
+lib/game/gateSystem.ts       → gateSystem.test.ts
+lib/game/spiritSystem.ts     → spiritSystem.test.ts
+lib/game/questSystem.ts      → questSystem.test.ts
+lib/game/achievementSystem.ts → achievementSystem.test.ts
+lib/game/statsTracker.ts     → statsTracker.test.ts
+sections/Stats.tsx           → Stats.test.tsx
+sections/DailyQuest.tsx      → DailyQuest.test.tsx
+sections/ActivityLog.tsx     → ActivityLog.test.tsx
+components/ErrorBoundary.tsx → ErrorBoundary.test.tsx
+server/storage.ts            → storage.test.ts
+shared/schema.ts             → schema.test.ts
 ```
 
 ## Deployment
