@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { audioManager } from "@/lib/audioManager";
-import type { SoundName, MusicName } from "@/lib/audioManager";
+import { useAudio } from "@/hooks/useAudio";
+import { useSaveSystem, safeParse } from "@/hooks/useSaveSystem";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning, hapticRumble } from "@/lib/haptics";
 import { useParticles, ParticleLayer } from "@/lib/particles";
 import type { ParticlePreset } from "@/lib/particles";
@@ -22,21 +22,6 @@ export const RANK_COLORS = GAME_RANK_COLORS;
 import { formatGameTime, getCurrentGameDate, initialGameTime, generateDailyQuests, getDifficultyColor, getDifficultyBgColor } from "@/lib/game/questSystem";
 import { checkAchievements as checkAchievementsSystem, ACHIEVEMENTS, type AchievementState, type AchievementGameState } from "@/lib/game/achievementSystem";
 import { Achievements } from "./sections/Achievements";
-
-// Save format version — bump when the shape of saved data changes
-const SAVE_VERSION = 1;
-
-/** Safely read and parse a JSON value from localStorage. Returns `null` on any failure. */
-function safeParse<T = unknown>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return null;
-    return JSON.parse(raw) as T;
-  } catch (err) {
-    console.warn(`[save-recovery] Failed to parse "${key}":`, err);
-    return null;
-  }
-}
 
 // Hunter's Path — An idle/roguelite RPG built for Canvas preview
 // Notes:
@@ -67,33 +52,6 @@ import { STAT_ICONS, STAT_COLORS, PRESTIGE_UPGRADES, MONSTER_DATA, PLAYER_ATTACK
 import { Card, Btn, Bar, BarMini, CombatBar, DamageNumber } from "./ui";
 
 
-// Thematic gate names by rank
-const GATE_NAMES: Record<string, string[]> = {
-  E: [
-    "Goblin Burrow", "Mushroom Grotto", "Rat Warren", "Slime Pit",
-    "Mossy Tunnel", "Abandoned Mine", "Shallow Cave", "Dusty Cellar",
-  ],
-  D: [
-    "Orc Stronghold", "Cursed Mines", "Swamp Depths", "Iron Crypt",
-    "Bandit Hideout", "Troll Bridge", "Dark Hollow", "Bone Quarry",
-  ],
-  C: [
-    "Shadow Forest", "Moonlit Ruins", "Phantom Keep", "Crimson Marsh",
-    "Spider Nest", "Haunted Chapel", "Witch's Glade", "Twilight Gorge",
-  ],
-  B: [
-    "Troll Citadel", "Thunder Peak", "Frozen Fortress", "Magma Cavern",
-    "War Bastion", "Storm Spire", "Obsidian Vault", "Siege Grounds",
-  ],
-  A: [
-    "Dragon's Lair", "Inferno Sanctum", "Sky Fortress", "Ashen Throne",
-    "Blazing Halls", "Wyrm's Den", "Phoenix Roost", "Flame Citadel",
-  ],
-  S: [
-    "Void Nexus", "Abyssal Gate", "Reality Fracture", "Chaos Rift",
-    "World's Edge", "Dimensional Tear", "Oblivion Core", "Shattered Plane",
-  ],
-};
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -188,10 +146,9 @@ export default function HuntersPath() {
     return newDaily;
   });
 
-  // Sound management state — delegates to audioManager singleton
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [musicEnabled, setMusicEnabled] = useState(true);
-  const [volume, setVolume] = useState(0.7);
+  // Audio hook
+  const { playSound, playMusic, stopMusic, soundEnabled, musicEnabled, volume, setSoundEnabled, setMusicEnabled, setVolume, updateVolume, toggleSound, toggleMusic } = useAudio();
+
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Simple statistics state for Phase 1
@@ -408,29 +365,6 @@ export default function HuntersPath() {
     return () => clearTimeout(timer);
   }, []); // Only run once on mount
 
-  // Start ambient music after first user interaction (browsers block autoplay)
-  useEffect(() => {
-    let started = false;
-    const startMusic = () => {
-      if (started) return;
-      started = true;
-      playMusic("ambient_music");
-      document.removeEventListener("click", startMusic);
-      document.removeEventListener("touchstart", startMusic);
-      document.removeEventListener("keydown", startMusic);
-    };
-    document.addEventListener("click", startMusic, { once: false });
-    document.addEventListener("touchstart", startMusic, { once: false });
-    document.addEventListener("keydown", startMusic, { once: false });
-    // Also try immediately in case autoplay is allowed
-    setTimeout(() => playMusic("ambient_music"), 2000);
-    return () => {
-      document.removeEventListener("click", startMusic);
-      document.removeEventListener("touchstart", startMusic);
-      document.removeEventListener("keydown", startMusic);
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Periodic save for ancillary data (daily quests, statistics, prestige)
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
@@ -496,161 +430,6 @@ export default function HuntersPath() {
     }, 30000);
     return () => clearInterval(interval);
   }, [gameStats]);
-
-  // Sync audioManager with React state
-  useEffect(() => {
-    audioManager.soundEnabled = soundEnabled;
-  }, [soundEnabled]);
-  useEffect(() => {
-    audioManager.musicEnabled = musicEnabled;
-  }, [musicEnabled]);
-  useEffect(() => {
-    audioManager.volume = volume;
-  }, [volume]);
-
-  // Load game on startup
-  useEffect(() => {
-    const raw = localStorage.getItem("hunters-path-autosave");
-    if (raw) {
-      let gameState: any;
-      try {
-        gameState = JSON.parse(raw);
-      } catch (err) {
-        console.error("[save-recovery] Corrupt autosave detected:", err);
-        setShowRecovery(true);
-        return;
-      }
-      if (!gameState || !gameState.player) {
-        console.error("[save-recovery] Autosave missing player data");
-        setShowRecovery(true);
-        return;
-      }
-      try {
-
-        // Migrate old spirits to new format (also initialise missing field)
-        gameState.player.spirits = (gameState.player.spirits || []).map(
-          (spirit: any) => {
-            // If spirit already has new format, return as is
-            if (spirit.rarity && spirit.abilities && spirit.type) {
-              return spirit;
-            }
-
-            // Migrate old spirit format to new format
-            const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
-            const rarity = "common"; // Default to common for old spirits
-            const availableAbilities = SPIRIT_ABILITIES[type];
-            const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
-
-            return {
-              id: spirit.id,
-              name: spirit.name,
-              power: spirit.power,
-              rarity,
-              abilities,
-              level: 1,
-              exp: 0,
-              expToNext: 100,
-              type,
-              description: SPIRIT_DESCRIPTIONS[type],
-            };
-          }
-        );
-
-        // Strip debug spirits from save data
-        gameState.player.spirits = (gameState.player.spirits || []).filter(
-          (s: any) => !s.id?.startsWith("debug_") && !s.name?.startsWith("Debug ")
-        );
-
-        // Fix maxHp/maxMp if they're lower than expected for the player's level
-        const expectedMaxHp = 100 + ((gameState.player.level || 1) - 1) * 10;
-        const expectedMaxMp = 50 + ((gameState.player.level || 1) - 1) * 5;
-        if ((gameState.player.maxHp || 0) < expectedMaxHp) {
-          gameState.player.maxHp = expectedMaxHp;
-          gameState.player.hp = Math.min(gameState.player.hp ?? expectedMaxHp, expectedMaxHp);
-        }
-        if ((gameState.player.maxMp || 0) < expectedMaxMp) {
-          gameState.player.maxMp = expectedMaxMp;
-          gameState.player.mp = Math.min(gameState.player.mp ?? expectedMaxMp, expectedMaxMp);
-        }
-
-        setPlayer(gameState.player);
-        // Migrate old gate names to thematic names
-        const loadedGates = gameState.gates || generateGatePool(gameState.player?.level || 1);
-        for (const g of loadedGates) {
-          if (/^[A-Z]-Rank Gate/.test(g.name)) {
-            const pool = GATE_NAMES[g.rank] ?? GATE_NAMES["E"];
-            g.name = pool[Math.floor(Math.random() * pool.length)];
-          }
-        }
-        setGates(loadedGates);
-        setGold(gameState.gold || 50);
-        setGameTime(gameState.gameTime || initialGameTime());
-        // Load daily state - the daily state initialization will handle the real-time reset logic
-        setDaily(
-          gameState.daily || {
-            active: true,
-            availableQuests: generateDailyQuests(
-              gameState.player?.level || 1,
-              0
-            ),
-            completedQuests: [],
-            completed: false,
-            penaltyArmed: false,
-            questReputation: 0,
-          }
-        );
-        // Calculate offline progress
-        if (gameState.lastSaved) {
-          const msElapsed = Date.now() - new Date(gameState.lastSaved).getTime();
-          const hoursElapsed = Math.min(8, msElapsed / (1000 * 60 * 60));
-
-          if (hoursElapsed >= 0.1) { // at least 6 minutes offline
-            const level = gameState.player?.level || 1;
-            const offlineExpPerHour = 20 + level * 5;
-            const offlineGoldPerHour = 10 + level * 3;
-            const offlineExp = Math.floor(offlineExpPerHour * hoursElapsed);
-            const offlineGold = Math.floor(offlineGoldPerHour * hoursElapsed);
-
-            // Apply gold immediately
-            setGold(g => g + offlineGold);
-
-            // Apply EXP with leveling (inline version of handleLevelGain)
-            setPlayer(p => {
-              let exp = p.exp + offlineExp;
-              let level = p.level;
-              let expNext = p.expNext;
-              let points = p.points;
-              let maxHp = p.maxHp;
-              let maxMp = p.maxMp;
-
-              while (exp >= expNext) {
-                exp -= expNext;
-                level += 1;
-                expNext = Math.floor(expNext * 1.35);
-                points += 5;
-                maxHp += 10;
-                maxMp += 5;
-              }
-
-              return { ...p, exp, level, expNext, points, maxHp, maxMp };
-            });
-
-            setOfflineGains({
-              show: true,
-              exp: offlineExp,
-              gold: offlineGold,
-              hours: hoursElapsed,
-            });
-          }
-        }
-
-        setLog(["Game loaded from auto-save. Welcome back, Hunter!"]);
-      } catch (error) {
-        console.error("[save-recovery] Failed to apply auto-save:", error);
-        setShowRecovery(true);
-      }
-    }
-  }, []);
 
   // Real-time daily quest reset system - check every minute
   useEffect(() => {
@@ -1194,6 +973,17 @@ export default function HuntersPath() {
   function logPush(msg: string) {
     setLog((l) => [msg, ...l].slice(0, 120));
   }
+
+  // Save system hook
+  const {
+    saveGame, exportSave, importSave, loadGame,
+    resetGame, deleteAllSaveData,
+    handleRecoveryFresh, handleRecoveryBackup, silentSave,
+  } = useSaveSystem({
+    state: { player, gates, gold, daily, gameTime },
+    setters: { setPlayer, setGates, setGold, setDaily, setGameTime, setLog, setShowRecovery, setOfflineGains },
+    logPush,
+  });
 
   function handleRebirth() {
     const earnedPoints = Math.floor(
@@ -2049,236 +1839,7 @@ export default function HuntersPath() {
     logPush(`Gates refreshed! (-${cost}₲)`);
   }
 
-  // Silent auto-save (no log message) — call after important mutations
-  function silentSave() {
-    const gameState = {
-      player,
-      gates,
-      gold,
-      gameTime,
-      daily,
-      lastSaved: new Date().toISOString(),
-      saveVersion: SAVE_VERSION,
-    };
-    // Rotating backup: copy current autosave → backup before overwriting
-    try {
-      const prev = localStorage.getItem("hunters-path-autosave");
-      if (prev) {
-        localStorage.setItem("hunters-path-backup", prev);
-      }
-    } catch (e) {
-      console.warn("[save-recovery] Failed to write backup:", e);
-    }
-    localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
-    localStorage.setItem("hunters-path-save", JSON.stringify(gameState));
-  }
 
-  // Save/Load functions
-  function saveGame() {
-    silentSave();
-    logPush("Game saved successfully!");
-  }
-
-  function exportSave() {
-    const data: Record<string, string> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("hunters-path-")) {
-        data[key] = localStorage.getItem(key)!;
-      }
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const date = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `hunters-path-save-${date}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    logPush("Save exported!");
-  }
-
-  function importSave() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const data = JSON.parse(ev.target?.result as string);
-          if (!data["hunters-path-autosave"]) {
-            alert("Invalid save file: missing autosave data.");
-            return;
-          }
-          if (
-            !window.confirm(
-              "This will overwrite your current save. Are you sure?"
-            )
-          )
-            return;
-          for (const [key, value] of Object.entries(data)) {
-            if (key.startsWith("hunters-path-")) {
-              localStorage.setItem(key, value as string);
-            }
-          }
-          window.location.reload();
-        } catch {
-          alert("Failed to read save file. Is it valid JSON?");
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  }
-
-  function loadGame() {
-    try {
-      const saved = localStorage.getItem("hunters-path-save");
-      if (!saved) {
-        logPush("No save file found.");
-        return;
-      }
-
-      const gameState = JSON.parse(saved);
-
-      // Ensure equipment property exists for old save data
-      if (!gameState.player.equipment) {
-        gameState.player.equipment = {};
-      }
-
-      // Handle old daily quest structure
-      if (gameState.daily) {
-        // If old structure, generate new quests
-        if (!gameState.daily.questReputation) {
-          gameState.daily.questReputation = 0;
-        }
-        if (
-          !gameState.daily.availableQuests ||
-          gameState.daily.availableQuests.length === 0
-        ) {
-          gameState.daily.availableQuests = generateDailyQuests(
-            gameState.player.level,
-            gameState.daily.questReputation
-          );
-          gameState.daily.active = true;
-        }
-      }
-
-      // Migrate old spirits to new format (also initialise missing field)
-      gameState.player.spirits = (gameState.player.spirits || []).map(
-        (spirit: any) => {
-          // If spirit already has new format, return as is
-          if (spirit.rarity && spirit.abilities && spirit.type) {
-            return spirit;
-          }
-
-          // Migrate old spirit format to new format
-          const type = SPIRIT_TYPES[rand(0, SPIRIT_TYPES.length - 1)];
-          const rarity = "common"; // Default to common for old spirits
-          const availableAbilities = SPIRIT_ABILITIES[type];
-          const abilities = availableAbilities.slice(0, 1); // Give 1 ability to old spirits
-
-          return {
-            id: spirit.id,
-            name: spirit.name,
-            power: spirit.power,
-            rarity,
-            abilities,
-            level: 1,
-            exp: 0,
-            expToNext: 100,
-            type,
-            description: SPIRIT_DESCRIPTIONS[type],
-          };
-        }
-      );
-
-      // Strip debug spirits from save data
-      gameState.player.spirits = (gameState.player.spirits || []).filter(
-        (s: any) => !s.id?.startsWith("debug_") && !s.name?.startsWith("Debug ")
-      );
-
-      setPlayer(gameState.player);
-      setGates(gameState.gates);
-      setGold(gameState.gold);
-      setGameTime(gameState.gameTime);
-      setDaily(gameState.daily);
-      logPush("Game loaded successfully!");
-    } catch (error) {
-      logPush("Failed to load game. Save file may be corrupted.");
-    }
-  }
-
-  // --- Save recovery handlers ---
-  function handleRecoveryFresh() {
-    // Wipe all save keys and start fresh
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("hunters-path-")) keysToRemove.push(key);
-    }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
-    setShowRecovery(false);
-    window.location.reload();
-  }
-
-  function handleRecoveryBackup() {
-    const backup = safeParse<any>("hunters-path-backup");
-    if (!backup || !backup.player) {
-      alert("Backup is also corrupt. Please start fresh.");
-      return;
-    }
-    // Promote backup to autosave & save, then reload
-    const raw = localStorage.getItem("hunters-path-backup")!;
-    localStorage.setItem("hunters-path-autosave", raw);
-    localStorage.setItem("hunters-path-save", raw);
-    setShowRecovery(false);
-    window.location.reload();
-  }
-
-  function resetGame() {
-    if (
-      confirm(
-        "Are you sure you want to reset your progress? This cannot be undone."
-      )
-    ) {
-      setPlayer(createInitialPlayer());
-      setGates(generateGatePool(1));
-      setGold(50);
-      setGameTime(initialGameTime());
-
-      // Generate new daily quests for level 1
-      const newQuests = generateDailyQuests(1, 0);
-      setDaily({
-        active: true,
-        availableQuests: newQuests,
-        completedQuests: [],
-        completed: false,
-        penaltyArmed: false,
-        questReputation: 0,
-      });
-
-      setLog(["Game reset. Welcome back, Hunter!"]);
-      localStorage.removeItem("hunters-path-save");
-    }
-  }
-
-  function deleteAllSaveData() {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("hunters-path-")) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
-    window.location.reload();
-  }
 
   // Arm penalty if player enters dungeon mid-daily and then completes after — simulate auto-trigger at end of fight
   useEffect(() => {
@@ -2341,66 +1902,6 @@ export default function HuntersPath() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.fatigue, autoDungeon]);
 
-  // Debounced auto-save: persists within 1s of any state change.
-  // Catches spirit binding, equipping, level-ups, etc. before a pull-to-refresh.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const gameState = {
-        player, gates, gold, gameTime, daily,
-        lastSaved: new Date().toISOString(),
-        saveVersion: SAVE_VERSION,
-      };
-      // Rotating backup
-      try {
-        const prev = localStorage.getItem("hunters-path-autosave");
-        if (prev) localStorage.setItem("hunters-path-backup", prev);
-      } catch { /* best-effort */ }
-      localStorage.setItem("hunters-path-autosave", JSON.stringify(gameState));
-      localStorage.setItem("hunters-path-save", JSON.stringify(gameState));
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [player, gates, gold, daily, gameTime]);
-
-  // Also save immediately when user switches away or closes the PWA
-  useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState === "hidden") saveGame();
-    };
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
-  }, [player, gates, gold, daily, gameTime]);
-
-  // Sound management — thin wrappers around audioManager singleton
-  function playSound(soundName: string, volumeOverride?: number) {
-    audioManager.playSound(soundName as SoundName, volumeOverride);
-  }
-
-  function playMusic(musicName: string, loop: boolean = true) {
-    // Map legacy names to new MusicName type
-    const nameMap: Record<string, MusicName> = {
-      ambient_music: "ambient",
-      combat_music: "combat",
-      victory_music: "victory_music",
-      defeat_music: "defeat_music",
-    };
-    audioManager.playMusic(nameMap[musicName] ?? (musicName as MusicName), loop);
-  }
-
-  function stopMusic() {
-    audioManager.stopMusic(true);
-  }
-
-  function updateVolume(newVolume: number) {
-    setVolume(newVolume);
-  }
-
-  function toggleSound() {
-    setSoundEnabled((prev) => !prev);
-  }
-
-  function toggleMusic() {
-    setMusicEnabled((prev) => !prev);
-  }
 
   // Stat progression visualization component
   function StatProgressionChart() {
@@ -5542,7 +5043,7 @@ export default function HuntersPath() {
         </footer>
       </div>
 
-      {/* Audio managed by audioManager singleton — no DOM elements needed */}
+      {/* Audio managed by useAudio hook — no DOM elements needed */}
 
       {/* Story Event Modal (desktop) */}
       {storyEvent && (
