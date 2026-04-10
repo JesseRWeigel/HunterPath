@@ -5,6 +5,22 @@ import { RANKS, DUNGEON_MODIFIERS, generateGatePool, rollDrop } from "@/lib/game
 import { processBossMechanics, getBossPhase } from "@/lib/game/bossMechanics";
 import { updateStatsAfterCombat, type GameStats, type CombatOutcome } from "@/lib/game/statsTracker";
 import { PLAYER_ATTACK_MSGS, BOSS_ATTACK_MSGS, BOSS_BLOCK_MSGS, CRIT_MSGS, SPIRIT_ABILITY_MSGS, BOSS_PHASE_MSGS, BOSS_DIALOGUE, FIRST_CLEAR_TEXT } from "@/lib/game/constants";
+import {
+  calcSpiritPassives,
+  applyCombatModifiers,
+  calcPlayerDamage,
+  calcBossDamage,
+  rollBlock,
+  isCriticalHit,
+  calcSpiritHealing,
+  calcFatigueGain,
+  detectPhaseTransitions,
+  calcVictoryRewards,
+  calcDefeatPenalty,
+  calcVictoryHealing,
+  gateRefreshCost,
+  applyRewardModifiers,
+} from "@/lib/game/combatSimulation";
 import type { Player, Gate, RunningState, CombatResult, Boss } from "@/lib/game/types";
 import type { ParticlePreset } from "@/lib/particles";
 
@@ -107,49 +123,14 @@ export function useCombatEngine({
         let { boss, hpEnemy, tick } = prev;
 
         // Apply spirit passive abilities
-        let spiritDmgBonus = 0;
-        let spiritBlockChance = 0;
-        let spiritHealPerTick = 0;
-
-        for (const spirit of player.spirits) {
-          for (const ability of (spirit.abilities || [])) {
-            if (ability.type !== "passive") continue;
-            switch (ability.id) {
-              case "berserker_rage":
-                if (player.hp < player.maxHp * 0.5) spiritDmgBonus += 0.25;
-                break;
-              case "ethereal_shield":
-                spiritBlockChance += 0.15;
-                break;
-              case "shadow_step":
-                if (tick % 3 === 0) spiritDmgBonus += 0.10;
-                break;
-              case "vitality_aura":
-                spiritHealPerTick += 2;
-                break;
-              case "mana_shield":
-                // Converts some mana damage to reduced physical: handled implicitly by MP upkeep
-                break;
-            }
-          }
-        }
-
-        // Cap combined block chance at 75% max
-        spiritBlockChance = Math.min(spiritBlockChance, 0.75);
-        // Cap spirit damage bonus at 100% max
-        spiritDmgBonus = Math.min(spiritDmgBonus, 1.0);
+        const hpRatio = player.maxHp > 0 ? player.hp / player.maxHp : 1;
+        const { dmgBonus: spiritDmgBonus, blockChance: spiritBlockChance, healPerTick: spiritHealPerTick } =
+          calcSpiritPassives(player.spirits, hpRatio, tick);
 
         // Apply dungeon modifiers to combat
-        // Re-look up modifier by ID to restore functions lost during serialization
-        let playerDmgMult = 1 + spiritDmgBonus;
-        let bossDmgMult = 1;
-        for (const mod of (prev.gate.modifiers || [])) {
-          const liveMod = DUNGEON_MODIFIERS.find(m => m.id === mod.id) ?? mod;
-          if (typeof liveMod.applyToCombat !== "function") continue;
-          const result = liveMod.applyToCombat(playerDmgMult, bossDmgMult);
-          playerDmgMult = result.playerDmgMult;
-          bossDmgMult = result.bossDmgMult;
-        }
+        const { playerDmgMult, bossDmgMult } = applyCombatModifiers(
+          prev.gate.modifiers || [], spiritDmgBonus
+        );
 
         // Apply boss mechanics
         const previousPhase = boss.phase ?? 0;
@@ -175,30 +156,22 @@ export function useCombatEngine({
           setCombatLog((log) => [...log, ...mechResult.messages].slice(-12));
         }
 
-        // Player attack - increased base damage (with spirit bonuses, dungeon modifiers, and boss mechanics)
-        const dmgPlayer = Math.max(
-          1,
-          Math.floor(pPower * 1.2 * playerDmgMult - effectiveBossDef * 0.3 + rand(0, 6))
-        );
+        // Player attack - with spirit bonuses, dungeon modifiers, and boss mechanics
+        const dmgPlayer = calcPlayerDamage(pPower, playerDmgMult, effectiveBossDef);
         const oldHpEnemy = hpEnemy;
         hpEnemy = clamp(hpEnemy - dmgPlayer, 0, boss.maxHp);
 
         // Boss attack - with spirit block chance, dungeon modifiers, and boss mechanics
-        const blocked = spiritBlockChance > 0 && Math.random() < spiritBlockChance;
-        const dmgBoss = blocked ? 0 : Math.max(
-          0,
-          Math.floor(boss.atk * 0.8 * bossDmgMult - player.stats.VIT * 0.7 + rand(0, 3))
-        );
+        const blocked = rollBlock(spiritBlockChance);
+        const dmgBoss = calcBossDamage(boss.atk, bossDmgMult, player.stats.VIT, blocked);
         const oldHp = player.hp;
         let newHp = clamp(player.hp - dmgBoss, 0, player.maxHp);
 
         // Spirit healing
-        if (spiritHealPerTick > 0 && newHp > 0) {
-          const healAmount = Math.min(spiritHealPerTick, player.maxHp - newHp);
-          if (healAmount > 0) {
-            newHp = Math.min(newHp + healAmount, player.maxHp);
-            addDamageNumber(healAmount, "heal", "player");
-          }
+        const healAmount = calcSpiritHealing(spiritHealPerTick, newHp, player.maxHp);
+        if (healAmount > 0) {
+          newHp = Math.min(newHp + healAmount, player.maxHp);
+          addDamageNumber(healAmount, "heal", "player");
         }
 
         // Accumulate damage for statistics
@@ -209,7 +182,7 @@ export function useCombatEngine({
         if (dmgPlayer > 0) {
           triggerVisualEffect("screenShake");
           playSound("attack");
-          const isCrit = dmgPlayer > pPower * 1.5;
+          const isCrit = isCriticalHit(dmgPlayer, pPower);
           if (isCrit) {
             triggerVisualEffect("criticalHit");
             playSound("critical");
@@ -238,16 +211,15 @@ export function useCombatEngine({
         const newMp = clamp(player.mp - upkeep, 0, player.maxMp);
 
         // Fatigue gain
-        const fatigueGainMult = 1 - (prestigeUpgrades["fatigue_resist"] || 0) * 0.05;
-        const newFatigue = clamp(player.fatigue + 0.5 * fatigueGainMult, 0, 100);
+        const newFatigue = calcFatigueGain(
+          player.fatigue, prestigeUpgrades["fatigue_resist"] || 0
+        );
 
         // Add combat log entries
         const rank = prev.gate?.rank ?? "E";
-        const oldBossHpPct = boss.maxHp > 0 ? (oldHpEnemy / boss.maxHp) * 100 : 0;
-        const newBossHpPct = boss.maxHp > 0 ? (hpEnemy / boss.maxHp) * 100 : 0;
         setCombatLog((log) => {
           const newEntries: string[] = [];
-          const isCrit = dmgPlayer > pPower * 1.5;
+          const isCrit = isCriticalHit(dmgPlayer, pPower);
 
           // Player attack
           if (dmgPlayer > 0) {
@@ -267,10 +239,8 @@ export function useCombatEngine({
           }
 
           // Boss HP phase transitions
-          for (const threshold of [75, 50, 25]) {
-            if (oldBossHpPct > threshold && newBossHpPct <= threshold) {
-              newEntries.push(pick(BOSS_PHASE_MSGS[String(threshold)]));
-            }
+          for (const threshold of detectPhaseTransitions(oldHpEnemy, hpEnemy, boss.maxHp)) {
+            newEntries.push(pick(BOSS_PHASE_MSGS[String(threshold)]));
           }
 
           // Spirit ability procs (throttled to avoid spam)
@@ -315,23 +285,9 @@ export function useCombatEngine({
           playMusic("victory_music", false);
           hapticSuccess();
 
-          const { exp: rawExp, gold: rawGold } = gainExpGoldFromGate(prev.gate);
-          const expBoost = 1 + (prestigeUpgrades["exp_boost"] || 0) * 0.05;
-          const goldBoostMult = 1 + (prestigeUpgrades["gold_boost"] || 0) * 0.05;
-
-          // Apply dungeon modifiers to rewards
-          // Re-look up modifier by ID to restore functions lost during serialization
-          let expMult = expBoost;
-          let goldMult = goldBoostMult;
-          for (const mod of (prev.gate.modifiers || [])) {
-            const liveMod = DUNGEON_MODIFIERS.find(m => m.id === mod.id) ?? mod;
-            if (typeof liveMod.applyToRewards !== "function") continue;
-            const result = liveMod.applyToRewards(expMult, goldMult);
-            expMult = result.expMult;
-            goldMult = result.goldMult;
-          }
-          const exp = Math.floor(rawExp * expMult);
-          const goldGain = Math.floor(rawGold * goldMult);
+          const { exp, gold: goldGain } = calcVictoryRewards(
+            prev.gate, prestigeUpgrades
+          );
           const drop = rollDrop(prev.gate);
           const drops = drop ? [drop] : [];
 
@@ -372,11 +328,10 @@ export function useCombatEngine({
           }
 
           // Heal to full on victory
-          setPlayer((pp) => ({
-            ...pp,
-            hp: pp.maxHp,
-            mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.3), pp.maxMp),
-          }));
+          setPlayer((pp) => {
+            const healing = calcVictoryHealing(pp.mp, pp.maxHp, pp.maxMp);
+            return { ...pp, hp: healing.hp, mp: healing.mp };
+          });
 
           // First-clear celebration — queue story modal for new rank clears
           const victoryRank = prev.gate.rank;
@@ -459,12 +414,11 @@ export function useCombatEngine({
             `You were defeated in ${prev.gate.name}. Rest and try again.`
           );
           // defeat penalty: lose some gold; recover to 30% HP
-          setGold((g) => Math.max(0, g - 10));
-          setPlayer((pp) => ({
-            ...pp,
-            hp: Math.max(5, Math.floor(pp.maxHp * 0.3)),
-            mp: Math.min(pp.mp + Math.floor(pp.maxMp * 0.2), pp.maxMp),
-          }));
+          setGold((g) => calcDefeatPenalty(g, 0, 0, 0).gold);
+          setPlayer((pp) => {
+            const penalty = calcDefeatPenalty(0, pp.maxHp, pp.mp, pp.maxMp);
+            return { ...pp, hp: penalty.hp, mp: penalty.mp };
+          });
 
           // Update statistics
           updateStats(false, 0, -10, prev.gate.rank);
@@ -564,7 +518,7 @@ export function useCombatEngine({
   // Refresh gate pool
   function refreshGates() {
     if (inRun) return;
-    const cost = Math.max(10, player.level * 5);
+    const cost = gateRefreshCost(player.level);
     if (gold < cost) {
       logPush(`Not enough gold. Need ${cost}₲ to refresh gates.`);
       return;
