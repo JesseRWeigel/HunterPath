@@ -128,7 +128,7 @@ export function useCombatEngine({
           calcSpiritPassives(player.spirits, hpRatio, tick);
 
         // Apply dungeon modifiers to combat
-        const { playerDmgMult, bossDmgMult } = applyCombatModifiers(
+        let { playerDmgMult, bossDmgMult } = applyCombatModifiers(
           prev.gate.modifiers || [], spiritDmgBonus
         );
 
