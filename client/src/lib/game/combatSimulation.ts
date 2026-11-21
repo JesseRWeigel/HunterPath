@@ -92,6 +92,8 @@ export function calcPlayerDamage(
   playerDmgMult: number,
   bossDef: number,
 ): number {
+  // A zero multiplier is an explicit dodge or immunity, not a low-damage hit.
+  if (playerDmgMult === 0) return 0;
   return Math.max(1, Math.floor(pPower * 1.2 * playerDmgMult - bossDef * 0.3 + rand(0, 6)));
 }
 

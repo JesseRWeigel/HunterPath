@@ -6,6 +6,7 @@ import {
   getBossMechanicsSummary,
 } from "./bossMechanics";
 import type { Boss } from "./types";
+import { calcPlayerDamage } from "./combatSimulation";
 
 function makeBoss(hp: number, maxHp: number, overrides?: Partial<Boss>): Boss {
   return { name: "Test Boss", hp, maxHp, hp, atk: 50, def: 20, ...overrides };
@@ -133,6 +134,26 @@ describe("bossMechanics", () => {
       const result = processBossMechanics(boss, 1, 0); // phase changed 0→1
       expect(result.bossDmgMult).toBeGreaterThan(1.0);
       expect(result.messages.length).toBeGreaterThan(0);
+    });
+
+    it("C-rank Shadow Cloak prevents all damage despite the usual minimum", () => {
+      vi.spyOn(Math, "random").mockReturnValue(0);
+      const boss = initBossMechanics(makeBoss(100, 100), "C");
+      const { playerDmgMult } = processBossMechanics(boss, 1, 0);
+      expect(playerDmgMult).toBe(0);
+      expect(calcPlayerDamage(100, playerDmgMult, boss.def)).toBe(0);
+    });
+
+    it("S-rank Desperation prevents damage for two ticks before the final strike", () => {
+      vi.spyOn(Math, "random").mockReturnValue(0.99);
+      const boss = initBossMechanics(makeBoss(10, 100, { def: 0 }), "S");
+      for (const tick of [1, 2]) {
+        const { playerDmgMult } = processBossMechanics(boss, tick, 3);
+        expect(calcPlayerDamage(100, playerDmgMult, boss.def)).toBe(0);
+      }
+      const after = processBossMechanics(boss, 3, 3);
+      expect(after.bossDmgMult).toBe(3);
+      expect(calcPlayerDamage(100, after.playerDmgMult, boss.def)).toBeGreaterThan(0);
     });
 
     it("S-rank corruption stacks up to 5", () => {
