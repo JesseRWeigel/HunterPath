@@ -215,6 +215,7 @@ export function useDailyQuests({
       completed: false,
       penaltyArmed: true,
       questReputation: daily.questReputation,
+      lastResetDate: daily.lastResetDate ?? new Date().toDateString(),
     });
 
     logPush("Daily quests forfeited.");
