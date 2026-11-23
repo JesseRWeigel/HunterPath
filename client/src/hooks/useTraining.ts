@@ -46,7 +46,6 @@ export function useTraining({
 
       setPlayer((p) => ({
         ...p,
-        exp: p.exp + expGain,
         fatigue: clamp(p.fatigue + fatigueGain, 0, 100),
       }));
 
@@ -66,7 +65,6 @@ export function useTraining({
     setGold((g) => g + goldGain);
     setPlayer((p) => ({
       ...p,
-      exp: p.exp + expGain,
       fatigue: clamp(p.fatigue + fatigueGain, 0, 100),
     }));
 
