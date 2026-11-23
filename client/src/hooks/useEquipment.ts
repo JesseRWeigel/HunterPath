@@ -29,34 +29,22 @@ export function useEquipment({
 
         setPlayer((p) => {
           try {
-            const newInv = [...p.inv].filter((i) => i.id !== itemId);
-            const oldItem = item.equipmentSlot
-              ? p.equipment[item.equipmentSlot]
-              : undefined;
-
-            if (oldItem) {
-              newInv.push({ ...oldItem });
+            // The item may have moved since the click's render, for example
+            // when React batches two equip actions for the same item.
+            const currentItem = p.inv.find((i) => i.id === itemId);
+            if (!currentItem || currentItem.type !== "equipment" || !currentItem.equipmentSlot) {
+              return p;
             }
 
-            const eq = p.equipment || {};
-            const newEquipment = {
-              weapon: eq.weapon ? { ...eq.weapon } : undefined,
-              armor: eq.armor ? { ...eq.armor } : undefined,
-              accessory: eq.accessory ? { ...eq.accessory } : undefined,
-            };
-
-            if (item.equipmentSlot === "weapon") {
-              newEquipment.weapon = { ...item };
-            } else if (item.equipmentSlot === "armor") {
-              newEquipment.armor = { ...item };
-            } else if (item.equipmentSlot === "accessory") {
-              newEquipment.accessory = { ...item };
-            }
+            const slot = currentItem.equipmentSlot;
+            const newInv = p.inv.filter((i) => i.id !== itemId);
+            const oldItem = p.equipment[slot];
+            if (oldItem) newInv.push({ ...oldItem });
 
             return {
               ...p,
               inv: newInv,
-              equipment: newEquipment,
+              equipment: { ...p.equipment, [slot]: { ...currentItem } },
             };
           } catch (setPlayerError) {
             console.error("Error in setPlayer callback:", setPlayerError);
@@ -93,7 +81,11 @@ export function useEquipment({
 
         setPlayer((p) => {
           try {
-            const newInv = [...p.inv, { ...item }];
+            // Act on the item the player clicked, not a later replacement.
+            const currentItem = p.equipment[slot];
+            if (!currentItem || currentItem.id !== item.id) return p;
+
+            const newInv = [...p.inv, { ...currentItem }];
             const newEquipment = { ...p.equipment };
             newEquipment[slot] = undefined;
 
